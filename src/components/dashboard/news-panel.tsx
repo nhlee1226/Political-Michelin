@@ -2,15 +2,17 @@
 
 /**
  * NewsPanel — AI 실시간 뉴스 & 편향성 객관화 리포트
- *  - 크롤링된 뉴스 목록 + 편향 지수 게이지
- *  - "AI 객관화" 버튼: 원문 요약 ↔ 객관화 요약문 전환 (편향 지수 78% → 9% 식 표시)
+ *  - 네이버 뉴스 검색 API 로 수집한 실제 기사 목록 (useNews)
+ *  - AI 분석이 끝난 기사(bias !== null)만 편향 지수 게이지·"AI 객관화" 전환을 보여줌
+ *  - 분석 전 기사는 "분석 전" 배지 + 원문 링크만 표시 (가짜 수치를 만들지 않음)
  *  - 본문 속 정치 용어는 GlossaryText 로 호버 해설
- *  - 상단 AI 객관화 모드 ON 이면 기본값이 객관화 요약
+ *  - 상단 AI 객관화 모드 ON 이면 (분석된 기사의) 기본값이 객관화 요약
  */
 import * as React from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowRight, ArrowUpRight, Newspaper, ScanSearch, Sparkles, Undo2 } from "lucide-react";
-import { NEWS, REGION_BY_CODE, type NewsItem } from "@/lib/mock-data";
+import { ArrowRight, ArrowUpRight, ExternalLink, Newspaper, ScanSearch, Sparkles, Undo2 } from "lucide-react";
+import type { NewsItem } from "@/lib/mock-data";
+import { useNews, useRegions } from "@/lib/dashboard-data";
 import { cn } from "@/lib/utils";
 import { Badge, Card, CardHeader, IconButton, Segmented } from "@/components/ui/primitives";
 import { GlossaryText } from "./glossary-text";
@@ -41,10 +43,26 @@ function BiasMeter({ value }: { value: number }) {
   );
 }
 
+function OriginalLink({ url }: { url?: string }) {
+  if (!url) return null;
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full border border-line px-2.5 py-1 text-[11px] font-semibold text-ink-2 transition hover:text-ink"
+    >
+      <ExternalLink className="size-3" /> 원문
+    </a>
+  );
+}
+
 function NewsCard({ item, aiMode }: { item: NewsItem; aiMode: boolean }) {
-  const [objective, setObjective] = React.useState(aiMode);
+  const { byCode: REGION_BY_CODE } = useRegions();
+  const analyzed = item.bias !== null;
+  const [objective, setObjective] = React.useState(aiMode && analyzed);
   const [scanning, setScanning] = React.useState(false);
-  React.useEffect(() => setObjective(aiMode), [aiMode]);
+  React.useEffect(() => setObjective(aiMode && analyzed), [aiMode, analyzed]);
 
   const convert = () => {
     if (objective) return setObjective(false);
@@ -55,22 +73,35 @@ function NewsCard({ item, aiMode }: { item: NewsItem; aiMode: boolean }) {
     }, 650);
   };
 
-  const shown = objective ? residualBias(item.bias) : item.bias;
-  const t = biasTone(item.bias);
+  const bias = item.bias ?? 0;
+  const shown = objective ? residualBias(bias) : bias;
+  const t = biasTone(bias);
+  const headline = objective ? (item.objectiveHeadline ?? item.headline) : item.headline;
+  const body = objective ? (item.objective ?? item.original) : item.original;
 
   return (
     <article className="group rounded-xl border border-line bg-white/[0.02] p-3.5 transition hover:border-white/15 hover:bg-white/[0.04]">
       <div className="flex items-center justify-between gap-2 text-[11px] text-ink-3">
         <span className="flex min-w-0 items-center gap-1.5">
-          <span className="font-medium text-ink-2">{item.source}</span>·<span>{item.time}</span>·
-          <span>{item.category}</span>
+          <span className="truncate font-medium text-ink-2">{item.source}</span>·
+          <span className="shrink-0">{item.time}</span>·<span className="shrink-0">{item.category}</span>
           {item.region && <Badge className="px-1.5 py-0 text-[10px]">{REGION_BY_CODE[item.region]?.short}</Badge>}
         </span>
-        <Badge tone={objective ? "lime" : t.tone}>{objective ? "AI 객관화" : t.label}</Badge>
+        {analyzed ? (
+          <Badge tone={objective ? "lime" : t.tone}>{objective ? "AI 객관화" : t.label}</Badge>
+        ) : (
+          <Badge>분석 전</Badge>
+        )}
       </div>
 
       <h4 className="mt-2 text-[14px] font-semibold leading-snug text-ink">
-        <GlossaryText text={objective ? item.objectiveHeadline : item.headline} />
+        {item.url ? (
+          <a href={item.url} target="_blank" rel="noopener noreferrer" className="hover:underline">
+            <GlossaryText text={headline} />
+          </a>
+        ) : (
+          <GlossaryText text={headline} />
+        )}
       </h4>
 
       <div className="relative mt-2">
@@ -83,7 +114,7 @@ function NewsCard({ item, aiMode }: { item: NewsItem; aiMode: boolean }) {
             transition={{ duration: 0.2 }}
             className={cn("text-[13px] leading-relaxed", objective ? "text-ink-2" : "text-ink-3")}
           >
-            <GlossaryText text={objective ? item.objective : item.original} />
+            <GlossaryText text={body} />
           </motion.p>
         </AnimatePresence>
         {scanning && (
@@ -109,40 +140,52 @@ function NewsCard({ item, aiMode }: { item: NewsItem; aiMode: boolean }) {
       )}
 
       <div className="mt-3 flex items-center justify-between gap-2 border-t border-line pt-3">
-        <div className="flex items-center gap-2">
-          <span className="whitespace-nowrap text-[11px] text-ink-3">편향</span>
-          <BiasMeter value={shown} />
-          {objective && (
-            <span className="flex items-center gap-1 text-[11px] text-ink-3 tabular">
-              <span className="line-through">{item.bias}%</span>
-              <ArrowRight className="size-3 text-lime" />
-            </span>
-          )}
-        </div>
-        <button
-          onClick={convert}
-          disabled={scanning}
-          className={cn(
-            "flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-semibold transition",
-            objective
-              ? "border border-line text-ink-2 hover:text-ink"
-              : "bg-lime text-canvas hover:bg-lime-2 disabled:opacity-60",
-          )}
-        >
-          {objective ? (
-            <>
-              <Undo2 className="size-3" /> 원문 보기
-            </>
-          ) : scanning ? (
-            <>
-              <ScanSearch className="size-3 animate-pulse" /> 분석 중
-            </>
-          ) : (
-            <>
-              <Sparkles className="size-3" /> AI 객관화
-            </>
-          )}
-        </button>
+        {analyzed ? (
+          <>
+            <div className="flex items-center gap-2">
+              <span className="whitespace-nowrap text-[11px] text-ink-3">편향</span>
+              <BiasMeter value={shown} />
+              {objective && (
+                <span className="flex items-center gap-1 text-[11px] text-ink-3 tabular">
+                  <span className="line-through">{bias}%</span>
+                  <ArrowRight className="size-3 text-lime" />
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-1.5">
+              <OriginalLink url={item.url} />
+              <button
+                onClick={convert}
+                disabled={scanning}
+                className={cn(
+                  "flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-semibold transition",
+                  objective
+                    ? "border border-line text-ink-2 hover:text-ink"
+                    : "bg-lime text-canvas hover:bg-lime-2 disabled:opacity-60",
+                )}
+              >
+                {objective ? (
+                  <>
+                    <Undo2 className="size-3" /> 원문 요약
+                  </>
+                ) : scanning ? (
+                  <>
+                    <ScanSearch className="size-3 animate-pulse" /> 분석 중
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="size-3" /> AI 객관화
+                  </>
+                )}
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <span className="text-[11px] text-ink-3">편향 지수 · AI 분석 대기 중</span>
+            <OriginalLink url={item.url} />
+          </>
+        )}
       </div>
     </article>
   );
@@ -151,19 +194,20 @@ function NewsCard({ item, aiMode }: { item: NewsItem; aiMode: boolean }) {
 type Filter = "all" | "high" | "neutral";
 
 export function NewsPanel({ aiMode, className, limit }: { aiMode: boolean; className?: string; limit?: number }) {
+  const { news } = useNews();
   const [filter, setFilter] = React.useState<Filter>("all");
-  const list = NEWS.filter((n) => (filter === "high" ? n.bias >= 60 : filter === "neutral" ? n.bias < 30 : true)).slice(
-    0,
-    limit ?? NEWS.length,
-  );
-  const avg = Math.round(NEWS.reduce((a, n) => a + n.bias, 0) / NEWS.length);
+  const analyzed = news.filter((n): n is NewsItem & { bias: number } => n.bias !== null);
+  const list = news
+    .filter((n) => (filter === "all" ? true : n.bias !== null && (filter === "high" ? n.bias >= 60 : n.bias < 30)))
+    .slice(0, limit ?? news.length);
+  const avg = analyzed.length ? Math.round(analyzed.reduce((a, n) => a + n.bias, 0) / analyzed.length) : null;
 
   return (
     <Card className={cn("flex flex-col", className)}>
       <CardHeader
         icon={<Newspaper className="size-4" />}
         title="AI 실시간 뉴스 리포트"
-        subtitle={`크롤링 ${NEWS.length}건 · 평균 편향 지수 ${avg}%`}
+        subtitle={`네이버 뉴스 ${news.length}건 · ${avg === null ? "AI 편향 분석 대기" : `평균 편향 지수 ${avg}%`}`}
         action={
           <IconButton aria-label="전체 뉴스">
             <ArrowUpRight className="size-4" />
@@ -186,7 +230,15 @@ export function NewsPanel({ aiMode, className, limit }: { aiMode: boolean; class
         {list.map((n) => (
           <NewsCard key={n.id} item={n} aiMode={aiMode} />
         ))}
-        {list.length === 0 && <p className="py-8 text-center text-xs text-ink-3">해당 조건의 뉴스가 없습니다.</p>}
+        {list.length === 0 && (
+          <p className="py-8 text-center text-xs text-ink-3">
+            {news.length === 0
+              ? "수집된 기사가 없습니다. 터미널에서 npm run collect:news 를 실행하세요."
+              : filter !== "all" && analyzed.length === 0
+                ? "아직 AI 편향 분석이 끝난 기사가 없습니다."
+                : "해당 조건의 뉴스가 없습니다."}
+          </p>
+        )}
       </div>
     </Card>
   );

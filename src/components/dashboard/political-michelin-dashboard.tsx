@@ -10,7 +10,8 @@
  */
 import * as React from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { HEADLINE_KPIS, NEWS, REGION_BY_CODE, REGIONS } from "@/lib/mock-data";
+import { HEADLINE_KPIS } from "@/lib/mock-data";
+import { useNews, useRegions } from "@/lib/dashboard-data";
 import { DashboardHeader, type TabKey } from "./header";
 import { SideRail } from "./side-rail";
 import { FlipCounter } from "./flip-counter";
@@ -26,7 +27,7 @@ const TODAY = new Intl.DateTimeFormat("ko-KR", { year: "numeric", month: "long",
 
 /** 탭별 페이지 헤드라인 (영상: Sales Overview → Growth Reports 처럼 탭마다 교체) */
 function useHeadline(tab: TabKey, newsCount: number, regionCode: string) {
-  const r = REGION_BY_CODE[regionCode];
+  const r = useRegions().byCode[regionCode];
   switch (tab) {
     case "map":
       return {
@@ -43,7 +44,7 @@ function useHeadline(tab: TabKey, newsCount: number, regionCode: string) {
         title: ["뉴스·이슈", "리포트"],
         desc: "AI가 기사별 편향 신호를 분석하고 객관화 요약을 제공합니다.",
         kpis: [
-          { label: "오늘 분석 기사", value: newsCount, caption: "실시간 크롤링", accent: true },
+          { label: "오늘 수집 기사", value: newsCount, caption: "네이버 뉴스 · 최근 24시간", accent: true },
           { label: "평균 편향 지수", value: HEADLINE_KPIS.avgBias, caption: "%" },
           { label: "객관화 변환", value: 1964, caption: "건" },
         ],
@@ -74,7 +75,7 @@ function useHeadline(tab: TabKey, newsCount: number, regionCode: string) {
         desc: "흩어진 정치 정보를 한눈에. 모든 수치는 출처와 오차범위를 함께 표기합니다.",
         kpis: [
           { label: "추적 중인 의원", value: HEADLINE_KPIS.trackedPoliticians, caption: "제22대 국회 전원" },
-          { label: "오늘 분석 기사", value: newsCount, caption: "AI 편향 분석 완료", accent: true },
+          { label: "오늘 수집 기사", value: newsCount, caption: "네이버 뉴스 · 최근 24시간", accent: true },
           { label: "평균 편향 지수", value: HEADLINE_KPIS.avgBias, caption: "전일 대비 -3%p" },
         ],
       };
@@ -82,16 +83,11 @@ function useHeadline(tab: TabKey, newsCount: number, regionCode: string) {
 }
 
 export default function PoliticalMichelinDashboard() {
+  const { regions: REGIONS } = useRegions();
   const [tab, setTab] = React.useState<TabKey>("overview");
   const [aiMode, setAiMode] = React.useState(true);
   const [region, setRegion] = React.useState("11");
-  const [newsCount, setNewsCount] = React.useState(HEADLINE_KPIS.newsAnalyzedToday);
-
-  // 실시간 기사 분석 카운터 (플립 애니메이션 확인용)
-  React.useEffect(() => {
-    const t = setInterval(() => setNewsCount((n) => n + 1 + Math.floor(Math.random() * 3)), 3200);
-    return () => clearInterval(t);
-  }, []);
+  const { newsCountToday: newsCount } = useNews();
 
   const head = useHeadline(tab, newsCount, region);
 
@@ -209,8 +205,7 @@ export default function PoliticalMichelinDashboard() {
 
           <footer className="mt-8 flex flex-col gap-2 border-t border-line pt-5 text-[11px] text-ink-3 sm:flex-row sm:justify-between">
             <p>
-              © 2026 정치 미슐랭 · 팀 [더 킹] · 본 화면의 정당·인물·수치는 모두 가상 데이터입니다 ({REGIONS.length}개 시·도, 기사{" "}
-              {NEWS.length}건 샘플).
+              © 2026 정치 미슐랭 · 팀 [더 킹] · 뉴스는 네이버 뉴스 검색 API 로 수집한 실제 기사이며, 그 외 정당·인물·수치는 가상 데이터입니다 ({REGIONS.length}개 시·도).
             </p>
             <p>데이터 출처 표기 원칙 · 정치적 중립성 가이드라인 · 개인정보처리방침</p>
           </footer>

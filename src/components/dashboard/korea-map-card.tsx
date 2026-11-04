@@ -10,7 +10,7 @@
  *  - 선택 지역: 정당 지지도 패널 / 정치인 프로필 카드 / 주요 이슈 팝업
  *
  * 실서비스 전환 시: 이 컴포넌트의 <svg> 레이어를 Mapbox/Kakao 지도로 교체하고
- * REGIONS 데이터를 API 응답으로 대체하면 패널 UI 는 그대로 재사용 가능합니다.
+ * 지역 데이터는 useRegions() 로 DB 에서 받아오며, 패널 UI 는 그대로 재사용 가능합니다.
  */
 import * as React from "react";
 import { AnimatePresence, motion } from "framer-motion";
@@ -26,7 +26,8 @@ import {
   X,
 } from "lucide-react";
 import { MAP_DOTS, MAP_HEIGHT, MAP_WIDTH, REGION_PATHS } from "@/lib/korea-map-data";
-import { PARTIES, PARTY_ORDER, REGION_BY_CODE, REGIONS, type Region } from "@/lib/mock-data";
+import { PARTIES, PARTY_ORDER, type Region } from "@/lib/mock-data";
+import { useRegions } from "@/lib/dashboard-data";
 import { cn } from "@/lib/utils";
 import { Badge, Card, IconButton, MichelinStars, PartyTag } from "@/components/ui/primitives";
 
@@ -48,7 +49,11 @@ const REGION_CENTERS: Record<string, { x: number; y: number }> = (() => {
 
 // 광역시(2x) 를 도(3x) 위에 그려 클릭 가능하도록 정렬
 const PATH_ORDER = Object.keys(REGION_PATHS).sort((a, b) => (a.startsWith("3") ? -1 : 1) - (b.startsWith("3") ? -1 : 1));
-const HOT_REGIONS = [...REGIONS].sort((a, b) => b.heat - a.heat).slice(0, 3).map((r) => r.code);
+/** 이슈 활성도 상위 3개 지역 코드 */
+function useHotRegions() {
+  const { regions } = useRegions();
+  return React.useMemo(() => [...regions].sort((a, b) => b.heat - a.heat).slice(0, 3).map((r) => r.code), [regions]);
+}
 
 /* ───────────────────────── Sub components ───────────────────────── */
 
@@ -295,6 +300,8 @@ function Map3D({
   onHover: (c: string | null) => void;
   onSelect: (c: string) => void;
 }) {
+  const { regions: REGIONS, byCode: REGION_BY_CODE } = useRegions();
+  const HOT_REGIONS = useHotRegions();
   const wrapRef = React.useRef<HTMLDivElement>(null);
   const [tilt, setTilt] = React.useState({ x: 0, y: 0 });
 
@@ -494,6 +501,8 @@ export function KoreaMapCard({
   onSelect: (code: string) => void;
   expanded?: boolean;
 }) {
+  const { regions: REGIONS, byCode: REGION_BY_CODE } = useRegions();
+  const HOT_REGIONS = useHotRegions();
   const [hovered, setHovered] = React.useState<string | null>(null);
   const [showIssues, setShowIssues] = React.useState(true);
   const region = REGION_BY_CODE[selected];

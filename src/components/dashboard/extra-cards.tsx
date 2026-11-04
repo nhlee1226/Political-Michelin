@@ -8,7 +8,8 @@
 import * as React from "react";
 import { Bar, BarChart, Cell, ResponsiveContainer, Tooltip, XAxis } from "recharts";
 import { ArrowDownUp, ScanSearch, Search, Users } from "lucide-react";
-import { PARTIES, REGIONS, type Politician } from "@/lib/mock-data";
+import { PARTIES } from "@/lib/mock-data";
+import { useRegions } from "@/lib/dashboard-data";
 import { cn } from "@/lib/utils";
 import { Badge, Card, CardHeader, MichelinStars, PartyTag, Segmented } from "@/components/ui/primitives";
 import { GlossaryText } from "./glossary-text";
@@ -91,14 +92,12 @@ export function BiasReportCard({ className }: { className?: string }) {
 /* ───────── 정치인 랭킹 테이블 ───────── */
 
 type SortKey = "michelin" | "pledgeRate" | "attendance" | "bills";
-const ALL_POLS: (Politician & { regionShort: string })[] = REGIONS.flatMap((r) =>
-  r.politicians.filter((p) => p.role === "현역 의원").map((p) => ({ ...p, regionShort: r.short })),
-);
 
 export function PoliticianTable({ className, onSelectRegion }: { className?: string; onSelectRegion?: (code: string) => void }) {
   const [sort, setSort] = React.useState<SortKey>("michelin");
   const [q, setQ] = React.useState("");
-  const rows = ALL_POLS.filter((p) => !q || p.name.includes(q) || p.district.includes(q)).sort(
+  const { politicians } = useRegions();
+  const rows = politicians.filter((p) => p.role === "현역 의원").filter((p) => !q || p.name.includes(q) || p.district.includes(q)).sort(
     (a, b) => b[sort] - a[sort] || b.pledgeRate - a.pledgeRate,
   );
 
@@ -151,7 +150,7 @@ export function PoliticianTable({ className, onSelectRegion }: { className?: str
             {rows.map((p, i) => (
               <tr
                 key={p.id}
-                onClick={() => onSelectRegion?.(REGIONS.find((r) => r.short === p.regionShort)!.code)}
+                onClick={() => onSelectRegion?.(p.region.code)}
                 className="cursor-pointer border-t border-line transition hover:bg-white/[0.04] [&>td]:px-3 [&>td]:py-2.5"
               >
                 <td className="text-ink-3 tabular">{i + 1}</td>
