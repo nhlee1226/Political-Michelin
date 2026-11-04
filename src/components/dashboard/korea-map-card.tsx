@@ -26,7 +26,8 @@ import {
   X,
 } from "lucide-react";
 import { MAP_DOTS, MAP_HEIGHT, MAP_WIDTH, REGION_PATHS } from "@/lib/korea-map-data";
-import { PARTIES, PARTY_ORDER, REGION_BY_CODE, REGIONS, type Region } from "@/lib/mock-data";
+import { PARTIES, PARTY_ORDER, REGION_BY_CODE, type Region } from "@/lib/mock-data";
+import { useLiveRegions } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { Badge, Card, IconButton, MichelinStars, PartyTag } from "@/components/ui/primitives";
 
@@ -48,7 +49,6 @@ const REGION_CENTERS: Record<string, { x: number; y: number }> = (() => {
 
 // 광역시(2x) 를 도(3x) 위에 그려 클릭 가능하도록 정렬
 const PATH_ORDER = Object.keys(REGION_PATHS).sort((a, b) => (a.startsWith("3") ? -1 : 1) - (b.startsWith("3") ? -1 : 1));
-const HOT_REGIONS = [...REGIONS].sort((a, b) => b.heat - a.heat).slice(0, 3).map((r) => r.code);
 
 /* ───────────────────────── Sub components ───────────────────────── */
 
@@ -285,11 +285,15 @@ const sideColor = (t: number) =>
   `rgb(${SIDE_TOP.map((v, i) => Math.round(v + (SIDE_BOTTOM[i] - v) * t)).join(" ")})`;
 
 function Map3D({
+  regions,
+  hotRegions,
   selected,
   hovered,
   onHover,
   onSelect,
 }: {
+  regions: Region[];
+  hotRegions: string[];
   selected: string;
   hovered: string | null;
   onHover: (c: string | null) => void;
@@ -440,7 +444,7 @@ function Map3D({
           </AnimatePresence>
 
           {/* 이슈 급상승 지역 펄스 */}
-          {HOT_REGIONS.map((c) => {
+          {hotRegions.map((c) => {
             const p = REGION_CENTERS[c];
             const dx = c === selected ? liftDx : 0;
             const dy = c === selected ? liftDy : 0;
@@ -453,13 +457,13 @@ function Map3D({
           })}
 
           {/* 라벨 */}
-          {REGIONS.map((r) => {
+          {regions.map((r) => {
             const p = REGION_CENTERS[r.code];
             const isSel = r.code === selected;
             const small = ["11", "23", "29", "25", "24", "22", "26", "21"].includes(r.code);
             if (!isSel && small && r.code !== hovered) return null;
             const x = p.x + (isSel ? liftDx : 0);
-            const y = p.y + (isSel ? liftDy : 0) - (HOT_REGIONS.includes(r.code) ? 10 : 0);
+            const y = p.y + (isSel ? liftDy : 0) - (hotRegions.includes(r.code) ? 10 : 0);
             return (
               <g key={r.code} pointerEvents="none" transform={`translate(${x} ${y})`}>
                 {isSel ? (
@@ -496,8 +500,15 @@ export function KoreaMapCard({
 }) {
   const [hovered, setHovered] = React.useState<string | null>(null);
   const [showIssues, setShowIssues] = React.useState(true);
-  const region = REGION_BY_CODE[selected];
-  const hov = hovered ? REGION_BY_CODE[hovered] : null;
+
+  // API 값이 있으면 실제 값, 없거나 실패하면 mock 그대로 (useLiveRegions 가 처리)
+  const regions = useLiveRegions();
+  const byCode = React.useMemo(() => Object.fromEntries(regions.map((r) => [r.code, r])), [regions]);
+  const byHeat = React.useMemo(() => [...regions].sort((a, b) => b.heat - a.heat), [regions]);
+  const hotRegions = React.useMemo(() => byHeat.slice(0, 3).map((r) => r.code), [byHeat]);
+
+  const region = byCode[selected] ?? REGION_BY_CODE[selected];
+  const hov = hovered ? byCode[hovered] : null;
 
   const select = (c: string) => {
     onSelect(c);
@@ -526,7 +537,7 @@ export function KoreaMapCard({
               <span className="absolute inline-flex size-full animate-ping rounded-full bg-cyan opacity-75" />
               <span className="relative inline-flex size-1.5 rounded-full bg-cyan" />
             </span>
-            이슈 급상승 {HOT_REGIONS.length}
+            이슈 급상승 {hotRegions.length}
           </Badge>
           <Badge tone="lime">LIVE</Badge>
           <IconButton aria-label="전체 보기">
@@ -542,7 +553,7 @@ export function KoreaMapCard({
       <div className="@container relative">
         <div className="relative grid gap-3 px-4 pb-4 pt-2 @min-[620px]:grid-cols-[minmax(0,1fr)_272px] @min-[1040px]:block @min-[1040px]:px-5 @min-[1040px]:pb-5">
           <div className="@min-[1040px]:px-[250px]">
-            <Map3D selected={selected} hovered={hovered} onHover={setHovered} onSelect={select} />
+            <Map3D regions={regions} hotRegions={hotRegions} selected={selected} hovered={hovered} onHover={setHovered} onSelect={select} />
           </div>
 
           {/* 호버 툴팁 */}
@@ -615,22 +626,20 @@ export function KoreaMapCard({
 
       {/* 빠른 지역 선택 (모바일 접근성) */}
       <div className="relative flex gap-1.5 overflow-x-auto border-t border-line px-5 py-3 scroll-thin">
-        {[...REGIONS]
-          .sort((a, b) => b.heat - a.heat)
-          .map((r) => (
-            <button
-              key={r.code}
-              onClick={() => select(r.code)}
-              className={cn(
-                "flex shrink-0 items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] transition",
-                r.code === selected ? "border-lime/40 bg-lime/10 text-lime" : "border-line text-ink-3 hover:text-ink-2",
-              )}
-            >
-              {r.short}
-              <span className="tabular opacity-70">{r.heat}</span>
-              {HOT_REGIONS.includes(r.code) && <Flame className="size-3 text-cyan" />}
-            </button>
-          ))}
+        {byHeat.map((r) => (
+          <button
+            key={r.code}
+            onClick={() => select(r.code)}
+            className={cn(
+              "flex shrink-0 items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] transition",
+              r.code === selected ? "border-lime/40 bg-lime/10 text-lime" : "border-line text-ink-3 hover:text-ink-2",
+            )}
+          >
+            {r.short}
+            <span className="tabular opacity-70">{r.heat}</span>
+            {hotRegions.includes(r.code) && <Flame className="size-3 text-cyan" />}
+          </button>
+        ))}
       </div>
     </Card>
   );

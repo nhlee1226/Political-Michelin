@@ -9,6 +9,7 @@ import * as React from "react";
 import { Bar, BarChart, Cell, ResponsiveContainer, Tooltip, XAxis } from "recharts";
 import { ArrowDownUp, ScanSearch, Search, Users } from "lucide-react";
 import { PARTIES, REGIONS, type Politician } from "@/lib/mock-data";
+import { useParties, usePoliticians } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { Badge, Card, CardHeader, MichelinStars, PartyTag, Segmented } from "@/components/ui/primitives";
 import { GlossaryText } from "./glossary-text";
@@ -95,21 +96,79 @@ const ALL_POLS: (Politician & { regionShort: string })[] = REGIONS.flatMap((r) =
   r.politicians.filter((p) => p.role === "현역 의원").map((p) => ({ ...p, regionShort: r.short })),
 );
 
+/** 표 한 줄. 공식 데이터가 없는 지표는 null → "—" 로 표시 */
+interface TableRow {
+  key: string;
+  name: string;
+  district: string | null;
+  term: number | null;
+  partyName: string;
+  partyColor: string;
+  regionCode: string | null;
+  michelin: 1 | 2 | 3 | null;
+  pledgeRate: number | null;
+  attendance: number | null;
+  bills: number;
+}
+
+const NEUTRAL = PARTIES.ETC.color;
+const dash = (v: number | null, unit = "") => (v == null ? "—" : `${v}${unit}`);
+
 export function PoliticianTable({ className, onSelectRegion }: { className?: string; onSelectRegion?: (code: string) => void }) {
   const [sort, setSort] = React.useState<SortKey>("michelin");
   const [q, setQ] = React.useState("");
-  const rows = ALL_POLS.filter((p) => !q || p.name.includes(q) || p.district.includes(q)).sort(
-    (a, b) => b[sort] - a[sort] || b.pledgeRate - a.pledgeRate,
-  );
+  const { data: apiPols } = usePoliticians();
+  const { data: apiParties } = useParties();
+  // API 가 실패했거나 아직 의원이 없으면 mock 을 그대로 보여줌
+  const isLive = !!apiPols?.length;
+
+  const rows: TableRow[] = React.useMemo(() => {
+    const match = (name: string, district: string | null) => !q || name.includes(q) || !!district?.includes(q);
+    if (isLive) {
+      const colorById = new Map(apiParties?.map((p) => [p.id, p.color]));
+      return apiPols!
+        .filter((p) => match(p.name, p.district))
+        .sort((a, b) => a.name.localeCompare(b.name, "ko"))
+        .map((p) => ({
+          key: p.mona_cd,
+          name: p.name,
+          district: p.district,
+          term: p.term,
+          partyName: p.party_id ?? "—",
+          partyColor: (p.party_id && colorById.get(p.party_id)) || NEUTRAL,
+          regionCode: p.region_code,
+          michelin: null,
+          pledgeRate: null,
+          attendance: null,
+          bills: p.bills_proposed,
+        }));
+    }
+    return ALL_POLS.filter((p) => match(p.name, p.district))
+      .sort((a, b) => b[sort] - a[sort] || b.pledgeRate - a.pledgeRate)
+      .map((p) => ({
+        key: p.id,
+        name: p.name,
+        district: p.district,
+        term: p.term,
+        partyName: PARTIES[p.party].name,
+        partyColor: PARTIES[p.party].color,
+        regionCode: REGIONS.find((r) => r.short === p.regionShort)!.code,
+        michelin: p.michelin,
+        pledgeRate: p.pledgeRate,
+        attendance: p.attendance,
+        bills: p.bills,
+      }));
+  }, [isLive, apiPols, apiParties, q, sort]);
 
   return (
     <Card className={cn("flex flex-col", className)}>
       <CardHeader
         icon={<Users className="size-4" />}
         title="정치인 미슐랭 가이드"
-        subtitle="현역 의원 의정활동 지표 · 정당과 무관하게 지표 순 정렬"
+        subtitle={isLive ? "현역 의원 의정활동 지표 · 정당과 무관하게 이름순 정렬" : "현역 의원 의정활동 지표 · 정당과 무관하게 지표 순 정렬"}
         action={
-          <Segmented<SortKey>
+          // 실제 데이터에는 스타·공약·출석 값이 아직 없어 이름순 고정
+          !isLive && <Segmented<SortKey>
             value={sort}
             onChange={setSort}
             options={[
@@ -150,25 +209,23 @@ export function PoliticianTable({ className, onSelectRegion }: { className?: str
           <tbody>
             {rows.map((p, i) => (
               <tr
-                key={p.id}
-                onClick={() => onSelectRegion?.(REGIONS.find((r) => r.short === p.regionShort)!.code)}
+                key={p.key}
+                onClick={() => p.regionCode && onSelectRegion?.(p.regionCode)}
                 className="cursor-pointer border-t border-line transition hover:bg-white/[0.04] [&>td]:px-3 [&>td]:py-2.5"
               >
                 <td className="text-ink-3 tabular">{i + 1}</td>
                 <td>
                   <p className="font-semibold text-ink">{p.name}</p>
                   <p className="text-[10px] text-ink-3">
-                    {p.district} · {p.term}선
+                    {p.district ?? "—"} · {dash(p.term, "선")}
                   </p>
                 </td>
                 <td>
-                  <PartyTag color={PARTIES[p.party].color} name={PARTIES[p.party].name} />
+                  <PartyTag color={p.partyColor} name={p.partyName} />
                 </td>
-                <td>
-                  <MichelinStars count={p.michelin} />
-                </td>
-                <td className="text-right font-semibold tabular">{p.pledgeRate}%</td>
-                <td className="text-right tabular">{p.attendance}%</td>
+                <td>{p.michelin == null ? <span className="text-ink-3">—</span> : <MichelinStars count={p.michelin} />}</td>
+                <td className="text-right font-semibold tabular">{dash(p.pledgeRate, "%")}</td>
+                <td className="text-right tabular">{dash(p.attendance, "%")}</td>
                 <td className="text-right tabular">{p.bills}</td>
               </tr>
             ))}
