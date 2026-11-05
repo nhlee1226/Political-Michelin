@@ -6,9 +6,16 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test scripts/collectors/*.test.ts",
     "db:push": "drizzle-kit push",
-    "db:seed": "tsx --env-file=.env.local src/db/seed.ts",
-    "collect:news": "tsx --env-file=.env.local src/db/collect-news.ts"
+    "db:studio": "drizzle-kit studio",
+    "db:seed": "tsx scripts/seed.ts",
+    "check:keys": "tsx scripts/check-keys.ts",
+    "collect:news": "tsx scripts/collectors/news.ts",
+    "collect:nec": "tsx scripts/collectors/nec.ts",
+    "collect:members": "tsx scripts/collectors/members.ts",
+    "collect:bills": "tsx scripts/collectors/bills.ts"
   },
   "dependencies": {
     "clsx": "^2.1.1",

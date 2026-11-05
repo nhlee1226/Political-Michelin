@@ -1,11 +1,10 @@
 import "server-only";
-import postgres from "postgres";
-import { drizzle } from "drizzle-orm/postgres-js";
-import * as schema from "./schema";
+import { createDb, type Db } from "./client";
 
-// dev 모드에서 파일 저장(HMR)할 때마다 커넥션이 늘어나지 않도록 전역에 캐시
-const g = globalThis as unknown as { pg?: ReturnType<typeof postgres> };
-const client = g.pg ?? postgres(process.env.DATABASE_URL!);
-if (process.env.NODE_ENV !== "production") g.pg = client;
+// dev 모드에서 파일 저장(HMR)할 때마다 커넥션이 늘어나지 않도록 전역에 한 번만 만듦
+const g = globalThis as unknown as { __pmDb?: Db };
 
-export const db = drizzle(client, { schema });
+/** DATABASE_URL 이 없으면 null → 화면은 mock 데이터로 동작 */
+export const db: Db | null = process.env.DATABASE_URL
+  ? (g.__pmDb ??= createDb(process.env.DATABASE_URL).db)
+  : null;

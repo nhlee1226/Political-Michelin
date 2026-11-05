@@ -1,8 +1,7 @@
 /**
- * 네이버 뉴스 검색 수집 모듈 (NAVER API HUB 기준, 2026)
- * - 서버(백엔드/스크립트)에서만 실행할 것. Client Secret 을 프론트에 두지 말 것.
- *   (NEXT_PUBLIC_ 접두사가 없는 환경변수라 브라우저 번들에는 값이 들어가지 않음)
- * - 환경변수: NAVER_HUB_CLIENT_ID, NAVER_HUB_CLIENT_SECRET  (.env.local)
+ * 네이버 뉴스 검색 API 클라이언트 (NAVER API HUB 기준, 2026)
+ * - 수집 스크립트(scripts/collectors/news.ts)에서만 씀. Client Secret 을 프론트에 두지 말 것.
+ * - 환경변수: NAVER_HUB_CLIENT_ID, NAVER_HUB_CLIENT_SECRET  (.env.local / GitHub Secrets)
  * - Node 18+ (내장 fetch)
  */
 
@@ -35,20 +34,33 @@ export interface NewsArticle {
   naverUrl: string;
   publishedAt: string; // ISO-8601
   query: string; // 어떤 검색어로 수집됐는지
-  matchedPoliticians: string[]; // 인물 사전 매칭 결과 (politicianId)
-  matchedParties: string[]; // 정당 사전 매칭 결과 (partyId)
-  source: "naver";
 }
 
 // ── 유틸 ───────────────────────────────────────────────
-const ENTITIES: Record<string, string> = {
-  "&quot;": '"', "&amp;": "&", "&lt;": "<", "&gt;": ">", "&apos;": "'", "&#39;": "'",
-};
+const ENTITIES: Record<string, string> = { quot: '"', amp: "&", lt: "<", gt: ">", apos: "'", nbsp: " ", middot: "·" };
+/** <b> 등 태그 제거 + HTML 엔티티(이름·숫자) 한 번에 변환 (이중 변환 방지) */
 export function clean(text: string): string {
   return text
-    .replace(/<\/?b>/g, "")
-    .replace(/&(quot|amp|lt|gt|apos|#39);/g, (m) => ENTITIES[m] ?? m)
+    .replace(/<[^>]+>/g, "")
+    .replace(/&(#\d+|#x[0-9a-f]+|[a-z]+);/gi, (m, e: string) =>
+      e[0] === "#"
+        ? String.fromCodePoint(e[1].toLowerCase() === "x" ? parseInt(e.slice(2), 16) : Number(e.slice(1)))
+        : (ENTITIES[e.toLowerCase()] ?? m),
+    )
+    .replace(/\s+/g, " ")
     .trim();
+}
+
+/** utm_* 같은 추적 파라미터·#해시를 지워서 같은 기사가 두 번 들어가지 않게 */
+export function cleanUrl(raw: string): string | null {
+  try {
+    const u = new URL(raw.trim());
+    for (const k of [...u.searchParams.keys()]) if (k.toLowerCase().startsWith("utm_")) u.searchParams.delete(k);
+    u.hash = "";
+    return u.toString();
+  } catch {
+    return null;
+  }
 }
 
 async function hash(input: string): Promise<string> {
@@ -94,25 +106,9 @@ async function callNaver(
   throw new Error("unreachable");
 }
 
-// ── 엔티티 사전 (열린국회정보·선관위 데이터로 채울 것) ────────
-export interface EntityDict {
-  politicians: { id: string; name: string; aliases?: string[] }[];
-  parties: { id: string; name: string; aliases?: string[] }[];
-}
-
-function matchEntities(text: string, dict: EntityDict) {
-  const hit = (e: { name: string; aliases?: string[] }) =>
-    [e.name, ...(e.aliases ?? [])].some((n) => text.includes(n));
-  return {
-    politicians: dict.politicians.filter(hit).map((p) => p.id),
-    parties: dict.parties.filter(hit).map((p) => p.id),
-  };
-}
-
 // ── 수집: 검색어 1개 → 최신순으로 since 이후 기사만 ─────────────
 export async function collectNews(
   query: string,
-  dict: EntityDict,
   opts: { since?: Date; maxItems?: number } = {},
 ): Promise<NewsArticle[]> {
   const maxItems = Math.min(opts.maxItems ?? 300, MAX_START + MAX_DISPLAY - 1);
@@ -131,23 +127,19 @@ export async function collectNews(
         break;
       }
 
-      const url = it.originallink || it.link;
+      const url = cleanUrl(it.originallink) ?? cleanUrl(it.link) ?? it.link;
       const id = await hash(url);
       if (seen.has(id)) continue;
       seen.add(id);
 
-      const title = clean(it.title);
-      const summary = clean(it.description);
-      const m = matchEntities(`${title} ${summary}`, dict);
-
       out.push({
-        id, title, summary, url,
+        id,
+        title: clean(it.title),
+        summary: clean(it.description),
+        url,
         naverUrl: it.link,
         publishedAt: publishedAt.toISOString(),
         query,
-        matchedPoliticians: m.politicians,
-        matchedParties: m.parties,
-        source: "naver",
       });
       if (out.length >= maxItems) break;
     }
