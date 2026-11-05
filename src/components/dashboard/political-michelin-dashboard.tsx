@@ -11,7 +11,7 @@
 import * as React from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { HEADLINE_KPIS } from "@/lib/mock-data";
-import { useNews, useRegions } from "@/lib/dashboard-data";
+import { useDataSources, useElectedMembers, useNews, useRegions } from "@/lib/dashboard-data";
 import { DashboardHeader, type TabKey } from "./header";
 import { SideRail } from "./side-rail";
 import { FlipCounter } from "./flip-counter";
@@ -28,6 +28,13 @@ const TODAY = new Intl.DateTimeFormat("ko-KR", { year: "numeric", month: "long",
 /** 탭별 페이지 헤드라인 (영상: Sales Overview → Growth Reports 처럼 탭마다 교체) */
 function useHeadline(tab: TabKey, newsCount: number, regionCode: string) {
   const r = useRegions().byCode[regionCode];
+  const sources = useDataSources();
+  const elected = useElectedMembers();
+  // 실데이터가 있으면 실제 값, 없으면 샘플 값 (캡션에 출처 표기)
+  const tracked = elected.length
+    ? { value: elected.length, caption: sources.members === "nec" ? "제22대 지역구 당선인 (선관위)" : "제22대 국회 (열린국회정보)" }
+    : { value: HEADLINE_KPIS.trackedPoliticians, caption: "제22대 국회 (샘플)" };
+  const newsCaption = sources.db ? "네이버 뉴스 · 최근 24시간" : "샘플";
   switch (tab) {
     case "map":
       return {
@@ -44,7 +51,7 @@ function useHeadline(tab: TabKey, newsCount: number, regionCode: string) {
         title: ["뉴스·이슈", "리포트"],
         desc: "AI가 기사별 편향 신호를 분석하고 객관화 요약을 제공합니다.",
         kpis: [
-          { label: "오늘 수집 기사", value: newsCount, caption: "네이버 뉴스 · 최근 24시간", accent: true },
+          { label: "오늘 수집 기사", value: newsCount, caption: newsCaption, accent: true },
           { label: "평균 편향 지수", value: HEADLINE_KPIS.avgBias, caption: "%" },
           { label: "객관화 변환", value: 1964, caption: "건" },
         ],
@@ -54,7 +61,7 @@ function useHeadline(tab: TabKey, newsCount: number, regionCode: string) {
         title: ["정치인", "미슐랭 가이드"],
         desc: "의정활동 지표만으로 산출한 평가입니다. 정당·이념 변수는 포함되지 않습니다.",
         kpis: [
-          { label: "추적 중인 의원", value: HEADLINE_KPIS.trackedPoliticians, caption: "제22대 국회", accent: true },
+          { label: "추적 중인 의원", value: tracked.value, caption: tracked.caption, accent: true },
           { label: "평균 출석률", value: 94.6, caption: "%", format: (v: number) => v.toFixed(1) },
           { label: "3스타 의원", value: 42, caption: "명" },
         ],
@@ -74,12 +81,22 @@ function useHeadline(tab: TabKey, newsCount: number, regionCode: string) {
         title: ["대한민국 정치", "Overview"],
         desc: "흩어진 정치 정보를 한눈에. 모든 수치는 출처와 오차범위를 함께 표기합니다.",
         kpis: [
-          { label: "추적 중인 의원", value: HEADLINE_KPIS.trackedPoliticians, caption: "제22대 국회 전원" },
-          { label: "오늘 수집 기사", value: newsCount, caption: "네이버 뉴스 · 최근 24시간", accent: true },
+          { label: "추적 중인 의원", value: tracked.value, caption: tracked.caption },
+          { label: "오늘 수집 기사", value: newsCount, caption: newsCaption, accent: true },
           { label: "평균 편향 지수", value: HEADLINE_KPIS.avgBias, caption: "전일 대비 -3%p" },
         ],
       };
   }
+}
+
+/** 푸터: 지금 실데이터로 표시 중인 항목 */
+function liveNote(s: ReturnType<typeof useDataSources>): string {
+  const parts = [
+    s.news && "뉴스(네이버 뉴스 검색 API)",
+    s.election && `투표율·의석·당선인(선관위 ${s.election})`,
+    s.members === "assembly" && "의원 정보(열린국회정보)",
+  ].filter(Boolean);
+  return parts.length ? parts.join(", ") : "없음 — DB 연결·수집 전이라 모든 수치가 샘플입니다";
 }
 
 export default function PoliticalMichelinDashboard() {
@@ -87,7 +104,10 @@ export default function PoliticalMichelinDashboard() {
   const [tab, setTab] = React.useState<TabKey>("overview");
   const [aiMode, setAiMode] = React.useState(true);
   const [region, setRegion] = React.useState("11");
-  const { newsCountToday: newsCount } = useNews();
+  const sources = useDataSources();
+  const { newsCountToday } = useNews();
+  // DB 가 없으면(화면만 볼 때) 샘플 수치
+  const newsCount = sources.db ? newsCountToday : HEADLINE_KPIS.newsAnalyzedToday;
 
   const head = useHeadline(tab, newsCount, region);
 
@@ -205,7 +225,8 @@ export default function PoliticalMichelinDashboard() {
 
           <footer className="mt-8 flex flex-col gap-2 border-t border-line pt-5 text-[11px] text-ink-3 sm:flex-row sm:justify-between">
             <p>
-              © 2026 정치 미슐랭 · 팀 [더 킹] · 뉴스는 네이버 뉴스 검색 API 로 수집한 실제 기사이며, 그 외 정당·인물·수치는 가상 데이터입니다 ({REGIONS.length}개 시·도).
+              © 2026 정치 미슐랭 · 팀 [더 킹] · 실데이터: {liveNote(sources)} · 그 외 정당 지지도·이슈·평가 지표·커뮤니티는 가상 데이터입니다 (
+              {REGIONS.length}개 시·도).
             </p>
             <p>데이터 출처 표기 원칙 · 정치적 중립성 가이드라인 · 개인정보처리방침</p>
           </footer>

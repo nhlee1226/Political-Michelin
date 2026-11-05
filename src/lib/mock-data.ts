@@ -59,6 +59,8 @@ export interface NewsItem {
   headline: string;
   /** 원문 URL (실제 수집 기사만) */
   url?: string;
+  /** 발행 시각 ISO (실제 수집 기사만) */
+  publishedAt?: string;
   /** AI 가 재작성한 중립 헤드라인 (null = AI 분석 전) */
   objectiveHeadline: string | null;
   /** 원문 요약 — [[용어]] 표기는 AI 용어 해설 툴팁으로 렌더링 */

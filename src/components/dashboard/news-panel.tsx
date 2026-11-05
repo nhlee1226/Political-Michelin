@@ -11,8 +11,8 @@
 import * as React from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowRight, ArrowUpRight, ExternalLink, Newspaper, ScanSearch, Sparkles, Undo2 } from "lucide-react";
-import type { NewsItem } from "@/lib/mock-data";
-import { useNews, useRegions } from "@/lib/dashboard-data";
+import { NEWS as SAMPLE_NEWS, type NewsItem } from "@/lib/mock-data";
+import { useDataSources, useNews, useRegions } from "@/lib/dashboard-data";
 import { cn } from "@/lib/utils";
 import { Badge, Card, CardHeader, IconButton, Segmented } from "@/components/ui/primitives";
 import { GlossaryText } from "./glossary-text";
@@ -193,21 +193,42 @@ function NewsCard({ item, aiMode }: { item: NewsItem; aiMode: boolean }) {
 
 type Filter = "all" | "high" | "neutral";
 
-export function NewsPanel({ aiMode, className, limit }: { aiMode: boolean; className?: string; limit?: number }) {
-  const { news } = useNews();
+export function NewsPanel({
+  aiMode,
+  className,
+  limit,
+  region,
+}: {
+  aiMode: boolean;
+  className?: string;
+  limit?: number;
+  /** 지정하면 그 시도 기사 우선 (그 지역 기사가 없으면 전체) */
+  region?: string;
+}) {
+  const { news: live } = useNews();
+  const sources = useDataSources();
+  const { byCode } = useRegions();
+  // DB 가 연결되지 않은 환경(키·DB 없이 화면만 볼 때)에서는 샘플 기사로 표시
+  const sample = !sources.db;
+  const all = sample ? SAMPLE_NEWS : live;
+  const regional = region ? all.filter((n) => n.region === region) : [];
+  const news = regional.length ? regional : all;
+  const scope = regional.length && region ? `${byCode[region]?.short ?? ""} ` : "";
+
   const [filter, setFilter] = React.useState<Filter>("all");
   const analyzed = news.filter((n): n is NewsItem & { bias: number } => n.bias !== null);
   const list = news
     .filter((n) => (filter === "all" ? true : n.bias !== null && (filter === "high" ? n.bias >= 60 : n.bias < 30)))
     .slice(0, limit ?? news.length);
   const avg = analyzed.length ? Math.round(analyzed.reduce((a, n) => a + n.bias, 0) / analyzed.length) : null;
+  const origin = sample ? "샘플 기사" : "네이버 뉴스";
 
   return (
     <Card className={cn("flex flex-col", className)}>
       <CardHeader
         icon={<Newspaper className="size-4" />}
         title="AI 실시간 뉴스 리포트"
-        subtitle={`네이버 뉴스 ${news.length}건 · ${avg === null ? "AI 편향 분석 대기" : `평균 편향 지수 ${avg}%`}`}
+        subtitle={`${scope}${origin} ${news.length}건 · ${avg === null ? "AI 편향 분석 대기" : `평균 편향 지수 ${avg}%`}`}
         action={
           <IconButton aria-label="전체 뉴스">
             <ArrowUpRight className="size-4" />

@@ -9,7 +9,7 @@ import * as React from "react";
 import { Bar, BarChart, Cell, ResponsiveContainer, Tooltip, XAxis } from "recharts";
 import { ArrowDownUp, ScanSearch, Search, Users } from "lucide-react";
 import { PARTIES } from "@/lib/mock-data";
-import { useRegions } from "@/lib/dashboard-data";
+import { useElectedMembers, useRegions } from "@/lib/dashboard-data";
 import { cn } from "@/lib/utils";
 import { Badge, Card, CardHeader, MichelinStars, PartyTag, Segmented } from "@/components/ui/primitives";
 import { GlossaryText } from "./glossary-text";
@@ -93,31 +93,99 @@ export function BiasReportCard({ className }: { className?: string }) {
 
 type SortKey = "michelin" | "pledgeRate" | "attendance" | "bills";
 
+/** 표 한 줄. 공식 데이터가 없는 지표는 null → "—" 로 표시 (가짜 수치를 만들지 않음) */
+interface TableRow {
+  key: string;
+  name: string;
+  district: string | null;
+  term: number | null;
+  partyName: string;
+  partyColor: string;
+  regionCode: string | null;
+  michelin: 1 | 2 | 3 | null;
+  pledgeRate: number | null;
+  attendance: number | null;
+  bills: number | null;
+  voteRate: number | null;
+}
+
+const dash = (v: number | null, unit = "") => (v == null ? "—" : `${v}${unit}`);
+
 export function PoliticianTable({ className, onSelectRegion }: { className?: string; onSelectRegion?: (code: string) => void }) {
   const [sort, setSort] = React.useState<SortKey>("michelin");
   const [q, setQ] = React.useState("");
   const { politicians } = useRegions();
-  const rows = politicians.filter((p) => p.role === "현역 의원").filter((p) => !q || p.name.includes(q) || p.district.includes(q)).sort(
-    (a, b) => b[sort] - a[sort] || b.pledgeRate - a.pledgeRate,
-  );
+  const elected = useElectedMembers();
+  // 실제 의원 데이터(열린국회정보 → 없으면 선관위 당선인)가 있으면 그것, 없으면 mock
+  const isLive = elected.length > 0;
+  const fromNec = isLive && elected[0].source === "nec";
+
+  const rows: TableRow[] = React.useMemo(() => {
+    const match = (name: string, district: string | null) => !q || name.includes(q) || !!district?.includes(q);
+    if (isLive) {
+      return elected
+        .filter((p) => match(p.name, p.district))
+        .sort((a, b) => a.name.localeCompare(b.name, "ko"))
+        .map((p) => ({
+          key: p.id,
+          name: p.name,
+          district: p.district,
+          term: p.term,
+          partyName: p.partyName ?? "무소속",
+          partyColor: p.partyColor,
+          regionCode: p.regionCode,
+          michelin: null,
+          pledgeRate: null,
+          attendance: null,
+          bills: p.billsProposed,
+          voteRate: p.voteRate,
+        }));
+    }
+    return politicians
+      .filter((p) => p.role === "현역 의원" && match(p.name, p.district))
+      .sort((a, b) => b[sort] - a[sort] || b.pledgeRate - a.pledgeRate)
+      .map((p) => ({
+        key: p.id,
+        name: p.name,
+        district: p.district,
+        term: p.term,
+        partyName: PARTIES[p.party].name,
+        partyColor: PARTIES[p.party].color,
+        regionCode: p.region.code,
+        michelin: p.michelin,
+        pledgeRate: p.pledgeRate,
+        attendance: p.attendance,
+        bills: p.bills,
+        voteRate: null,
+      }));
+  }, [isLive, elected, politicians, q, sort]);
 
   return (
     <Card className={cn("flex flex-col", className)}>
       <CardHeader
         icon={<Users className="size-4" />}
         title="정치인 미슐랭 가이드"
-        subtitle="현역 의원 의정활동 지표 · 정당과 무관하게 지표 순 정렬"
+        subtitle={
+          isLive
+            ? fromNec
+              ? `제22대 지역구 당선인 ${elected.length}명 · 선관위 득표율 · 정당과 무관하게 이름순`
+              : `현역 의원 ${elected.length}명 · 열린국회정보 · 정당과 무관하게 이름순`
+            : "현역 의원 의정활동 지표 · 정당과 무관하게 지표 순 정렬 (샘플)"
+        }
         action={
-          <Segmented<SortKey>
-            value={sort}
-            onChange={setSort}
-            options={[
-              { value: "michelin", label: "스타" },
-              { value: "pledgeRate", label: "공약" },
-              { value: "attendance", label: "출석" },
-              { value: "bills", label: "발의" },
-            ]}
-          />
+          // 실제 데이터에는 스타·공약·출석 값이 아직 없어 이름순 고정
+          !isLive && (
+            <Segmented<SortKey>
+              value={sort}
+              onChange={setSort}
+              options={[
+                { value: "michelin", label: "스타" },
+                { value: "pledgeRate", label: "공약" },
+                { value: "attendance", label: "출석" },
+                { value: "bills", label: "발의" },
+              ]}
+            />
+          )
         }
       />
       <div className="mx-5 mt-3 flex items-center gap-2 rounded-full border border-line bg-white/[0.03] px-3 py-1.5">
@@ -149,26 +217,26 @@ export function PoliticianTable({ className, onSelectRegion }: { className?: str
           <tbody>
             {rows.map((p, i) => (
               <tr
-                key={p.id}
-                onClick={() => onSelectRegion?.(p.region.code)}
+                key={p.key}
+                onClick={() => p.regionCode && onSelectRegion?.(p.regionCode)}
                 className="cursor-pointer border-t border-line transition hover:bg-white/[0.04] [&>td]:px-3 [&>td]:py-2.5"
               >
                 <td className="text-ink-3 tabular">{i + 1}</td>
                 <td>
                   <p className="font-semibold text-ink">{p.name}</p>
                   <p className="text-[10px] text-ink-3">
-                    {p.district} · {p.term}선
+                    {p.district ?? "—"}
+                    {p.term != null && ` · ${p.term}선`}
+                    {p.voteRate != null && ` · 득표율 ${p.voteRate}%`}
                   </p>
                 </td>
                 <td>
-                  <PartyTag color={PARTIES[p.party].color} name={PARTIES[p.party].name} />
+                  <PartyTag color={p.partyColor} name={p.partyName} />
                 </td>
-                <td>
-                  <MichelinStars count={p.michelin} />
-                </td>
-                <td className="text-right font-semibold tabular">{p.pledgeRate}%</td>
-                <td className="text-right tabular">{p.attendance}%</td>
-                <td className="text-right tabular">{p.bills}</td>
+                <td>{p.michelin == null ? <span className="text-ink-3">—</span> : <MichelinStars count={p.michelin} />}</td>
+                <td className="text-right font-semibold tabular">{dash(p.pledgeRate, "%")}</td>
+                <td className="text-right tabular">{dash(p.attendance, "%")}</td>
+                <td className="text-right tabular">{dash(p.bills)}</td>
               </tr>
             ))}
           </tbody>

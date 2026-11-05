@@ -1,19 +1,28 @@
 # 자동 수집: GitHub 서버가 정해진 시간에 수집기를 대신 실행합니다 (무료).
-# 레포 Settings → Secrets and variables → Actions 에 DATABASE_URL, ASSEMBLY_API_KEY 등록 필요 (뉴스는 RSS 라 키 없음).
+# 레포 Settings → Secrets and variables → Actions 에 등록 필요:
+#   DATABASE_URL (Supabase Session pooler 주소), NAVER_HUB_CLIENT_ID, NAVER_HUB_CLIENT_SECRET
+# 선관위(collect:nec)는 지난 선거 결과라 한 번만 수동 실행 → 여기 넣지 않음.
+# 열린국회정보(collect:members, collect:bills)는 키 발급·검증 후 아래 주석을 풀어서 추가.
 name: collect
 
 on:
   schedule:
-    - cron: "*/30 * * * *"   # 30분마다 뉴스 (UTC 기준). Public 레포면 */15 로 줄여도 무료
-    - cron: "0 19 * * *"     # 매일 04:00 KST 의원 정보
-  workflow_dispatch: {}      # Actions 탭에서 수동 실행 버튼
+    - cron: "*/30 * * * *" # 30분마다 뉴스 (UTC 기준)
+  workflow_dispatch: {} # Actions 탭에서 수동 실행 버튼
+
+concurrency:
+  group: collect
+  cancel-in-progress: false
 
 jobs:
   collect:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
-      ASSEMBLY_API_KEY: ${{ secrets.ASSEMBLY_API_KEY }}
+      NAVER_HUB_CLIENT_ID: ${{ secrets.NAVER_HUB_CLIENT_ID }}
+      NAVER_HUB_CLIENT_SECRET: ${{ secrets.NAVER_HUB_CLIENT_SECRET }}
+      # ASSEMBLY_API_KEY: ${{ secrets.ASSEMBLY_API_KEY }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -21,11 +30,9 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - name: 뉴스 수집
+      - name: 네이버 뉴스 수집
         run: npm run collect:news
-      - name: 의원 정보 수집 (하루 1회 일정 또는 수동 실행일 때만)
-        if: github.event.schedule == '0 19 * * *' || github.event_name == 'workflow_dispatch'
-        run: npm run collect:members
-      - name: 법안 수집 (의원 정보와 같은 때, 대표 발의 수 갱신)
-        if: github.event.schedule == '0 19 * * *' || github.event_name == 'workflow_dispatch'
-        run: npx tsx scripts/collectors/bills.ts
+      # - name: 의원 정보 (열린국회정보, 연동 후)
+      #   run: npm run collect:members
+      # - name: 법안 (열린국회정보, 연동 후)
+      #   run: npm run collect:bills

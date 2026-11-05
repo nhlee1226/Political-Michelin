@@ -27,7 +27,8 @@ import {
 } from "lucide-react";
 import { MAP_DOTS, MAP_HEIGHT, MAP_WIDTH, REGION_PATHS } from "@/lib/korea-map-data";
 import { PARTIES, PARTY_ORDER, type Region } from "@/lib/mock-data";
-import { useRegions } from "@/lib/dashboard-data";
+import { useDataSources, useElectedMembers, useRegions } from "@/lib/dashboard-data";
+import type { ElectedMember } from "@/lib/live-types";
 import { cn } from "@/lib/utils";
 import { Badge, Card, IconButton, MichelinStars, PartyTag } from "@/components/ui/primitives";
 
@@ -144,7 +145,93 @@ function SupportPanel({ region }: { region: Region }) {
   );
 }
 
+/** 정치인 프로필: 실제 의원 데이터(열린국회정보 → 없으면 선관위 당선인)가 있으면 그것, 없으면 mock */
 function PoliticianPanel({ region }: { region: Region }) {
+  const elected = useElectedMembers();
+  const live = React.useMemo(
+    () => elected.filter((m) => m.regionCode === region.code).sort((a, b) => (a.district ?? "").localeCompare(b.district ?? "", "ko")),
+    [elected, region.code],
+  );
+  // 전국 데이터가 있는데 이 지역만 0명이면(비례대표만 있는 경우 등) 빈 상태로 둠 — mock 과 섞지 않음
+  if (elected.length > 0) return <LivePoliticianPanel region={region} list={live} />;
+  return <MockPoliticianPanel region={region} />;
+}
+
+function LivePoliticianPanel({ region, list }: { region: Region; list: ElectedMember[] }) {
+  const [idx, setIdx] = React.useState(0);
+  React.useEffect(() => setIdx(0), [region.code]);
+  const n = list.length;
+  const pol = list[Math.min(idx, Math.max(n - 1, 0))];
+
+  return (
+    <div className="glass-strong w-full rounded-2xl p-4 @min-[1040px]:w-[290px]">
+      <div className="mb-3 flex items-center justify-between">
+        <p className="flex items-center gap-1.5 text-[13px] font-semibold">
+          <Users className="size-3.5 text-ink-3" /> 현역 의원
+        </p>
+        <div className="flex items-center gap-1">
+          <span className="mr-1 text-[11px] text-ink-3 tabular">{n ? `${idx + 1}/${n}` : "0"}</span>
+          <IconButton className="size-6" aria-label="이전" onClick={() => setIdx((i) => (i - 1 + n) % n)} disabled={n < 2}>
+            <ChevronLeft className="size-3.5" />
+          </IconButton>
+          <IconButton className="size-6" aria-label="다음" onClick={() => setIdx((i) => (i + 1) % n)} disabled={n < 2}>
+            <ChevronRight className="size-3.5" />
+          </IconButton>
+        </div>
+      </div>
+
+      {!pol ? (
+        <p className="py-4 text-[11px] text-ink-3">{region.short} 지역구 의원 데이터가 없습니다.</p>
+      ) : (
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={pol.id}
+            initial={{ opacity: 0, x: 12 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -12 }}
+            transition={{ duration: 0.2 }}
+          >
+            <div className="flex items-center gap-3">
+              <div
+                className="grid size-11 shrink-0 place-items-center rounded-full border-2 text-sm font-semibold"
+                style={{ borderColor: pol.partyColor, background: `${pol.partyColor}22` }}
+              >
+                {pol.name.slice(-2)}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-base font-semibold">{pol.name}</p>
+                <div className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[11px] text-ink-3">
+                  <PartyTag color={pol.partyColor} name={pol.partyName ?? "무소속"} className="text-[11px]" />
+                  <span>·</span>
+                  <span>{pol.district ?? "—"}</span>
+                </div>
+              </div>
+              <Badge tone="lime">현역 의원</Badge>
+            </div>
+
+            <div className="mt-4 grid grid-cols-3 gap-2 border-t border-line pt-3">
+              {[
+                { k: "득표율", v: pol.voteRate == null ? "—" : `${pol.voteRate}%` },
+                { k: "득표수", v: pol.votes == null ? "—" : pol.votes.toLocaleString("ko-KR") },
+                { k: "대표 발의", v: pol.billsProposed == null ? "—" : `${pol.billsProposed}건` },
+              ].map((m) => (
+                <div key={m.k}>
+                  <p className="text-[10px] text-ink-3">{m.k}</p>
+                  <p className="mt-0.5 text-sm font-semibold tabular">{m.v}</p>
+                </div>
+              ))}
+            </div>
+            <p className="mt-2 text-[10px] text-ink-3">
+              {pol.source === "nec" ? "출처: 중앙선거관리위원회 (제22대 총선 지역구)" : "출처: 열린국회정보"}
+            </p>
+          </motion.div>
+        </AnimatePresence>
+      )}
+    </div>
+  );
+}
+
+function MockPoliticianPanel({ region }: { region: Region }) {
   const [idx, setIdx] = React.useState(0);
   React.useEffect(() => setIdx(0), [region.code]);
   const pol = region.politicians[idx];
@@ -225,6 +312,7 @@ function PoliticianPanel({ region }: { region: Region }) {
 }
 
 function IssuePopup({ region, onClose }: { region: Region; onClose: () => void }) {
+  const { election, regionHeat } = useDataSources();
   return (
     <motion.div
       key={region.code}
@@ -271,6 +359,11 @@ function IssuePopup({ region, onClose }: { region: Region; onClose: () => void }
           <p className="font-semibold tabular">{region.seats}석</p>
         </div>
       </div>
+      <p className="mt-2 text-[10px] text-ink-3">
+        {election ? `투표율·의석 출처: 중앙선거관리위원회 · ${election}` : "투표율·의석: 샘플 데이터"}
+        {" · "}
+        {regionHeat ? "이슈 활성도: 최근 24시간 네이버 뉴스" : "이슈 활성도: 샘플"} · 이슈 목록: 샘플
+      </p>
     </motion.div>
   );
 }
