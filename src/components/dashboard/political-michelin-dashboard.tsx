@@ -144,7 +144,7 @@ export default function PoliticalMichelinDashboard() {
               {tab === "overview" && (
                 <div className="grid grid-cols-12 gap-4">
                   {/* 1행: 뉴스 | 지도 | 커뮤니티 */}
-                  <NewsPanel aiMode={aiMode} className="order-2 col-span-12 md:col-span-6 xl:order-1 xl:col-span-3 xl:h-0 xl:min-h-full" />
+                  <NewsPanel aiMode={aiMode} region={region} className="order-2 col-span-12 md:col-span-6 xl:order-1 xl:col-span-3 xl:h-0 xl:min-h-full" />
                   <div className="order-1 col-span-12 xl:order-2 xl:col-span-6">
                     <KoreaMapCard selected={region} onSelect={setRegion} />
                   </div>
