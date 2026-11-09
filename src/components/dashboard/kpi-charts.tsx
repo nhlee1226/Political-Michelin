@@ -22,8 +22,9 @@ import {
 } from "recharts";
 import { Activity, ArrowUpRight, ClipboardCheck, LineChart as LineIcon, Milestone, MoreHorizontal } from "lucide-react";
 import { ASSEMBLY_ACTIVITY, ISSUE_TIMELINE, PARTIES, PLEDGE_STATUS, SUPPORT_TREND } from "@/lib/mock-data";
+import { useStats } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import { Card, CardHeader, IconButton, PartyTag, Segmented } from "@/components/ui/primitives";
+import { Card, CardHeader, ExampleBadge, IconButton, PartyTag, Segmented, Soon } from "@/components/ui/primitives";
 
 const AXIS = { stroke: "var(--chart-axis)", fontSize: 11 };
 const GRID = "var(--chart-grid)";
@@ -53,12 +54,19 @@ export function PledgeCard({ className }: { className?: string }) {
     <Card className={cn("flex flex-col", className)}>
       <CardHeader
         icon={<ClipboardCheck className="size-4" />}
-        title="공약 이행률"
+        title={
+          <>
+            공약 이행률
+            <ExampleBadge />
+          </>
+        }
         subtitle="제22대 국회의원 전체 공약 기준"
         action={
-          <IconButton aria-label="더보기">
-            <MoreHorizontal className="size-4" />
-          </IconButton>
+          <Soon>
+            <IconButton aria-label="더보기" disabled>
+              <MoreHorizontal className="size-4" />
+            </IconButton>
+          </Soon>
         }
       />
       <div className="relative mx-auto mt-2 w-full max-w-[220px] px-5">
@@ -113,39 +121,65 @@ export function PledgeCard({ className }: { className?: string }) {
 }
 
 /* ───────── 2. 의정 활동 평가 ───────── */
-export function ActivityCard({ className }: { className?: string }) {
+/** onOpen 이 있을 때만 ↗ (자세한 화면으로 이동). 그 화면 안에서는 넘기지 않아 아이콘이 사라짐 */
+function OpenButton({ onOpen, label }: { onOpen?: () => void; label: string }) {
+  if (!onOpen) return null;
+  return (
+    <IconButton aria-label={label} title={label} onClick={onOpen}>
+      <ArrowUpRight className="size-4" />
+    </IconButton>
+  );
+}
+
+export function ActivityCard({ className, onOpen }: { className?: string; onOpen?: () => void }) {
+  const { data: stats } = useStats();
+  // 실제 값은 평균 법안 반영률 하나. 출석·표결은 공식 데이터가 없거나 수집 전이라 mock 을 "예시"로 표시
+  const rows: { metric: string; value: number | null; unit: string; example: boolean; hint?: string }[] = [
+    {
+      metric: "평균 법안 반영률",
+      value: stats?.avg_reflect_rate ?? null,
+      unit: "%",
+      example: false,
+      hint: "원안·수정가결 + 대안반영 ÷ 대표발의 (대표발의 1건 이상 의원 평균)",
+    },
+    ...ASSEMBLY_ACTIVITY.filter((m) => m.metric !== "법안 가결률").map((m) => ({ ...m, example: true })),
+  ];
+
   return (
     <Card className={cn("flex flex-col", className)}>
       <CardHeader
         icon={<Activity className="size-4" />}
         title="의정 활동 평가"
-        subtitle="국회의원 300명 평균 · 이번 회기"
-        action={
-          <IconButton aria-label="자세히">
-            <ArrowUpRight className="size-4" />
-          </IconButton>
-        }
+        subtitle="국회의원 전체 평균 · 22대"
+        action={<OpenButton onOpen={onOpen} label="Politicians 화면으로" />}
       />
       <ul className="mt-4 flex flex-1 flex-col justify-center gap-4 px-5 pb-5">
-        {ASSEMBLY_ACTIVITY.map((m) => (
-          <li key={m.metric} className="group" title={`${m.metric}: ${m.value}${m.unit}`}>
+        {rows.map((m) => (
+          <li key={m.metric} className="group" title={m.hint ?? `${m.metric}: ${m.value ?? "—"}${m.unit}`}>
             <div className="mb-1.5 flex items-baseline justify-between">
-              <span className="text-xs text-ink-2">{m.metric}</span>
+              <span className="text-xs text-ink-2">
+                {m.metric}
+                {m.example && <ExampleBadge />}
+              </span>
               <span className="text-sm font-semibold tabular">
-                {m.value}
-                <span className="text-[11px] text-ink-3">{m.unit}</span>
+                {m.value ?? "—"}
+                {m.value != null && <span className="text-[11px] text-ink-3">{m.unit}</span>}
               </span>
             </div>
             {/* 영상의 진행 바 + 끝점 마커 스타일 */}
             <div className="relative h-2 rounded-full bg-[repeating-linear-gradient(90deg,var(--chart-track)_0_4px,transparent_4px_7px)]">
-              <div
-                className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-lime/30 to-lime transition-all duration-300 group-hover:to-cyan"
-                style={{ width: `${m.value}%` }}
-              />
-              <span
-                className="absolute top-1/2 size-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-canvas bg-lime group-hover:bg-cyan"
-                style={{ left: `${m.value}%` }}
-              />
+              {m.value != null && (
+                <>
+                  <div
+                    className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-lime/30 to-lime transition-all duration-300 group-hover:to-cyan"
+                    style={{ width: `${m.value}%` }}
+                  />
+                  <span
+                    className="absolute top-1/2 size-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-canvas bg-lime group-hover:bg-cyan"
+                    style={{ left: `${m.value}%` }}
+                  />
+                </>
+              )}
             </div>
           </li>
         ))}
@@ -181,7 +215,12 @@ export function PartyTrendCard({ className }: { className?: string }) {
     <Card className={cn("flex flex-col", className)}>
       <CardHeader
         icon={<LineIcon className="size-4" />}
-        title="정당별 지지도 비교"
+        title={
+          <>
+            정당별 지지도 비교
+            <ExampleBadge />
+          </>
+        }
         subtitle="주간 가상 여론조사 집계 · 오차범위 ±3.1%p"
         action={
           <Segmented
@@ -256,20 +295,21 @@ function TimelineTooltip({ active, payload, label }: any) {
   );
 }
 
-export function IssueTimelineCard({ className }: { className?: string }) {
+export function IssueTimelineCard({ className, onOpen }: { className?: string; onOpen?: () => void }) {
   const total = ISSUE_TIMELINE.reduce((a, d) => a + d.volume, 0);
   const events = ISSUE_TIMELINE.filter((d) => d.event);
   return (
     <Card className={cn("flex flex-col", className)}>
       <CardHeader
         icon={<Milestone className="size-4" />}
-        title="이슈 타임라인"
-        subtitle="최근 14일 정치 이슈 언급량 (뉴스·커뮤니티 합산)"
-        action={
-          <IconButton aria-label="자세히">
-            <ArrowUpRight className="size-4" />
-          </IconButton>
+        title={
+          <>
+            이슈 타임라인
+            <ExampleBadge />
+          </>
         }
+        subtitle="최근 14일 정치 이슈 언급량 (뉴스·커뮤니티 합산)"
+        action={<OpenButton onOpen={onOpen} label="News/Issues 화면으로" />}
       />
       <div className="flex items-baseline gap-2 px-5 pt-3">
         <p className="text-2xl font-semibold tracking-tight tabular">{(total / 10).toFixed(1)}만 건</p>
