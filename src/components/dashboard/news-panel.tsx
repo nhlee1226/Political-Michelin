@@ -13,7 +13,7 @@ import { ArrowRight, ArrowUpRight, Newspaper, ScanSearch, Sparkles, Undo2 } from
 import { NEWS, REGION_BY_CODE, type NewsItem } from "@/lib/mock-data";
 import { useNews, type ApiNews } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import { Badge, Card, CardHeader, IconButton, Segmented } from "@/components/ui/primitives";
+import { Badge, Card, CardHeader, ExampleBadge, IconButton, Segmented } from "@/components/ui/primitives";
 import { GlossaryText } from "./glossary-text";
 
 /** 객관화 이후 잔여 편향 지수 (AI 재작성 결과, 데모용 계산) */
@@ -151,15 +151,43 @@ function NewsCard({ item, aiMode }: { item: NewsItem; aiMode: boolean }) {
 
 /** published_at → "3분 전" (mock 의 time 표기와 맞춤) */
 function timeAgo(iso: string) {
-  const min = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60_000));
+  const t = new Date(iso).getTime();
+  if (Number.isNaN(t)) return "시간 —";
+  const min = Math.max(0, Math.floor((Date.now() - t) / 60_000)); // 미래 시각(시계 오차)은 0
+  if (min < 1) return "방금";
   if (min < 60) return `${min}분 전`;
   if (min < 60 * 24) return `${Math.floor(min / 60)}시간 전`;
   return `${Math.floor(min / (60 * 24))}일 전`;
 }
 
+const ENTITIES: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " " };
+
+// 줄을 나누는 태그는 공백으로, <b> 같은 인라인 태그는 그냥 지움 (단어가 쪼개지지 않게)
+const stripTags = (s: string) => s.replace(/<\/?(br|p|div|li|tr|h[1-6])\b[^>]*>/gi, " ").replace(/<[^>]*>/g, "");
+const decodeEntities = (s: string) =>
+  s.replace(/&(#x?[0-9a-f]+|[a-z]+);/gi, (m, e: string) => {
+    if (e[0] === "#") {
+      const code = e[1] === "x" || e[1] === "X" ? parseInt(e.slice(2), 16) : parseInt(e.slice(1), 10);
+      return Number.isFinite(code) && code > 0 && code <= 0x10ffff ? String.fromCodePoint(code) : m;
+    }
+    return ENTITIES[e.toLowerCase()] ?? m;
+  });
+
+/**
+ * RSS 요약에 섞여 오는 HTML 태그·엔티티를 지우고 공백을 정리 (태그를 렌더하지 않고 글자만 남김).
+ * 엔티티로 감싼 태그(&lt;b&gt;)도 있어 풀고 나서 한 번 더 지움.
+ */
+function plainText(html: string | null) {
+  if (!html) return "";
+  return stripTags(decodeEntities(stripTags(html)))
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 /** 실제 기사 카드: 제목·출처·시간·요약만, 본문은 싣지 않고 원문 링크로 보냄 */
 function LiveNewsCard({ item }: { item: ApiNews }) {
   const analyzed = item.bias != null;
+  const summary = plainText(item.summary);
   const t = analyzed ? biasTone(item.bias!) : null;
 
   return (
@@ -174,7 +202,7 @@ function LiveNewsCard({ item }: { item: ApiNews }) {
 
       <h4 className="mt-2 text-[14px] font-semibold leading-snug text-ink">{item.headline}</h4>
 
-      {item.summary && <p className="mt-2 text-[13px] leading-relaxed text-ink-3">{item.summary}</p>}
+      {summary && <p className="mt-2 text-[13px] leading-relaxed text-ink-3">{summary}</p>}
 
       {!!item.bias_signals?.length && (
         <div className="mt-2 flex flex-wrap gap-1">
@@ -214,15 +242,26 @@ export function NewsPanel({
   className,
   limit,
   region,
+  onOpen,
 }: {
   aiMode: boolean;
   className?: string;
   limit?: number;
   /** 지정하면 그 시도 기사만 */
   region?: string;
+  /** ↗ 누르면 News/Issues 화면으로. News/Issues 안에서는 넘기지 않아 아이콘이 사라짐 */
+  onOpen?: () => void;
 }) {
   const [filter, setFilter] = React.useState<Filter>("all");
-  const { data: regionNews } = useNews(region, limit ?? 20);
+  // 기사 목록이 그대로여도 "○분 전"이 흘러가도록 1분마다 다시 그림
+  const [, tick] = React.useReducer((x: number) => x + 1, 0);
+  React.useEffect(() => {
+    const t = setInterval(tick, 60_000);
+    return () => clearInterval(t);
+  }, []);
+  const { data: fetched } = useNews(region, limit ?? 20);
+  // keepPreviousData 로 이전 지역 기사가 남아 있을 수 있어 지역이 맞는 것만
+  const regionNews = region ? fetched?.filter((n) => n.region_code === region) : fetched;
   // 지역 기사가 0건일 때, 수집 자체가 안 된 건지(→ mock) 그 지역만 없는 건지 구분용
   const { data: anyNews } = useNews(undefined, 1);
   const hasLive = !!anyNews?.length || !!regionNews?.length;
@@ -230,6 +269,10 @@ export function NewsPanel({
   const live = (regionNews ?? []).filter((n) => byFilter(filter)(n.bias));
   const mock = NEWS.filter((n) => byFilter(filter)(n.bias)).slice(0, limit ?? NEWS.length);
   const count = hasLive ? live.length : mock.length;
+  const noAnalysis = hasLive && !(regionNews ?? []).some((n) => n.bias != null);
+  React.useEffect(() => {
+    if (noAnalysis) setFilter("all");
+  }, [noAnalysis]);
 
   const analyzed = hasLive ? (regionNews ?? []).filter((n) => n.bias != null).map((n) => n.bias!) : NEWS.map((n) => n.bias);
   const avg = analyzed.length ? `${Math.round(analyzed.reduce((a, b) => a + b, 0) / analyzed.length)}%` : "분석 전";
@@ -241,12 +284,19 @@ export function NewsPanel({
     <Card className={cn("flex flex-col", className)}>
       <CardHeader
         icon={<Newspaper className="size-4" />}
-        title="AI 실시간 뉴스 리포트"
+        title={
+          <>
+            AI 실시간 뉴스 리포트
+            {!hasLive && <ExampleBadge />}
+          </>
+        }
         subtitle={subtitle}
         action={
-          <IconButton aria-label="전체 뉴스">
-            <ArrowUpRight className="size-4" />
-          </IconButton>
+          onOpen && (
+            <IconButton aria-label="News/Issues 화면으로" title="News/Issues 화면으로" onClick={onOpen}>
+              <ArrowUpRight className="size-4" />
+            </IconButton>
+          )
         }
       />
       <div className="flex items-center justify-between px-5 pt-3">
@@ -255,8 +305,9 @@ export function NewsPanel({
           onChange={setFilter}
           options={[
             { value: "all", label: "전체" },
-            { value: "high", label: "편향 높음" },
-            { value: "neutral", label: "중립" },
+            // 실제 기사는 AI 편향 분석 전이라 준비 중 (예시 기사에서는 동작)
+            { value: "high", label: "편향 높음", soon: noAnalysis },
+            { value: "neutral", label: "중립", soon: noAnalysis },
           ]}
         />
         <span className="text-[10px] text-ink-3">용어에 마우스를 올려보세요</span>

@@ -8,7 +8,7 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 
 function FlipTile({ ch, accent }: { ch: string; accent?: boolean }) {
-  const isDigit = /\d/.test(ch);
+  const isDigit = /\d|—/.test(ch); // "—"(값 없음)도 숫자 타일 모양으로
   if (!isDigit) {
     return <span className="self-end px-0.5 pb-1 text-lg font-semibold text-ink-3">{ch}</span>;
   }
@@ -38,17 +38,19 @@ export function FlipCounter({
   accent,
   format = (v: number) => v.toLocaleString("ko-KR"),
 }: {
-  value: number;
+  /** null = 아직 데이터 없음 → "—" */
+  value: number | null;
   label: string;
   caption?: React.ReactNode;
   accent?: boolean;
   format?: (v: number) => string;
 }) {
-  const chars = format(value).split("");
+  const text = value == null ? "—" : format(value);
+  const chars = text.split("");
   return (
     <div className="min-w-0">
       <p className="mb-1.5 text-[11px] font-medium text-ink-3">{label}</p>
-      <div className="flex items-stretch gap-[3px]" aria-label={`${label} ${format(value)}`}>
+      <div className="flex items-stretch gap-[3px]" aria-label={`${label} ${text}`}>
         {chars.map((c, i) => (
           <FlipTile key={`${chars.length}-${i}`} ch={c} accent={accent} />
         ))}

@@ -1,19 +1,14 @@
-import { sql } from "@/server/db";
+import { memberScores, SCORE_RULE } from "@/server/member-scores";
 
 export const dynamic = "force-dynamic";
 
 /**
- * GET /api/politicians — 의원 전체 목록 (정치인 표용)
- * ?region=11 로 시도를 거를 수 있음. 정렬은 이름순(정당·성향과 무관).
- * 공약 이행률·출석률은 공식 API가 없어서 내려주지 않습니다.
+ * GET /api/politicians — 의원 전체 목록 (정치인 표용), ?region=11 로 시도 거르기
+ * 각 의원: 기본 정보 + 대표발의 수, 반영 법안 수, 반영률(%), 별점(1~3), 표결 참여율(수집 전에는 null)
+ * 응답 헤더 X-Score-Rule 에 별점 기준 문장이 들어 있어 화면 하단 "기준" 설명에 그대로 쓸 수 있음.
  */
 export async function GET(req: Request) {
   const region = new URL(req.url).searchParams.get("region");
-  const rows = await sql`
-    select mona_cd, name, party_id, region_code, district, term,
-           bills_proposed::int as bills_proposed, coalesce(total_votes, 0)::int as total_votes, vote_participation
-    from member_stats
-    where ${region}::text is null or region_code = ${region}
-    order by name`;
-  return Response.json(rows);
+  const rows = await memberScores(null, region);
+  return Response.json(rows, { headers: { "X-Score-Rule": encodeURIComponent(SCORE_RULE) } });
 }

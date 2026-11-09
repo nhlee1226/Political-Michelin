@@ -45,7 +45,7 @@ import {
 } from "@/lib/mock-data";
 import { useTheme } from "@/lib/theme";
 import { cn } from "@/lib/utils";
-import { Badge, MichelinStars, Segmented, Switch } from "@/components/ui/primitives";
+import { Badge, ExampleBadge, MichelinStars, Segmented, Soon, Switch } from "@/components/ui/primitives";
 
 type PanelKey = "regions" | "politicians" | "schedule" | "bills" | "pledges" | "news" | "settings" | "help";
 
@@ -449,7 +449,10 @@ function SettingsPanel({ aiMode, onAiModeChange }: { aiMode: boolean; onAiModeCh
           </p>
           <p className="mt-0.5 text-[11px] text-ink-3">뉴스를 감정 표현을 덜어낸 요약으로 기본 표시합니다.</p>
         </div>
-        <Switch checked={aiMode} onCheckedChange={onAiModeChange} label="AI 객관화 모드" />
+        {/* AI 분석 전이라 준비 중 */}
+        <Soon>
+          <Switch checked={aiMode} onCheckedChange={onAiModeChange} label="AI 객관화 모드" disabled />
+        </Soon>
       </Row>
       <p className="px-1 pt-1 text-[11px] leading-relaxed text-ink-3">
         관심 지역·즐겨찾기·추적 법안·저장한 뉴스는 이 브라우저에만 저장됩니다.
@@ -643,7 +646,11 @@ export function SideRail({
                 <panel.icon className="size-4" />
               </span>
               <div className="min-w-0 flex-1">
-                <h2 className="text-[15px] font-semibold">{panel.label}</h2>
+                <h2 className="text-[15px] font-semibold">
+                  {panel.label}
+                  {/* 메뉴 6개는 아직 mock 데이터 (설정·도움말 제외) */}
+                  {MENU.some((m) => m.key === panel.key) && <ExampleBadge />}
+                </h2>
                 <p className="mt-0.5 text-[11px] leading-relaxed text-ink-3">{panel.desc}</p>
               </div>
               <button

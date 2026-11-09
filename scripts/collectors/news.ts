@@ -22,17 +22,41 @@ export interface NewsItem {
 /** HTML 엔티티 이름 → 글자 (한 번에 바꿔서 이중 변환을 막음) */
 const ENTITIES: Record<string, string> = { nbsp: " ", quot: '"', apos: "'", lt: "<", gt: ">", middot: "·", amp: "\u0026" };
 
-const decode = (s: string) =>
+const unescape = (s: string) =>
+  s.replace(/\u0026(#\d+|#x[0-9a-f]+|[a-z]+);/gi, (m, e: string) =>
+    e[0] === "#"
+      ? String.fromCodePoint(e[1].toLowerCase() === "x" ? parseInt(e.slice(2), 16) : Number(e.slice(1)))
+      : (ENTITIES[e.toLowerCase()] ?? m),
+  );
+
+const stripTags = (s: string) =>
   s
-    .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1")
-    .replace(/<[^>]+>/g, " ")
-    .replace(/\u0026(#\d+|#x[0-9a-f]+|[a-z]+);/gi, (m, e: string) =>
-      e[0] === "#"
-        ? String.fromCodePoint(e[1].toLowerCase() === "x" ? parseInt(e.slice(2), 16) : Number(e.slice(1)))
-        : (ENTITIES[e.toLowerCase()] ?? m),
-    )
+    .replace(/<(figcaption|script|style)[^>]*>[\s\S]*?<\/\1>/gi, " ") // 사진 설명·스크립트는 통째로 뺌
+    .replace(/<[^>]*>/g, " ");
+
+/**
+ * 태그 제거 → 엔티티 풀기 → 한 번 더 태그 제거.
+ * 국민일보처럼 HTML 을 &lt;center&gt; 로 한 번 더 감싸 보내는 피드가 있어서 두 번 거름.
+ */
+const decode = (s: string) =>
+  stripTags(unescape(stripTags(s.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1"))))
     .replace(/\s+/g, " ")
     .trim();
+
+/** 'Wed, 04 Nov 2026 21:16:27 +0900', ISO, '2026.11.04 21:16' (한국 시간) 모두 읽음. 못 읽으면 null */
+export function parseDate(raw: string): Date | null {
+  const t = raw.trim();
+  if (!t) return null;
+  // 시간대가 안 적힌 '2026.11.04 21:16' 은 한국 시간으로 (GitHub Actions 서버는 UTC 라서 직접 붙임)
+  const m = /^(\d{4})[.\-/](\d{1,2})[.\-/](\d{1,2})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/.exec(t);
+  if (m) {
+    const [, y, mo, da, h = "0", mi = "0", se = "0"] = m;
+    const kst = new Date(`${y}-${mo.padStart(2, "0")}-${da.padStart(2, "0")}T${h.padStart(2, "0")}:${mi}:${se.padStart(2, "0")}+09:00`);
+    return Number.isNaN(kst.getTime()) ? null : kst;
+  }
+  const d = new Date(t);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
 
 const text = (v: unknown): string => {
   if (v == null) return "";
@@ -64,16 +88,16 @@ export function parseFeed(xml: string): NewsItem[] {
   const out: NewsItem[] = [];
 
   for (const it of rssItems as Record<string, unknown>[]) {
-    const url = cleanUrl(text(it.link) || text(it.guid));
-    const when = new Date(text(it.pubDate) || text(it["dc:date"]));
-    if (url && text(it.title)) out.push(toItem(url, text(it.title), text(it.description), when));
+    const url = cleanUrl((text(it.link) || text(it.guid)).trim());
+    const when = parseDate(text(it.pubDate) || text(it["dc:date"]) || text(it.pubdate));
+    if (url && text(it.title) && when) out.push(toItem(url, text(it.title), text(it.description), when));
   }
   for (const it of atomItems as Record<string, unknown>[]) {
     const links = asArray(it.link as Record<string, string> | Record<string, string>[]);
     const href = (links.find((l) => !l["@rel"] || l["@rel"] === "alternate") ?? links[0])?.["@href"] ?? "";
     const url = cleanUrl(href);
-    const when = new Date(text(it.published) || text(it.updated));
-    if (url && text(it.title)) out.push(toItem(url, text(it.title), text(it.summary), when));
+    const when = parseDate(text(it.published) || text(it.updated));
+    if (url && text(it.title) && when) out.push(toItem(url, text(it.title), text(it.summary), when));
   }
   return out;
 }
@@ -84,7 +108,7 @@ function toItem(url: string, title: string, desc: string, when: Date): NewsItem 
     url,
     headline: decode(title),
     summary: s ? (s.length > SUMMARY_MAX ? `${s.slice(0, SUMMARY_MAX)}…` : s) : null,
-    publishedAt: Number.isNaN(when.getTime()) ? new Date() : when,
+    publishedAt: when, // 날짜를 못 읽은 기사는 parseFeed 에서 뺌 ("0분 전"으로 잘못 보이지 않게)
   };
 }
 
@@ -171,8 +195,11 @@ async function main() {
         insert into news (url, source, headline, summary, published_at, region_code, query)
         values (${it.url}, ${feed.outlet}, ${it.headline}, ${it.summary}, ${it.publishedAt},
                 ${detectRegion(it.headline, it.summary)}, ${`rss:${feed.outlet}`})
-        on conflict (url) do nothing`;
-      n += res.count;
+        on conflict (url) do update set
+          headline = excluded.headline, summary = excluded.summary,
+          published_at = excluded.published_at, region_code = excluded.region_code
+        returning (xmax = 0) as inserted`; // 이미 있던 기사는 요약·날짜만 고쳐 씀
+      if (res[0]?.inserted) n++;
     }
     saved += n;
     console.log(`[성공] ${feed.outlet}: 피드 ${r.value.length}건 중 새 기사 ${n}건`);
