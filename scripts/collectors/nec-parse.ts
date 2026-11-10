@@ -194,6 +194,9 @@ function sumRows(rows: Item[]): Item {
   return out;
 }
 
+/** 시도 칸까지 '합계'인 줄(선거구마다 한 줄씩 더 오는 중복 합계 줄)은 버림 */
+const dropSidoTotal = (rows: Item[]) => rows.filter((r) => str(r[FIELD.sido]) !== "합계");
+
 const sggKey = (r: Item) => {
   const sd = str(r[FIELD.sido]);
   const sgg = str(r[FIELD.sgg]);
@@ -211,7 +214,7 @@ export function applyCounts(
   el: Election,
   lookup: Lookup,
 ): { districts: DistrictRow[]; matched: number } {
-  const totals = totalsBy(countRows, sggKey, sumRows);
+  const totals = totalsBy(dropSidoTotal(countRows), sggKey, sumRows);
   const districts: DistrictRow[] = [];
   let matched = 0;
 
@@ -269,6 +272,7 @@ export interface TurnoutRow {
 
 /** 투표결과 → 시도 합계 줄(wiwName '') + 구시군 줄. 시도 합계가 없으면 구시군을 더해 만듦 */
 export function buildTurnout(rows: Item[], el: Election, lookup: Lookup): TurnoutRow[] {
+  rows = dropSidoTotal(rows);
   const out: TurnoutRow[] = [];
   const toRow = (r: Item, wiwName: string): TurnoutRow | null => {
     const sdName = str(r[FIELD.sido]);

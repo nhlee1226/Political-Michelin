@@ -11,7 +11,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { BadgeCheck, EyeOff, Heart, Loader2, MessageCircle, Send, ShieldCheck, ShieldAlert } from "lucide-react";
 import { COMMUNITY_POOL, COMMUNITY_SEED, type CommunityPost } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
-import { Badge, Card, CardHeader } from "@/components/ui/primitives";
+import { Badge, Card, CardHeader, ExampleBadge, Soon } from "@/components/ui/primitives";
 import { GlossaryText } from "./glossary-text";
 
 /** 데모용 모의 모더레이션 규칙 */
@@ -148,6 +148,7 @@ export function CommunityFeed({ className, live = true }: { className?: string; 
         title={
           <span className="flex items-center gap-2">
             안전한 야차판 <Badge tone="lime">AI 클린</Badge>
+            <ExampleBadge className="ml-0" />
           </span>
         }
         subtitle="AI가 혐오 표현을 걸러내고 사실 주장을 검증합니다"
@@ -166,23 +167,27 @@ export function CommunityFeed({ className, live = true }: { className?: string; 
         ))}
       </div>
 
-      <form onSubmit={submit} className="mx-5 mt-3 flex items-center gap-2 rounded-full border border-line bg-white/[0.03] py-1 pl-4 pr-1 focus-within:border-lime/40">
-        <input
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          placeholder="의견을 남겨주세요 (AI 모더레이션 적용)"
-          className="min-w-0 flex-1 bg-transparent text-[13px] text-ink placeholder:text-ink-3 focus:outline-none"
-          maxLength={200}
-        />
-        <button
-          type="submit"
-          disabled={checking || !draft.trim()}
-          className="grid size-8 place-items-center rounded-full bg-lime text-canvas transition hover:bg-lime-2 disabled:opacity-40"
-          aria-label="게시"
-        >
-          {checking ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-3.5" />}
-        </button>
-      </form>
+      {/* 글쓰기 — 로그인·실제 모더레이션 전이라 준비 중 */}
+      <Soon className="mx-5 mt-3 flex">
+        <form onSubmit={submit} className="flex flex-1 items-center gap-2 rounded-full border border-line bg-white/[0.03] py-1 pl-4 pr-1 focus-within:border-lime/40">
+          <input
+            disabled
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            placeholder="의견을 남겨주세요 (AI 모더레이션 적용)"
+            className="min-w-0 flex-1 bg-transparent text-[13px] text-ink placeholder:text-ink-3 focus:outline-none"
+            maxLength={200}
+          />
+          <button
+            type="submit"
+            disabled
+            className="grid size-8 place-items-center rounded-full bg-lime text-canvas transition hover:bg-lime-2 disabled:opacity-40"
+            aria-label="게시"
+          >
+            {checking ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-3.5" />}
+          </button>
+        </form>
+      </Soon>
 
       <ul className="mt-3 flex-1 space-y-2 overflow-y-auto px-5 pb-5 scroll-thin">
         <AnimatePresence initial={false}>

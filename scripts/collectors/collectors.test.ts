@@ -90,6 +90,29 @@ test("개표결과: 합계 줄이 있으면 그 줄만 쓰고, 동명이인은 �
   assert.ok(rows.every((r) => r.votes === null));
 });
 
+test("개표결과·투표율: 시도 칸이 '합계'인 중복 줄은 버림", () => {
+  const counts: Item[] = [
+    { sdName: "합계", sggName: "강남구갑", wiwName: "합계", sunsu: "156085", yutusu: "94330" },
+    { sdName: "서울특별시", sggName: "강남구갑", wiwName: "합계", sunsu: "156085", yutusu: "94330" },
+    { sdName: "서울특별시", sggName: "강남구갑", wiwName: "강남구", sunsu: "156085", yutusu: "94330" },
+  ];
+  const { districts } = applyCounts([], counts, el, lookup);
+  assert.deepEqual(
+    districts.map((d) => [d.sdName, d.sggName, d.electors]),
+    [["서울특별시", "강남구갑", 156085]],
+  );
+  const turnout = buildTurnout(
+    [
+      { sdName: "합계", wiwName: "합계", totSunsu: "3000", totTusu: "2000" },
+      { sdName: "서울특별시", wiwName: "종로구", totSunsu: "1000", totTusu: "700" },
+    ],
+    el,
+    lookup,
+  );
+  assert.ok(turnout.every((t) => t.sdName !== "합계"));
+  assert.equal(turnout.length, 2); // 종로구 줄 + 서울 합계 줄
+});
+
 test("투표율: 시도 합계 줄이 없으면 구시군을 더해 계산", () => {
   const rows = buildTurnout(
     [
