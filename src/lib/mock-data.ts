@@ -57,13 +57,17 @@ export interface NewsItem {
   time: string;
   category: string;
   headline: string;
-  /** AI 가 재작성한 중립 헤드라인 */
-  objectiveHeadline: string;
+  /** 원문 URL (실제 수집 기사만) */
+  url?: string;
+  /** 발행 시각 ISO (실제 수집 기사만) */
+  publishedAt?: string;
+  /** AI 가 재작성한 중립 헤드라인 (null = AI 분석 전) */
+  objectiveHeadline: string | null;
   /** 원문 요약 — [[용어]] 표기는 AI 용어 해설 툴팁으로 렌더링 */
   original: string;
-  /** AI 객관화 요약문 */
-  objective: string;
-  bias: number; // 편향 지수 0~100 (높을수록 감정적·일방적 서술)
+  /** AI 객관화 요약문 (null = AI 분석 전) */
+  objective: string | null;
+  bias: number | null; // 편향 지수 0~100 (높을수록 감정적·일방적 서술), null = AI 분석 전
   biasSignals: string[]; // 감지된 편향 신호
   region?: string;
 }

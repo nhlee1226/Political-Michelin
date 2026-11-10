@@ -13,9 +13,8 @@
  * REGIONS 데이터를 API 응답으로 대체하면 패널 UI 는 그대로 재사용 가능합니다.
  */
 import * as React from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, type MotionValue } from "framer-motion";
 import {
-  ArrowUpRight,
   ChevronLeft,
   ChevronRight,
   Flame,
@@ -25,30 +24,16 @@ import {
   Users,
   X,
 } from "lucide-react";
-import { MAP_DOTS, MAP_HEIGHT, MAP_WIDTH, REGION_PATHS } from "@/lib/korea-map-data";
-import { PARTIES, PARTY_ORDER, REGION_BY_CODE, REGIONS, type Region } from "@/lib/mock-data";
+import { MAP_HEIGHT, MAP_WIDTH, REGION_PATHS } from "@/lib/korea-map-data";
+import { LABEL_H, LABEL_W, REGION_LABELS } from "@/lib/korea-map-labels";
+import { PARTIES, PARTY_ORDER, REGION_BY_CODE, type Region } from "@/lib/mock-data";
+import { useLiveRegions, useParties, usePoliticians, useRegion, useRegions } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import { Badge, Card, IconButton, MichelinStars, PartyTag } from "@/components/ui/primitives";
-
-/* ── 지역 중심점 (도트 평균) ── */
-const REGION_CENTERS: Record<string, { x: number; y: number }> = (() => {
-  const acc: Record<string, { x: number; y: number; n: number }> = {};
-  for (const [x, y, c] of MAP_DOTS) {
-    acc[c] ??= { x: 0, y: 0, n: 0 };
-    acc[c].x += x;
-    acc[c].y += y;
-    acc[c].n++;
-  }
-  const out: Record<string, { x: number; y: number }> = {};
-  for (const c in acc) out[c] = { x: acc[c].x / acc[c].n, y: acc[c].y / acc[c].n };
-  // 섬(울릉도 등) 영향 보정
-  out["37"] = { x: out["37"].x - 22, y: out["37"].y };
-  return out;
-})();
+import { DesignOutline, RegionBurst, useDesignRun } from "./region-burst";
+import { Badge, Card, ExampleBadge, IconButton, MichelinStars, PartyTag } from "@/components/ui/primitives";
 
 // 광역시(2x) 를 도(3x) 위에 그려 클릭 가능하도록 정렬
 const PATH_ORDER = Object.keys(REGION_PATHS).sort((a, b) => (a.startsWith("3") ? -1 : 1) - (b.startsWith("3") ? -1 : 1));
-const HOT_REGIONS = [...REGIONS].sort((a, b) => b.heat - a.heat).slice(0, 3).map((r) => r.code);
 
 /* ───────────────────────── Sub components ───────────────────────── */
 
@@ -96,9 +81,12 @@ function SupportDonut({ region }: { region: Region }) {
 
 function SupportPanel({ region }: { region: Region }) {
   return (
-    <div className="glass-strong w-full rounded-2xl p-4 @min-[1040px]:w-[290px]">
+    <div className="glass-strong w-full rounded-2xl p-4 @min-[1040px]:w-[256px] @min-[1240px]:w-[290px]">
       <div className="mb-3 flex items-center justify-between">
-        <p className="text-[13px] font-semibold">실시간 정당 지지도</p>
+        <p className="text-[13px] font-semibold">
+          실시간 정당 지지도
+          <ExampleBadge />
+        </p>
         <Badge tone="neutral" className="tabular">±3.1%p</Badge>
       </div>
       <div className="flex items-center gap-4">
@@ -139,16 +127,78 @@ function SupportPanel({ region }: { region: Region }) {
   );
 }
 
-function PoliticianPanel({ region }: { region: Region }) {
+/** 프로필 카드 한 명. 공식 데이터가 없는 지표는 null → "—" */
+interface ProfileView {
+  key: string;
+  monaCd: string | null; // mock 은 null → 상세 패널 없음
+  name: string;
+  partyName: string;
+  partyColor: string;
+  district: string | null;
+  role: string;
+  isIncumbent: boolean;
+  michelin: 1 | 2 | 3 | null;
+  /** 아래 세 칸: 실제 의원은 법안 반영률·표결 참여율·대표 발의, mock 은 예전 지표 */
+  metrics: { k: string; v: string }[];
+}
+
+const pct = (v: number | null) => (v == null ? "—" : `${v}%`);
+
+function PoliticianPanel({ region, onOpen }: { region: Region; onOpen?: (monaCd: string) => void }) {
   const [idx, setIdx] = React.useState(0);
   React.useEffect(() => setIdx(0), [region.code]);
-  const pol = region.politicians[idx];
-  const party = PARTIES[pol.party];
-  const n = region.politicians.length;
-  const isIncumbent = pol.role === "현역 의원";
+  const { data: detail } = useRegion(region.code);
+  const { data: apiParties } = useParties();
+  const { data: apiList } = usePoliticians(); // 별점·반영률은 목록 API 에만 있음
+
+  // 선택 지역의 실제 의원이 있으면 그 목록, API 실패·0명이면 mock
+  const people: ProfileView[] = React.useMemo(() => {
+    // keepPreviousData 로 이전 지역 응답이 남아 있을 수 있어 코드가 같을 때만 사용
+    if (detail?.code === region.code && detail.politicians.length) {
+      const scoreById = new Map(apiList?.rows.map((p) => [p.mona_cd, p]));
+      const colorById = new Map(apiParties?.map((p) => [p.id, p.color]));
+      return detail.politicians.map((p) => ({
+        key: p.mona_cd,
+        monaCd: p.mona_cd,
+        name: p.name,
+        partyName: p.party_id ?? "—",
+        partyColor: (p.party_id && colorById.get(p.party_id)) || PARTIES.ETC.color,
+        district: p.district,
+        role: "현역 의원",
+        isIncumbent: true,
+        michelin: scoreById.get(p.mona_cd)?.stars ?? null,
+        metrics: [
+          { k: "법안 반영률", v: pct(scoreById.get(p.mona_cd)?.reflect_rate ?? null) },
+          { k: "표결 참여율", v: p.vote_participation == null ? "수집 예정" : `${p.vote_participation}%` },
+          { k: "대표 발의", v: `${p.bills_proposed}건` },
+        ],
+      }));
+    }
+    return region.politicians.map((p) => ({
+      key: p.id,
+      monaCd: null,
+      name: p.name,
+      partyName: PARTIES[p.party].name,
+      partyColor: PARTIES[p.party].color,
+      district: p.district,
+      role: p.role,
+      isIncumbent: p.role === "현역 의원",
+      michelin: p.michelin,
+      metrics: [
+        { k: "공약 이행", v: pct(p.pledgeRate) },
+        { k: "출석률", v: pct(p.attendance) },
+        { k: "대표 발의", v: `${p.bills}건` },
+      ],
+    }));
+  }, [detail, apiParties, apiList, region.politicians, region.code]);
+
+  const n = people.length;
+  const pol = people[Math.min(idx, n - 1)];
+  const party = { color: pol.partyColor, name: pol.partyName };
+  const isIncumbent = pol.isIncumbent;
 
   return (
-    <div className="glass-strong w-full rounded-2xl p-4 @min-[1040px]:w-[290px]">
+    <div className="glass-strong w-full rounded-2xl p-4 @min-[1040px]:w-[256px] @min-[1240px]:w-[290px]">
       <div className="mb-3 flex items-center justify-between">
         <p className="flex items-center gap-1.5 text-[13px] font-semibold">
           <Users className="size-3.5 text-ink-3" /> 정치인 프로필
@@ -168,11 +218,27 @@ function PoliticianPanel({ region }: { region: Region }) {
 
       <AnimatePresence mode="wait">
         <motion.div
-          key={pol.id}
+          key={pol.key}
           initial={{ opacity: 0, x: 12 }}
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: -12 }}
           transition={{ duration: 0.2 }}
+          // 실제 의원이면 눌러서 상세 패널 열기
+          {...(pol.monaCd && onOpen
+            ? {
+                role: "button",
+                tabIndex: 0,
+                "aria-label": `${pol.name} 상세 보기`,
+                className: "cursor-pointer",
+                onClick: () => onOpen(pol.monaCd!),
+                onKeyDown: (e: React.KeyboardEvent) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    onOpen(pol.monaCd!);
+                  }
+                },
+              }
+            : {})}
         >
           <div className="flex items-center gap-3">
             <div
@@ -184,12 +250,12 @@ function PoliticianPanel({ region }: { region: Region }) {
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
                 <p className="truncate text-base font-semibold">{pol.name}</p>
-                <MichelinStars count={pol.michelin} />
+                {pol.michelin == null ? <span className="text-xs text-ink-3">—</span> : <MichelinStars count={pol.michelin} />}
               </div>
               <div className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[11px] text-ink-3">
                 <PartyTag color={party.color} name={party.name} className="text-[11px]" />
                 <span>·</span>
-                <span>{pol.district}</span>
+                <span>{pol.district ?? "—"}</span>
               </div>
             </div>
             <Badge tone={isIncumbent ? "lime" : "cyan"}>{pol.role}</Badge>
@@ -197,11 +263,7 @@ function PoliticianPanel({ region }: { region: Region }) {
 
           {isIncumbent ? (
             <div className="mt-4 grid grid-cols-3 gap-2 border-t border-line pt-3">
-              {[
-                { k: "공약 이행", v: `${pol.pledgeRate}%` },
-                { k: "출석률", v: `${pol.attendance}%` },
-                { k: "대표 발의", v: `${pol.bills}건` },
-              ].map((m) => (
+              {pol.metrics.map((m) => (
                 <div key={m.k}>
                   <p className="text-[10px] text-ink-3">{m.k}</p>
                   <p className="mt-0.5 text-sm font-semibold tabular">{m.v}</p>
@@ -227,11 +289,12 @@ function IssuePopup({ region, onClose }: { region: Region; onClose: () => void }
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: -8, scale: 0.97 }}
       transition={{ duration: 0.22 }}
-      className="glass-strong w-full rounded-2xl p-4 @min-[1040px]:w-[270px]"
+      className="glass-strong w-full rounded-2xl p-4 @min-[1040px]:w-[250px] @min-[1240px]:w-[270px]"
     >
       <div className="mb-2 flex items-center justify-between">
         <p className="flex items-center gap-1.5 text-[13px] font-semibold">
           <Flame className="size-3.5 text-lime" /> {region.short} 주요 이슈
+          <ExampleBadge className="ml-0" />
         </p>
         <IconButton className="size-6" aria-label="닫기" onClick={onClose}>
           <X className="size-3.5" />
@@ -285,15 +348,22 @@ const sideColor = (t: number) =>
   `rgb(${SIDE_TOP.map((v, i) => Math.round(v + (SIDE_BOTTOM[i] - v) * t)).join(" ")})`;
 
 function Map3D({
+  regions,
+  hotRegions,
   selected,
   hovered,
   onHover,
   onSelect,
+  design,
 }: {
+  regions: Region[];
+  hotRegions: string[];
   selected: string;
   hovered: string | null;
   onHover: (c: string | null) => void;
   onSelect: (c: string) => void;
+  /** 지역 클릭 "설계" 연출: 경계 점선·"+" 를 지도와 같이 기울어지게 여기서 그림 */
+  design?: { t: MotionValue<number>; code: string | null };
 }) {
   const wrapRef = React.useRef<HTMLDivElement>(null);
   const [tilt, setTilt] = React.useState({ x: 0, y: 0 });
@@ -314,7 +384,9 @@ function Map3D({
   return (
     <div
       ref={wrapRef}
-      className="relative mx-auto aspect-[520/558] w-full max-w-[520px] [perspective:1200px]"
+      data-map-box
+      // 520 → 608px (+17%). 넓은 카드에서는 양옆 플로팅 패널 사이 폭을 넘지 않게 (섬이 패널에 가리지 않도록)
+      className="relative mx-auto aspect-[520/558] w-full max-w-[608px] [perspective:1200px] @min-[1040px]:max-w-[min(608px,calc(100cqw-560px))] @min-[1240px]:max-w-[min(608px,calc(100cqw-608px))]"
       onPointerMove={onMove}
       onPointerLeave={() => {
         setTilt({ x: 0, y: 0 });
@@ -387,6 +459,7 @@ function Map3D({
                 aria-pressed={isSel}
                 onPointerEnter={() => onHover(c)}
                 onClick={() => onSelect(c)}
+                data-burst-keep
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ") {
                     e.preventDefault();
@@ -439,41 +512,91 @@ function Map3D({
             </motion.g>
           </AnimatePresence>
 
-          {/* 이슈 급상승 지역 펄스 */}
-          {HOT_REGIONS.map((c) => {
-            const p = REGION_CENTERS[c];
-            const dx = c === selected ? liftDx : 0;
-            const dy = c === selected ? liftDy : 0;
+          {/* 설계 연출 0단계: 선택 시도 경계를 파란 점선이 한 바퀴 + 가운데 "+" */}
+          {design?.code && (
+            <DesignOutline
+              key={design.code}
+              t={design.t}
+              code={design.code}
+              dx={design.code === selected ? liftDx : 0}
+              dy={design.code === selected ? liftDy : 0}
+              maskId={id(`outline-${design.code}`)}
+            />
+          )}
+
+          {/* 이슈 급상승 지역 펄스 — 작은 시는 시 안의 기준점, 큰 시·도는 이름 왼쪽 */}
+          {hotRegions.map((c) => {
+            const l = REGION_LABELS[c];
+            if (!l) return null;
+            const lifted = c === selected;
+            const x = (l.leader ? l.anchor.x : l.x - 11) + (lifted ? liftDx : 0);
+            const y = (l.leader ? l.anchor.y : l.y) + (lifted ? liftDy : 0);
             return (
-              <g key={c} pointerEvents="none" transform={`translate(${dx} ${dy})`}>
-                <circle cx={p.x} cy={p.y} r="4" fill="none" stroke="#4fb3c4" strokeWidth="1.2" className="animate-pulse-ring" />
-                <circle cx={p.x} cy={p.y} r="3" fill="#4fb3c4" stroke="#fff" strokeWidth="1" />
+              <g key={c} pointerEvents="none">
+                <circle cx={x} cy={y} r="4" fill="none" stroke="#4fb3c4" strokeWidth="1.2" className="animate-pulse-ring" />
+                <circle cx={x} cy={y} r="3" fill="#4fb3c4" stroke="#fff" strokeWidth="1" />
               </g>
             );
           })}
 
-          {/* 라벨 */}
-          {REGIONS.map((r) => {
-            const p = REGION_CENTERS[r.code];
+          {/* 이름 레이어 (맨 위) — 위치는 korea-map-labels.ts 에서 미리 계산 (서로·경계와 겹치지 않음) */}
+          {regions.map((r) => {
+            const l = REGION_LABELS[r.code];
+            if (!l) return null;
             const isSel = r.code === selected;
-            const small = ["11", "23", "29", "25", "24", "22", "26", "21"].includes(r.code);
-            if (!isSel && small && r.code !== hovered) return null;
-            const x = p.x + (isSel ? liftDx : 0);
-            const y = p.y + (isSel ? liftDy : 0) - (HOT_REGIONS.includes(r.code) ? 10 : 0);
+            const outside = !!l.leader; // 작은 시: 바깥 이름 + 연결선
+            const hot = hotRegions.includes(r.code) && !outside;
+            // 큰 시·도는 선택되면 떠오른 블록과 함께 올라감. 바깥 이름은 그 자리에
+            const x = l.x + (isSel && !outside ? liftDx : 0);
+            const y = l.y + (isSel && !outside ? liftDy : 0);
+            const ax = l.anchor.x + (isSel ? liftDx : 0);
+            const ay = l.anchor.y + (isSel ? liftDy : 0);
+            const tx = hot ? 5 : 0; // 펄스 점 자리만큼 오른쪽으로
             return (
-              <g key={r.code} pointerEvents="none" transform={`translate(${x} ${y})`}>
-                {isSel ? (
+              <g
+                key={r.code}
+                className="cursor-pointer"
+                onClick={() => onSelect(r.code)}
+                onPointerEnter={() => onHover(r.code)}
+                data-region-label={r.code}
+                data-burst-keep
+              >
+                {outside && (
                   <>
-                    <rect x={-24} y={-21} width={48} height={17} rx={8.5} fill="#2b3038" fillOpacity="0.88" />
-                    <text y={-9} textAnchor="middle" fontSize="10" fontWeight="700" fill="#e3efbf">
-                      {r.short}
-                    </text>
+                    <line x1={ax} y1={ay} x2={l.leader!.x} y2={l.leader!.y} stroke="#8b939e" strokeWidth="0.7" pointerEvents="none" />
+                    <circle cx={ax} cy={ay} r="1.4" fill="#4a515c" pointerEvents="none" />
                   </>
-                ) : (
-                  <text y={-6} textAnchor="middle" fontSize="9.5" fontWeight="600" fill="#4a515c">
+                )}
+                <g transform={`translate(${x} ${y})`}>
+                  {isSel ? (
+                    <rect x={-LABEL_W / 2} y={-LABEL_H / 2} width={LABEL_W} height={LABEL_H} rx={LABEL_H / 2} fill="#2b3038" fillOpacity="0.88" />
+                  ) : outside ? (
+                    <rect
+                      x={-LABEL_W / 2}
+                      y={-LABEL_H / 2}
+                      width={LABEL_W}
+                      height={LABEL_H}
+                      rx={LABEL_H / 2}
+                      fill="#e9ecef"
+                      stroke="#a9b1ba"
+                      strokeWidth="0.6"
+                    />
+                  ) : (
+                    // 누를 수 있는 영역 (보이지 않음)
+                    <rect x={-LABEL_W / 2} y={-LABEL_H / 2} width={LABEL_W} height={LABEL_H} fill="transparent" />
+                  )}
+                  <text
+                    x={tx}
+                    dy="0.35em"
+                    textAnchor="middle"
+                    fontSize={isSel ? 10 : 9.5}
+                    fontWeight={isSel ? 700 : 600}
+                    fill={isSel ? "#e3efbf" : "#4a515c"}
+                    pointerEvents="none"
+                  >
                     {r.short}
                   </text>
-                )}
+                </g>
               </g>
             );
           })}
@@ -488,20 +611,36 @@ function Map3D({
 export function KoreaMapCard({
   selected,
   onSelect,
+  onOpenPolitician,
   expanded = false,
 }: {
   selected: string;
   onSelect: (code: string) => void;
+  onOpenPolitician?: (monaCd: string) => void;
   expanded?: boolean;
 }) {
   const [hovered, setHovered] = React.useState<string | null>(null);
   const [showIssues, setShowIssues] = React.useState(true);
-  const region = REGION_BY_CODE[selected];
-  const hov = hovered ? REGION_BY_CODE[hovered] : null;
+
+  // API 값이 있으면 실제 값, 없거나 실패하면 mock 그대로 (useLiveRegions 가 처리)
+  const regions = useLiveRegions();
+  const { data: apiRegions } = useRegions(); // 같은 키라 요청은 한 번 (SWR)
+  const isLive = !!apiRegions?.length;
+  const byCode = React.useMemo(() => Object.fromEntries(regions.map((r) => [r.code, r])), [regions]);
+  const byHeat = React.useMemo(() => [...regions].sort((a, b) => b.heat - a.heat), [regions]);
+  const hotRegions = React.useMemo(() => byHeat.slice(0, 3).map((r) => r.code), [byHeat]);
+
+  const region = byCode[selected] ?? REGION_BY_CODE[selected];
+  const hov = hovered ? byCode[hovered] : null;
+
+  // 지역 클릭 "설계" 연출 (커서가 의원 카드를 그려 나감). 처음 들어왔을 때는 닫힌 상태
+  const design = useDesignRun();
+  const gridRef = React.useRef<HTMLDivElement>(null);
 
   const select = (c: string) => {
     onSelect(c);
     setShowIssues(true);
+    design.request(c); // 같은 지역이면 다시 재생하지 않음 (진행 바의 "다시 보기"로만)
   };
 
   return (
@@ -526,12 +665,9 @@ export function KoreaMapCard({
               <span className="absolute inline-flex size-full animate-ping rounded-full bg-cyan opacity-75" />
               <span className="relative inline-flex size-1.5 rounded-full bg-cyan" />
             </span>
-            이슈 급상승 {HOT_REGIONS.length}
+            이슈 급상승 {hotRegions.length}
           </Badge>
-          <Badge tone="lime">LIVE</Badge>
-          <IconButton aria-label="전체 보기">
-            <ArrowUpRight className="size-4" />
-          </IconButton>
+          {isLive ? <Badge tone="lime">LIVE</Badge> : <ExampleBadge className="ml-0 py-0.5 text-[11px]" />}
         </div>
       </div>
 
@@ -540,9 +676,22 @@ export function KoreaMapCard({
           · 620~1040 : 지도 | 패널 2열 (Overview 중앙 카드)
           · ≥ 1040px : 지도 위 플로팅 글래스 패널 (Map View 확장, 영상 레퍼런스와 동일) */}
       <div className="@container relative">
-        <div className="relative grid gap-3 px-4 pb-4 pt-2 @min-[620px]:grid-cols-[minmax(0,1fr)_272px] @min-[1040px]:block @min-[1040px]:px-5 @min-[1040px]:pb-5">
-          <div className="@min-[1040px]:px-[250px]">
-            <Map3D selected={selected} hovered={hovered} onHover={setHovered} onSelect={select} />
+        <div
+          ref={gridRef}
+          className="relative grid gap-3 px-4 pb-4 pt-2 @min-[620px]:grid-cols-[minmax(0,1fr)_272px] @min-[1040px]:block @min-[1040px]:px-5 @min-[1040px]:pb-5"
+        >
+          <RegionBurst design={design} rootRef={gridRef} onOpenPolitician={onOpenPolitician} />
+          {/* 넓은 카드: 지도 윗부분(강원·경기 북쪽)을 머리말의 빈 가운데로 올려 카드 높이(760px)를 그대로 유지 */}
+          <div className="@min-[1040px]:-mt-12">
+            <Map3D
+              regions={regions}
+              hotRegions={hotRegions}
+              selected={selected}
+              hovered={hovered}
+              onHover={setHovered}
+              onSelect={select}
+              design={{ t: design.t, code: design.run?.code ?? null }}
+            />
           </div>
 
           {/* 호버 툴팁 */}
@@ -564,15 +713,15 @@ export function KoreaMapCard({
           </AnimatePresence>
 
           <div className="flex flex-col gap-3 @min-[1040px]:contents">
-            <div className="@min-[1040px]:absolute @min-[1040px]:left-5 @min-[1040px]:top-2">
+            <div data-map-obstacle className="@min-[1040px]:absolute @min-[1040px]:left-5 @min-[1040px]:top-2">
               <SupportPanel region={region} />
             </div>
-            <div className="@min-[1040px]:absolute @min-[1040px]:bottom-5 @min-[1040px]:left-5">
-              <PoliticianPanel region={region} />
+            <div data-map-obstacle className="@min-[1040px]:absolute @min-[1040px]:bottom-5 @min-[1040px]:left-5">
+              <PoliticianPanel region={region} onOpen={onOpenPolitician} />
             </div>
           </div>
 
-          <div className="@min-[620px]:col-span-2 @min-[1040px]:absolute @min-[1040px]:right-5 @min-[1040px]:top-2">
+          <div data-map-obstacle className="@min-[620px]:col-span-2 @min-[1040px]:absolute @min-[1040px]:right-5 @min-[1040px]:top-2">
             <AnimatePresence mode="wait">
               {showIssues ? (
                 <IssuePopup key={region.code} region={region} onClose={() => setShowIssues(false)} />
@@ -591,11 +740,15 @@ export function KoreaMapCard({
           </div>
 
           {/* 범례 + 힌트 */}
-          <div className="flex flex-wrap items-center justify-between gap-2 @min-[620px]:col-span-2 @min-[1040px]:absolute @min-[1040px]:bottom-5 @min-[1040px]:right-5 @min-[1040px]:flex-col @min-[1040px]:items-end">
+          <div data-map-obstacle className="flex flex-wrap items-center justify-between gap-2 @min-[620px]:col-span-2 @min-[1040px]:absolute @min-[1040px]:bottom-5 @min-[1040px]:right-5 @min-[1040px]:flex-col @min-[1040px]:items-end">
             <p className="flex items-center gap-1.5 text-[11px] text-ink-3">
               <MousePointerClick className="size-3.5" /> 마우스로 기울이기 · 지역 클릭
               <button
-                onClick={() => select("11")}
+                onClick={() => {
+                  onSelect("11");
+                  setShowIssues(true);
+                  design.close();
+                }}
                 className="ml-1 inline-flex items-center gap-1 rounded-full border border-line px-2 py-0.5 hover:text-ink"
               >
                 <RotateCcw className="size-3" /> 초기화
@@ -615,22 +768,21 @@ export function KoreaMapCard({
 
       {/* 빠른 지역 선택 (모바일 접근성) */}
       <div className="relative flex gap-1.5 overflow-x-auto border-t border-line px-5 py-3 scroll-thin">
-        {[...REGIONS]
-          .sort((a, b) => b.heat - a.heat)
-          .map((r) => (
-            <button
-              key={r.code}
-              onClick={() => select(r.code)}
-              className={cn(
-                "flex shrink-0 items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] transition",
-                r.code === selected ? "border-lime/40 bg-lime/10 text-lime" : "border-line text-ink-3 hover:text-ink-2",
-              )}
-            >
-              {r.short}
-              <span className="tabular opacity-70">{r.heat}</span>
-              {HOT_REGIONS.includes(r.code) && <Flame className="size-3 text-cyan" />}
-            </button>
-          ))}
+        {byHeat.map((r) => (
+          <button
+            key={r.code}
+            onClick={() => select(r.code)}
+            data-burst-keep
+            className={cn(
+              "flex shrink-0 items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] transition",
+              r.code === selected ? "border-lime/40 bg-lime/10 text-lime" : "border-line text-ink-3 hover:text-ink-2",
+            )}
+          >
+            {r.short}
+            <span className="tabular opacity-70">{r.heat}</span>
+            {hotRegions.includes(r.code) && <Flame className="size-3 text-cyan" />}
+          </button>
+        ))}
       </div>
     </Card>
   );

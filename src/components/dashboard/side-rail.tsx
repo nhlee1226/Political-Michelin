@@ -34,18 +34,16 @@ import {
 import {
   BILL_STAGES,
   BILLS,
-  NEWS,
   PARTIES,
   PLEDGE_DOCS,
-  REGION_BY_CODE,
-  REGIONS,
   SCHEDULE,
   type Politician,
   type Region,
 } from "@/lib/mock-data";
+import { useNews, useRegions } from "@/lib/dashboard-data";
 import { useTheme } from "@/lib/theme";
 import { cn } from "@/lib/utils";
-import { Badge, MichelinStars, Segmented, Switch } from "@/components/ui/primitives";
+import { Badge, ExampleBadge, MichelinStars, Segmented, Soon, Switch } from "@/components/ui/primitives";
 
 type PanelKey = "regions" | "politicians" | "schedule" | "bills" | "pledges" | "news" | "settings" | "help";
 
@@ -61,9 +59,6 @@ const SETTINGS = { key: "settings" as const, icon: Settings, label: "설정", de
 const HELP = { key: "help" as const, icon: HelpCircle, label: "도움말", desc: "빠른 메뉴의 각 아이콘이 하는 일을 안내합니다." };
 const ALL_PANELS = [...MENU, SETTINGS, HELP];
 
-const ALL_POLITICIANS: (Politician & { region: Region })[] = REGIONS.flatMap((r) =>
-  r.politicians.map((p) => ({ ...p, region: r })),
-);
 const stripTerms = (s: string) => s.replace(/\[\[(.+?)\]\]/g, "$1");
 
 /* ── localStorage 에 보관하는 id 집합 ── */
@@ -120,6 +115,7 @@ function RegionsPanel({
   toggle: (c: string) => void;
   onSelectRegion: (c: string) => void;
 }) {
+  const { regions: REGIONS } = useRegions();
   const mine = REGIONS.filter((r) => interests.has(r.code));
   const rest = REGIONS.filter((r) => !interests.has(r.code));
   return (
@@ -186,12 +182,13 @@ function PoliticiansPanel({
   onSelectRegion: (c: string) => void;
 }) {
   const [q, setQ] = React.useState("");
+  const { politicians: ALL_POLITICIANS } = useRegions();
   const favs = ALL_POLITICIANS.filter((p) => favorites.has(p.id));
   const results = q.trim()
     ? ALL_POLITICIANS.filter((p) => !favorites.has(p.id) && (p.name.includes(q.trim()) || p.district.includes(q.trim())))
     : [];
 
-  const item = (p: (typeof ALL_POLITICIANS)[number]) => {
+  const item = (p: Politician & { region: Region }) => {
     const party = PARTIES[p.party];
     const fav = favorites.has(p.id);
     return (
@@ -344,6 +341,7 @@ function BillsPanel({ followed, toggle }: { followed: Set<string>; toggle: (id: 
 
 function PledgesPanel({ selectedRegion, onSelectRegion }: { selectedRegion: string; onSelectRegion: (c: string) => void }) {
   const [scope, setScope] = React.useState<"all" | "region">("all");
+  const { byCode: REGION_BY_CODE } = useRegions();
   const region = REGION_BY_CODE[selectedRegion];
   const docs = scope === "region" ? PLEDGE_DOCS.filter((d) => d.region === selectedRegion) : PLEDGE_DOCS;
   return (
@@ -389,6 +387,7 @@ function PledgesPanel({ selectedRegion, onSelectRegion }: { selectedRegion: stri
 }
 
 function NewsPanel({ saved, toggle }: { saved: Set<string>; toggle: (id: string) => void }) {
+  const { news: NEWS } = useNews();
   const mine = NEWS.filter((n) => saved.has(n.id));
   const rest = NEWS.filter((n) => !saved.has(n.id));
   const item = (n: (typeof NEWS)[number]) => {
@@ -400,7 +399,7 @@ function NewsPanel({ saved, toggle }: { saved: Set<string>; toggle: (id: string)
             <p className="text-[11px] text-ink-3">
               {n.source} · {n.time} · {n.category}
             </p>
-            <p className="mt-0.5 text-[13px] leading-snug">{stripTerms(n.objectiveHeadline)}</p>
+            <p className="mt-0.5 text-[13px] leading-snug">{stripTerms(n.objectiveHeadline ?? n.headline)}</p>
           </div>
           <button
             onClick={() => toggle(n.id)}
@@ -449,7 +448,10 @@ function SettingsPanel({ aiMode, onAiModeChange }: { aiMode: boolean; onAiModeCh
           </p>
           <p className="mt-0.5 text-[11px] text-ink-3">뉴스를 감정 표현을 덜어낸 요약으로 기본 표시합니다.</p>
         </div>
-        <Switch checked={aiMode} onCheckedChange={onAiModeChange} label="AI 객관화 모드" />
+        {/* AI 분석 전이라 준비 중 */}
+        <Soon>
+          <Switch checked={aiMode} onCheckedChange={onAiModeChange} label="AI 객관화 모드" disabled />
+        </Soon>
       </Row>
       <p className="px-1 pt-1 text-[11px] leading-relaxed text-ink-3">
         관심 지역·즐겨찾기·추적 법안·저장한 뉴스는 이 브라우저에만 저장됩니다.
@@ -572,6 +574,7 @@ export function SideRail({
   onAiModeChange: (v: boolean) => void;
 }) {
   const [open, setOpen] = React.useState<PanelKey | null>(null);
+  const { politicians: ALL_POLITICIANS } = useRegions();
   const rootRef = React.useRef<HTMLDivElement>(null);
 
   const [interests, toggleInterest] = useStoredSet("pm-interest-regions", ["11", "31"]);
@@ -643,7 +646,11 @@ export function SideRail({
                 <panel.icon className="size-4" />
               </span>
               <div className="min-w-0 flex-1">
-                <h2 className="text-[15px] font-semibold">{panel.label}</h2>
+                <h2 className="text-[15px] font-semibold">
+                  {panel.label}
+                  {/* 메뉴 6개는 아직 mock 데이터 (설정·도움말 제외) */}
+                  {MENU.some((m) => m.key === panel.key) && <ExampleBadge />}
+                </h2>
                 <p className="mt-0.5 text-[11px] leading-relaxed text-ink-3">{panel.desc}</p>
               </div>
               <button

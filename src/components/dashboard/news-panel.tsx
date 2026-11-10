@@ -11,8 +11,9 @@ import * as React from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowRight, ArrowUpRight, Newspaper, ScanSearch, Sparkles, Undo2 } from "lucide-react";
 import { NEWS, REGION_BY_CODE, type NewsItem } from "@/lib/mock-data";
+import { useNews, type ApiNews } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import { Badge, Card, CardHeader, IconButton, Segmented } from "@/components/ui/primitives";
+import { Badge, Card, CardHeader, ExampleBadge, IconButton, Segmented } from "@/components/ui/primitives";
 import { GlossaryText } from "./glossary-text";
 
 /** 객관화 이후 잔여 편향 지수 (AI 재작성 결과, 데모용 계산) */
@@ -55,8 +56,10 @@ function NewsCard({ item, aiMode }: { item: NewsItem; aiMode: boolean }) {
     }, 650);
   };
 
-  const shown = objective ? residualBias(item.bias) : item.bias;
-  const t = biasTone(item.bias);
+  // 샘플 기사는 값이 늘 있음. 통합 스키마 타입은 AI 분석 전 null 을 허용하므로 0 으로 대신
+  const bias = item.bias ?? 0;
+  const shown = objective ? residualBias(bias) : bias;
+  const t = biasTone(bias);
 
   return (
     <article className="group rounded-xl border border-line bg-white/[0.02] p-3.5 transition hover:border-white/15 hover:bg-white/[0.04]">
@@ -70,7 +73,7 @@ function NewsCard({ item, aiMode }: { item: NewsItem; aiMode: boolean }) {
       </div>
 
       <h4 className="mt-2 text-[14px] font-semibold leading-snug text-ink">
-        <GlossaryText text={objective ? item.objectiveHeadline : item.headline} />
+        <GlossaryText text={objective ? (item.objectiveHeadline ?? item.headline) : item.headline} />
       </h4>
 
       <div className="relative mt-2">
@@ -83,7 +86,7 @@ function NewsCard({ item, aiMode }: { item: NewsItem; aiMode: boolean }) {
             transition={{ duration: 0.2 }}
             className={cn("text-[13px] leading-relaxed", objective ? "text-ink-2" : "text-ink-3")}
           >
-            <GlossaryText text={objective ? item.objective : item.original} />
+            <GlossaryText text={objective ? (item.objective ?? item.original) : item.original} />
           </motion.p>
         </AnimatePresence>
         {scanning && (
@@ -114,7 +117,7 @@ function NewsCard({ item, aiMode }: { item: NewsItem; aiMode: boolean }) {
           <BiasMeter value={shown} />
           {objective && (
             <span className="flex items-center gap-1 text-[11px] text-ink-3 tabular">
-              <span className="line-through">{item.bias}%</span>
+              <span className="line-through">{bias}%</span>
               <ArrowRight className="size-3 text-lime" />
             </span>
           )}
@@ -148,26 +151,154 @@ function NewsCard({ item, aiMode }: { item: NewsItem; aiMode: boolean }) {
   );
 }
 
+/** published_at → "3분 전" (mock 의 time 표기와 맞춤) */
+function timeAgo(iso: string) {
+  const t = new Date(iso).getTime();
+  if (Number.isNaN(t)) return "시간 —";
+  const min = Math.max(0, Math.floor((Date.now() - t) / 60_000)); // 미래 시각(시계 오차)은 0
+  if (min < 1) return "방금";
+  if (min < 60) return `${min}분 전`;
+  if (min < 60 * 24) return `${Math.floor(min / 60)}시간 전`;
+  return `${Math.floor(min / (60 * 24))}일 전`;
+}
+
+const ENTITIES: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " " };
+
+// 줄을 나누는 태그는 공백으로, <b> 같은 인라인 태그는 그냥 지움 (단어가 쪼개지지 않게)
+const stripTags = (s: string) => s.replace(/<\/?(br|p|div|li|tr|h[1-6])\b[^>]*>/gi, " ").replace(/<[^>]*>/g, "");
+const decodeEntities = (s: string) =>
+  s.replace(/&(#x?[0-9a-f]+|[a-z]+);/gi, (m, e: string) => {
+    if (e[0] === "#") {
+      const code = e[1] === "x" || e[1] === "X" ? parseInt(e.slice(2), 16) : parseInt(e.slice(1), 10);
+      return Number.isFinite(code) && code > 0 && code <= 0x10ffff ? String.fromCodePoint(code) : m;
+    }
+    return ENTITIES[e.toLowerCase()] ?? m;
+  });
+
+/**
+ * 뉴스 요약에 섞여 오는 HTML 태그·엔티티를 지우고 공백을 정리 (태그를 렌더하지 않고 글자만 남김).
+ * 엔티티로 감싼 태그(&lt;b&gt;)도 있어 풀고 나서 한 번 더 지움.
+ */
+function plainText(html: string | null) {
+  if (!html) return "";
+  return stripTags(decodeEntities(stripTags(html)))
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/** 실제 기사 카드: 제목·출처·시간·요약만, 본문은 싣지 않고 원문 링크로 보냄 */
+function LiveNewsCard({ item }: { item: ApiNews }) {
+  const analyzed = item.bias != null;
+  const summary = plainText(item.summary);
+  const t = analyzed ? biasTone(item.bias!) : null;
+
+  return (
+    <article className="group rounded-xl border border-line bg-white/[0.02] p-3.5 transition hover:border-white/15 hover:bg-white/[0.04]">
+      <div className="flex items-center justify-between gap-2 text-[11px] text-ink-3">
+        <span className="flex min-w-0 items-center gap-1.5">
+          <span className="font-medium text-ink-2">{item.source ?? "출처 미상"}</span>·<span>{timeAgo(item.published_at)}</span>
+          {item.region_code && <Badge className="px-1.5 py-0 text-[10px]">{REGION_BY_CODE[item.region_code]?.short}</Badge>}
+        </span>
+        <Badge tone={t?.tone}>{t ? t.label : "분석 전"}</Badge>
+      </div>
+
+      <h4 className="mt-2 text-[14px] font-semibold leading-snug text-ink">{item.headline}</h4>
+
+      {summary && <p className="mt-2 text-[13px] leading-relaxed text-ink-3">{summary}</p>}
+
+      {!!item.bias_signals?.length && (
+        <div className="mt-2 flex flex-wrap gap-1">
+          {item.bias_signals.map((s) => (
+            <span key={s} className="rounded-md bg-white/[0.04] px-1.5 py-0.5 text-[10px] text-ink-3">
+              {s}
+            </span>
+          ))}
+        </div>
+      )}
+
+      <div className="mt-3 flex items-center justify-between gap-2 border-t border-line pt-3">
+        <div className="flex items-center gap-2">
+          <span className="whitespace-nowrap text-[11px] text-ink-3">편향</span>
+          {analyzed ? <BiasMeter value={item.bias!} /> : <span className="text-xs text-ink-3">분석 전</span>}
+        </div>
+        <a
+          href={item.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full border border-line px-2.5 py-1 text-[11px] font-semibold text-ink-2 transition hover:text-ink"
+        >
+          <ArrowUpRight className="size-3" /> 원문 보기
+        </a>
+      </div>
+    </article>
+  );
+}
+
 type Filter = "all" | "high" | "neutral";
 
-export function NewsPanel({ aiMode, className, limit }: { aiMode: boolean; className?: string; limit?: number }) {
+const byFilter = (filter: Filter) => (bias: number | null) =>
+  filter === "high" ? bias != null && bias >= 60 : filter === "neutral" ? bias != null && bias < 30 : true;
+
+export function NewsPanel({
+  aiMode,
+  className,
+  limit,
+  region,
+  onOpen,
+}: {
+  aiMode: boolean;
+  className?: string;
+  limit?: number;
+  /** 지정하면 그 시도 기사만 */
+  region?: string;
+  /** ↗ 누르면 News/Issues 화면으로. News/Issues 안에서는 넘기지 않아 아이콘이 사라짐 */
+  onOpen?: () => void;
+}) {
   const [filter, setFilter] = React.useState<Filter>("all");
-  const list = NEWS.filter((n) => (filter === "high" ? n.bias >= 60 : filter === "neutral" ? n.bias < 30 : true)).slice(
-    0,
-    limit ?? NEWS.length,
-  );
-  const avg = Math.round(NEWS.reduce((a, n) => a + n.bias, 0) / NEWS.length);
+  // 기사 목록이 그대로여도 "○분 전"이 흘러가도록 1분마다 다시 그림
+  const [, tick] = React.useReducer((x: number) => x + 1, 0);
+  React.useEffect(() => {
+    const t = setInterval(tick, 60_000);
+    return () => clearInterval(t);
+  }, []);
+  const { data: fetched } = useNews(region, limit ?? 20);
+  // keepPreviousData 로 이전 지역 기사가 남아 있을 수 있어 지역이 맞는 것만
+  const regionNews = region ? fetched?.filter((n) => n.region_code === region) : fetched;
+  // 지역 기사가 0건일 때, 수집 자체가 안 된 건지(→ mock) 그 지역만 없는 건지 구분용
+  const { data: anyNews } = useNews(undefined, 1);
+  const hasLive = !!anyNews?.length || !!regionNews?.length;
+
+  const live = (regionNews ?? []).filter((n) => byFilter(filter)(n.bias));
+  const mock = NEWS.filter((n) => byFilter(filter)(n.bias)).slice(0, limit ?? NEWS.length);
+  const count = hasLive ? live.length : mock.length;
+  const noAnalysis = hasLive && !(regionNews ?? []).some((n) => n.bias != null);
+  React.useEffect(() => {
+    if (noAnalysis) setFilter("all");
+  }, [noAnalysis]);
+
+  const analyzed = (hasLive ? (regionNews ?? []) : NEWS).filter((n) => n.bias != null).map((n) => n.bias!);
+  const avg = analyzed.length ? `${Math.round(analyzed.reduce((a, b) => a + b, 0) / analyzed.length)}%` : "분석 전";
+  const subtitle = hasLive
+    ? `${region ? `${REGION_BY_CODE[region]?.short} ` : ""}수집 ${regionNews?.length ?? 0}건 · 평균 편향 지수 ${avg}`
+    : `크롤링 ${NEWS.length}건 · 평균 편향 지수 ${avg}`;
 
   return (
     <Card className={cn("flex flex-col", className)}>
       <CardHeader
         icon={<Newspaper className="size-4" />}
-        title="AI 실시간 뉴스 리포트"
-        subtitle={`크롤링 ${NEWS.length}건 · 평균 편향 지수 ${avg}%`}
+        title={
+          <>
+            AI 실시간 뉴스 리포트
+            {!hasLive && <ExampleBadge />}
+          </>
+        }
+        subtitle={subtitle}
         action={
-          <IconButton aria-label="전체 뉴스">
-            <ArrowUpRight className="size-4" />
-          </IconButton>
+          onOpen && (
+            <IconButton aria-label="News/Issues 화면으로" title="News/Issues 화면으로" onClick={onOpen}>
+              <ArrowUpRight className="size-4" />
+            </IconButton>
+          )
         }
       />
       <div className="flex items-center justify-between px-5 pt-3">
@@ -176,17 +307,18 @@ export function NewsPanel({ aiMode, className, limit }: { aiMode: boolean; class
           onChange={setFilter}
           options={[
             { value: "all", label: "전체" },
-            { value: "high", label: "편향 높음" },
-            { value: "neutral", label: "중립" },
+            // 실제 기사는 AI 편향 분석 전이라 준비 중 (예시 기사에서는 동작)
+            { value: "high", label: "편향 높음", soon: noAnalysis },
+            { value: "neutral", label: "중립", soon: noAnalysis },
           ]}
         />
         <span className="text-[10px] text-ink-3">용어에 마우스를 올려보세요</span>
       </div>
       <div className="mt-3 flex-1 space-y-2.5 overflow-y-auto px-5 pb-5 scroll-thin">
-        {list.map((n) => (
-          <NewsCard key={n.id} item={n} aiMode={aiMode} />
-        ))}
-        {list.length === 0 && <p className="py-8 text-center text-xs text-ink-3">해당 조건의 뉴스가 없습니다.</p>}
+        {hasLive
+          ? live.map((n) => <LiveNewsCard key={n.id} item={n} />)
+          : mock.map((n) => <NewsCard key={n.id} item={n} aiMode={aiMode} />)}
+        {count === 0 && <p className="py-8 text-center text-xs text-ink-3">해당 조건의 뉴스가 없습니다.</p>}
       </div>
     </Card>
   );

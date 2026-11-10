@@ -118,6 +118,26 @@ html[data-theme="light"] {
   to { transform: translateY(0); opacity: 1; }
 }
 
+/* Map View 지역 클릭 "설계" 연출 (region-burst.tsx) */
+@keyframes pm-ghost {
+  from { transform: translateY(6px); opacity: 0.55; filter: blur(1.5px); }
+  to { transform: translateY(0); opacity: 0; filter: blur(0); }
+}
+@keyframes pm-blink { 50% { opacity: 0; } }
+@keyframes pm-wiggle {
+  0%, 100% { transform: translate(0, 0); }
+  25% { transform: translate(1.5px, -1px); }
+  50% { transform: translate(2.5px, 1px); }
+  75% { transform: translate(-1px, 2px); }
+}
+/* 글자가 들어올 때 6px 아래에서 올라오며 사라지는 흐린 잔상 */
+.pm-ghost {
+  position: absolute; left: 0; top: 0; pointer-events: none;
+  animation: pm-ghost var(--pm-ghost, 320ms) ease-out forwards;
+}
+.pm-caret { animation: pm-blink 0.5s steps(1) infinite; }
+.pm-wiggle { animation: pm-wiggle 2.4s ease-in-out infinite; }
+
 html { color-scheme: dark; }
 body { transition: background-color 0.3s, color 0.3s; }
 body {
@@ -177,4 +197,6 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+  .pm-ghost { display: none; }
+  .pm-wiggle, .pm-caret { animation: none; }
 }
