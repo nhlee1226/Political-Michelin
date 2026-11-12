@@ -8,6 +8,7 @@ import { buildDictionary, findMentions } from "./mentions";
 import { clean, cleanUrl } from "./naver-api";
 import { applyCounts, buildCandidates, buildTurnout, partiesFromCandidates, type Item } from "./nec-parse";
 import { detectRegion } from "./region";
+import { pledgesFromItem } from "./pledges-parse";
 import { toVoteRows, voteDate, type VoteItem } from "./votes-parse";
 
 const el = { sgId: "20240410", sgTypecode: "2" };
@@ -235,4 +236,32 @@ test("지방선거 당선인: 당선인만으로 행, 빈 정당(교육감)·구
       ["2", null, null, null, 1000, 51, true],
     ],
   );
+});
+
+test("선거공약: 원문 그대로(공백·줄바꿈 유지), 빈 칸 건너뜀, 빈 분야는 null, 순번 중복은 오류", () => {
+  const content = "□ 목 표\n  ○ 첫째 줄  \n\n□ 이행방법 ";
+  const it: Item = {
+    cnddtId: "100",
+    prmsCnt: "2",
+    prmsOrd1: "1",
+    prmsRealmName1: "주택1",
+    prmsTitle1: " 제목 하나 ",
+    prmmCont1: content,
+    prmsOrd2: "2",
+    prmsRealmName2: "",
+    prmsTitle2: "제목 둘",
+    prmmCont2: "내용",
+    prmsOrd3: "",
+    prmsRealmName3: "",
+    prmsTitle3: "",
+    prmmCont3: "",
+  };
+  const cand = { sgId: "20260603", sgTypecode: "3", huboid: "100" };
+  const r = pledgesFromItem(it, cand);
+  assert.equal(r.declared, 2);
+  assert.deepEqual(r.rows, [
+    { ...cand, pledgeNo: 1, realm: "주택1", title: " 제목 하나 ", content },
+    { ...cand, pledgeNo: 2, realm: null, title: "제목 둘", content: "내용" },
+  ]);
+  assert.throws(() => pledgesFromItem({ ...it, prmsOrd2: "1" }, cand), /순번 1/);
 });

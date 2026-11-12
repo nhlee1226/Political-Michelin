@@ -7,6 +7,7 @@
  * | 데이터                      | 기준 출처        | 테이블                                                    | 상태      |
  * | 의원·정당·소속·지역구        | 열린국회정보     | members, parties                                          | 연동 예정 |
  * | 후보·득표수·득표율           | 선관위           | elections, election_candidates, election_districts, election_turnout | 연동      |
+ * | 선거공약(지방선거 당선인)     | 선관위           | election_pledges                                          | 연동      |
  * | 법안·표결                   | 열린국회정보     | bills, bill_votes                                         | 연동 예정 |
  * | 이슈·언급량·최신 동향        | 네이버 뉴스      | news_articles, news_mentions, news_analysis               | 연동      |
  *
@@ -152,6 +153,32 @@ export const electionTurnout = pgTable(
   (t) => [
     primaryKey({ columns: [t.sgId, t.sgTypecode, t.sdName, t.wiwName] }),
     foreignKey({ name: "election_turnout_election_fk", columns: [t.sgId, t.sgTypecode], foreignColumns: [elections.sgId, elections.sgTypecode] }),
+  ],
+).enableRLS();
+
+/**
+ * 선거공약 (선관위 선거공약 정보, 후보 1명당 최대 10개). (후보, 순번) 한 줄.
+ * 분야·제목·내용은 API 원문 그대로 저장(요약·정리하지 않음). 빈 칸만 null.
+ */
+export const electionPledges = pgTable(
+  "election_pledges",
+  {
+    sgId: text("sg_id").notNull(),
+    sgTypecode: text("sg_typecode").notNull(),
+    huboid: text("huboid").notNull(), // = API 의 cnddtId
+    pledgeNo: smallint("pledge_no").notNull(), // 공약 순번 (prmsOrdN)
+    realm: text("realm"), // 분야 (prmsRealmNameN, 시·도지사만 채워져 옴)
+    title: text("title"), // 제목 (prmsTitleN)
+    content: text("content"), // 내용 (prmmContN)
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.sgId, t.sgTypecode, t.huboid, t.pledgeNo] }),
+    foreignKey({
+      name: "election_pledges_candidate_fk",
+      columns: [t.sgId, t.sgTypecode, t.huboid],
+      foreignColumns: [electionCandidates.sgId, electionCandidates.sgTypecode, electionCandidates.huboid],
+    }),
   ],
 ).enableRLS();
 

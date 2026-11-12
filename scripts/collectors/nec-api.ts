@@ -1,5 +1,5 @@
 /**
- * 선관위(공공데이터포털 9760000) API 호출 공통 함수 — collect:local 이 씀.
+ * 선관위(공공데이터포털 9760000) API 호출 공통 함수 — collect:local, collect:pledges 가 씀.
  * collect:nec(nec.ts)에도 같은 fetchAll 이 들어 있음. 22대 총선 수집 코드는 그대로 두려고 옮기지 않았으니,
  * 나중에 nec.ts 를 고칠 일이 생기면 이 파일의 fetchAll 을 import 하도록 바꾸면 됩니다.
  */
@@ -10,6 +10,7 @@ export const NEC_BASE = "https://apis.data.go.kr/9760000";
 export const NEC_API = {
   sgCodes: "CommonCodeService/getCommonSgCodeList", // 선거 코드 목록 (sgId·sgTypecode·sgName·sgVotedate)
   winners: "WinnerInfoInqireService2/getWinnerInfoInqire",
+  pledges: "ElecPrmsInfoInqireService/getCnddtElecPrmsInfoInqire", // 선거공약 (sgId·sgTypecode·cnddtId)
 };
 
 /** 공공데이터포털 목록 API 를 끝까지 읽음 (한 번에 100줄까지만 와도 totalCount 까지 페이지를 넘김) */
