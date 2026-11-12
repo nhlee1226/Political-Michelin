@@ -53,6 +53,7 @@ npm run dev              # http://localhost:3000  (1분마다 DB 를 다시 읽�
 | `npm run collect:news` | 네이버 뉴스 → 기사·지역 판별·정당/인물 언급 (최근 24시간) |
 | `npm run collect:news -- 예산 국정감사` | 검색어 직접 지정 |
 | `npm run collect:members` / `collect:bills` | 열린국회정보 (연동 예정, 키 발급 후 검증 필요) |
+| `npm run collect:votes -- --limit 5` | 열린국회정보 본회의 표결 → `bill_votes` (members·bills 다음에 실행, `--limit` 은 법안 수 제한) |
 
 수집은 모두 덮어쓰기(upsert)라 여러 번 실행해도 중복이 쌓이지 않습니다. 외부 API 원본은 `raw_responses` 에 남으므로, 응답 필드 이름이 다르면 원본을 보고 각 수집기의 `FIELD` 만 고치면 됩니다. 자동 수집(GitHub Actions)은 `.github/workflows/collect.yml` — 30분마다 뉴스.
 
@@ -83,6 +84,7 @@ scripts/
    ├─ naver-api.ts            네이버 뉴스 검색 API 클라이언트 (재시도 · 정규화)
    ├─ region.ts / mentions.ts 지역 판별 / 정당·인물 언급 찾기 (순수 함수)
    ├─ members.ts / bills.ts   열린국회정보 (연동 예정)
+   ├─ votes.ts / votes-parse.ts 본회의 표결 수집 / 응답→행 변환(순수 함수)
    └─ collectors.test.ts      변환 로직 테스트
 src/
 ├─ app/

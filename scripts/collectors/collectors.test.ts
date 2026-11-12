@@ -8,6 +8,7 @@ import { buildDictionary, findMentions } from "./mentions";
 import { clean, cleanUrl } from "./naver-api";
 import { applyCounts, buildCandidates, buildTurnout, partiesFromCandidates, type Item } from "./nec-parse";
 import { detectRegion } from "./region";
+import { toVoteRows, voteDate, type VoteItem } from "./votes-parse";
 
 const el = { sgId: "20240410", sgTypecode: "2" };
 const lookup = new Map([
@@ -171,4 +172,40 @@ test("네이버 응답 정리: 태그·엔티티(이름·숫자) 제거", () => 
 test("URL 정리: utm_* 와 #해시 제거", () => {
   assert.equal(cleanUrl("https://a.kr/x?id=1&utm_source=n#top"), "https://a.kr/x?id=1");
   assert.equal(cleanUrl(""), null);
+});
+
+test("본회의 표결: 날짜 변환, members 에 없는 의원·이상한 줄은 빼고, 같은 의원은 나중 표 하나만", () => {
+  const v = (monaCd: string, result: string, date = "20261001 144959", billId = "PRC_A"): VoteItem => ({
+    BILL_ID: billId,
+    MONA_CD: monaCd,
+    HG_NM: `의원${monaCd}`,
+    RESULT_VOTE_MOD: result,
+    VOTE_DATE: date,
+  });
+  const known = new Set(["M1", "M2", "M3", "M4", "M5", "M6", "M7"]);
+  const r = toVoteRows(
+    "PRC_A",
+    [
+      v("M1", "찬성"),
+      v("M2", "반대"),
+      v("M3", "기권"),
+      v("M4", "불참"),
+      v("GONE", "찬성"), // members 에 없음 → 건너뜀
+      v("M5", "무효"), // 허용되지 않는 값
+      v("M6", "찬성", ""), // 날짜 없음
+      v("M7", "찬성", "20261001 144959", "PRC_B"), // 다른 법안 줄
+      v("M1", "반대", "20261002 100000"), // 같은 의원 다시 → 나중 날짜로
+    ],
+    known,
+  );
+  assert.deepEqual(r.rows, [
+    { billId: "PRC_A", monaCd: "M1", result: "반대", voteDate: "2026-10-02" },
+    { billId: "PRC_A", monaCd: "M2", result: "반대", voteDate: "2026-10-01" },
+    { billId: "PRC_A", monaCd: "M3", result: "기권", voteDate: "2026-10-01" },
+    { billId: "PRC_A", monaCd: "M4", result: "불참", voteDate: "2026-10-01" },
+  ]);
+  assert.deepEqual([...r.unknownMembers], [["GONE", "의원GONE"]]);
+  assert.equal(r.invalid, 3);
+  assert.equal(voteDate("2026-10-01 14:49:59"), "2026-10-01");
+  assert.equal(voteDate(null), null);
 });
