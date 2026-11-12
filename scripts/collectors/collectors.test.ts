@@ -209,3 +209,30 @@ test("본회의 표결: 날짜 변환, members 에 없는 의원·이상한 줄�
   assert.equal(voteDate("2026-10-01 14:49:59"), "2026-10-01");
   assert.equal(voteDate(null), null);
 });
+
+test("지방선거 당선인: 당선인만으로 행, 빈 정당(교육감)·구시군은 null, regions 에 없는 시도는 코드 비움", () => {
+  const el9 = { sgId: "20260603", sgTypecode: "3" };
+  const w = (huboid: string, name: string, sdName: string, jdName: string, dugsu: string, dugyul: string): Item => ({
+    huboid,
+    name,
+    sdName,
+    sggName: sdName, // 시·도지사·교육감은 선거구 = 시도
+    wiwName: "",
+    jdName,
+    dugsu,
+    dugyul,
+  });
+  const rows = buildCandidates(
+    [],
+    [w("1", "가나다", "서울특별시", "가정당", "2575819", "49.22"), w("2", "라마바", "전남광주통합특별시", "", "1000", "51.00")],
+    el9,
+    lookup,
+  );
+  assert.deepEqual(
+    rows.map((r) => [r.huboid, r.regionCode, r.partyName, r.wiwName, r.votes, r.voteRate, r.isWinner]),
+    [
+      ["1", "11", "가정당", null, 2575819, 49.22, true],
+      ["2", null, null, null, 1000, 51, true],
+    ],
+  );
+});

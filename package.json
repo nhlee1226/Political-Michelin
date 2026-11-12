@@ -16,7 +16,8 @@
     "collect:nec": "tsx scripts/collectors/nec.ts",
     "collect:members": "tsx scripts/collectors/members.ts",
     "collect:bills": "tsx scripts/collectors/bills.ts",
-    "collect:votes": "tsx scripts/collectors/votes.ts"
+    "collect:votes": "tsx scripts/collectors/votes.ts",
+    "collect:local": "tsx scripts/collectors/local.ts"
   },
   "dependencies": {
     "clsx": "^2.1.1",
