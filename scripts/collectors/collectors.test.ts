@@ -8,6 +8,7 @@ import { buildDictionary, findMentions } from "./mentions";
 import { clean, cleanUrl } from "./naver-api";
 import { applyCounts, buildCandidates, buildTurnout, partiesFromCandidates, type Item } from "./nec-parse";
 import { detectRegion } from "./region";
+import { pickLatestYear, type KosisRow } from "./kosis-parse";
 import { pledgesFromItem } from "./pledges-parse";
 import { toVoteRows, voteDate, type VoteItem } from "./votes-parse";
 
@@ -264,4 +265,33 @@ test("선거공약: 원문 그대로(공백·줄바꿈 유지), 빈 칸 건너�
     { ...cand, pledgeNo: 2, realm: null, title: "제목 둘", content: "내용" },
   ]);
   assert.throws(() => pledgesFromItem({ ...it, prmsOrd2: "1" }, cand), /순번 1/);
+});
+
+test("KOSIS: 통합특별시가 따로 나온 연도·시도가 빠진 연도는 건너뛰고, 정식 이름으로만 연결", () => {
+  const rs = [
+    { code: "24", name: "광주광역시" },
+    { code: "36", name: "전라남도" },
+    { code: "32", name: "강원특별자치도" },
+  ];
+  const row = (year: string, C1: string, C1_NM: string, DT: string | null): KosisRow => ({ C1, C1_NM, PRD_DE: year, DT, UNIT_NM: "%" });
+  const rows = [
+    row("2026", "12", "전남광주통합특별시", "30.1"), // 통합 → 2026 건너뜀
+    row("2026", "32", "강원특별자치도", "25.0"),
+    row("2025", "1224", "광주광역시", "18.8"), // 통합특별시 아래 칸이어도 이름으로 연결
+    row("2025", "32", "강원특별자치도", "26.8"), // 전라남도 없음 → 2025 건너뜀
+    row("2024", "1224", "광주광역시", "17.5"),
+    row("2024", "1236", "전라남도", "27.2"),
+    row("2024", "51", "강원도", "25.4"), // 옛 이름
+    row("2024", "41610", "광주시", "99"), // 경기도 광주시 — 짧은 이름 '광주'로 섞이면 안 됨
+    row("2024", "00", "전국", "20"),
+  ];
+  const r = pickLatestYear(rows, rs);
+  assert.equal(r.year, 2024);
+  assert.deepEqual(Object.fromEntries([...r.values].map(([k, v]) => [k, v.value])), { "24": 17.5, "36": 27.2, "32": 25.4 });
+  assert.deepEqual(
+    r.skipped.map((s) => s.year),
+    ["2026", "2025"],
+  );
+  assert.match(r.skipped[0].reason, /전남광주통합특별시/);
+  assert.match(r.skipped[1].reason, /전라남도/);
 });

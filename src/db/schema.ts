@@ -8,6 +8,7 @@
  * | 의원·정당·소속·지역구        | 열린국회정보     | members, parties                                          | 연동 예정 |
  * | 후보·득표수·득표율           | 선관위           | elections, election_candidates, election_districts, election_turnout | 연동      |
  * | 선거공약(지방선거 당선인)     | 선관위           | election_pledges                                          | 연동      |
+ * | 시도 인구·고령화율·재정자립도 | KOSIS            | region_indicators                                         | 연동      |
  * | 법안·표결                   | 열린국회정보     | bills, bill_votes                                         | 연동 예정 |
  * | 이슈·언급량·최신 동향        | 네이버 뉴스      | news_articles, news_mentions, news_analysis               | 연동      |
  *
@@ -46,6 +47,27 @@ export const regions = pgTable("regions", {
   name: text("name").notNull(), // 서울특별시
   short: text("short").notNull(), // 서울
 }).enableRLS();
+
+/**
+ * 시도별 지역 지표 (KOSIS 국가통계포털). (시도, 지표, 연도) 한 줄.
+ * KOSIS 시도 코드는 regions 코드와 달라서 시도 이름으로 연결해 저장한다(collect:kosis).
+ */
+export const regionIndicators = pgTable(
+  "region_indicators",
+  {
+    regionCode: char("region_code", { length: 2 })
+      .notNull()
+      .references(() => regions.code),
+    indicator: text("indicator").notNull(), // 주민등록인구 / 고령인구비율 / 재정자립도
+    year: smallint("year").notNull(),
+    value: numeric("value", { mode: "number" }).notNull(), // 원천 값 그대로 (자릿수 제한 없음)
+    unit: text("unit").notNull(), // 명 / %
+    sourceOrgId: text("source_org_id").notNull(), // KOSIS 기관 ID (orgId)
+    sourceTblId: text("source_tbl_id").notNull(), // KOSIS 통계표 ID (tblId)
+    updatedAt: updatedAt(),
+  },
+  (t) => [primaryKey({ columns: [t.regionCode, t.indicator, t.year] })],
+).enableRLS();
 
 /**
  * 정당. id 는 원천 표기 정당명 그대로(예: 국회 POLY_NM, 선관위 jdName).

@@ -1,10 +1,11 @@
 /**
  * API 키·DB 연결 확인.  실행: npm run check:keys
- * .env.local: DATABASE_URL, NAVER_HUB_CLIENT_ID/SECRET, DATA_GO_KR_KEY(Decoding 키), ASSEMBLY_API_KEY(연동 예정)
+ * .env.local: DATABASE_URL, NAVER_HUB_CLIENT_ID/SECRET, DATA_GO_KR_KEY(Decoding 키), ASSEMBLY_API_KEY(연동 예정), KOSIS_API_KEY
  * 키 값은 출력하지 않습니다.
  */
 import { sql } from "drizzle-orm";
 import { db, env, run } from "./collectors/common";
+import { kosisGet } from "./collectors/kosis-api";
 import { collectNews } from "./collectors/naver-api";
 
 /** 키 값 모양 점검 */
@@ -57,6 +58,12 @@ async function assembly() {
   return `22대 발의 법안 ${body[code][0].head[0].list_total_count}건`;
 }
 
+async function kosis() {
+  key("KOSIS_API_KEY");
+  const meta = await kosisGet<{ TBL_NM: string }[]>("statisticsData.do", { method: "getMeta", type: "TBL", orgId: "101", tblId: "DT_1YL20651E" });
+  return `통계표 "${meta[0]?.TBL_NM ?? "?"}" 조회`;
+}
+
 async function database() {
   const rows = await db.execute<{ t: string; n: number }>(sql`
     select 'regions' as t, count(*)::int as n from regions
@@ -71,6 +78,7 @@ run(async () => {
     ["네이버 뉴스 (NAVER API HUB)", naver],
     ["선관위 (공공데이터포털)", nec],
     ["열린국회정보", assembly],
+    ["KOSIS (국가통계포털)", kosis],
   ] as const;
   for (const [name, fn] of checks) {
     try {
