@@ -27,10 +27,10 @@ import {
 import { MAP_HEIGHT, MAP_WIDTH, REGION_PATHS } from "@/lib/korea-map-data";
 import { LABEL_H, LABEL_W, REGION_LABELS } from "@/lib/korea-map-labels";
 import { PARTIES, PARTY_ORDER, REGION_BY_CODE, type Region } from "@/lib/mock-data";
-import { useLiveRegions, useParties, usePoliticians, useRegion, useRegions } from "@/lib/api";
+import { useLiveRegions, usePartyLookup, usePoliticians, useRegion, useRegions } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { DesignOutline, RegionBurst, useDesignRun } from "./region-burst";
-import { Badge, Card, ExampleBadge, IconButton, MichelinStars, PartyTag } from "@/components/ui/primitives";
+import { Badge, Card, ExampleFrame, ExampleRibbon, IconButton, MichelinStars, PartyTag } from "@/components/ui/primitives";
 
 // 광역시(2x) 를 도(3x) 위에 그려 클릭 가능하도록 정렬
 const PATH_ORDER = Object.keys(REGION_PATHS).sort((a, b) => (a.startsWith("3") ? -1 : 1) - (b.startsWith("3") ? -1 : 1));
@@ -79,14 +79,13 @@ function SupportDonut({ region }: { region: Region }) {
   );
 }
 
+/** 정당 지지도 — 여론조사 데이터가 없어 전부 가상(정당 A/B/C 익명 유지). 패널 전체에 예시 표시 */
 function SupportPanel({ region }: { region: Region }) {
   return (
-    <div className="glass-strong w-full rounded-2xl p-4 @min-[1040px]:w-[256px] @min-[1240px]:w-[290px]">
+    <div className="glass-strong pm-example w-full rounded-2xl p-4 @min-[1040px]:w-[256px] @min-[1240px]:w-[290px]">
+      <ExampleRibbon className="-mx-4 -mt-4 mb-3 rounded-t-[14px]" />
       <div className="mb-3 flex items-center justify-between">
-        <p className="text-[13px] font-semibold">
-          실시간 정당 지지도
-          <ExampleBadge />
-        </p>
+        <p className="text-[13px] font-semibold">실시간 정당 지지도</p>
         <Badge tone="neutral" className="tabular">±3.1%p</Badge>
       </div>
       <div className="flex items-center gap-4">
@@ -147,33 +146,36 @@ const pct = (v: number | null) => (v == null ? "—" : `${v}%`);
 function PoliticianPanel({ region, onOpen }: { region: Region; onOpen?: (monaCd: string) => void }) {
   const [idx, setIdx] = React.useState(0);
   React.useEffect(() => setIdx(0), [region.code]);
-  const { data: detail } = useRegion(region.code);
-  const { data: apiParties } = useParties();
+  const { data, isLoading } = useRegion(region.code);
+  const party = usePartyLookup();
   const { data: apiList } = usePoliticians(); // 별점·반영률은 목록 API 에만 있음
+  // keepPreviousData 로 이전 지역 응답이 남아 있을 수 있어 코드가 같을 때만 사용
+  const detail = data?.code === region.code ? data : undefined;
+  const isLive = !!detail?.politicians.length;
+  // 불러오는 동안에는 가상 인물을 잠깐이라도 보이지 않게 비워 둠. API 실패·0명일 때만 가상 인물을 예시로
+  const isMock = !isLive && !(!detail && isLoading);
 
-  // 선택 지역의 실제 의원이 있으면 그 목록, API 실패·0명이면 mock
   const people: ProfileView[] = React.useMemo(() => {
-    // keepPreviousData 로 이전 지역 응답이 남아 있을 수 있어 코드가 같을 때만 사용
-    if (detail?.code === region.code && detail.politicians.length) {
+    if (isLive) {
       const scoreById = new Map(apiList?.rows.map((p) => [p.mona_cd, p]));
-      const colorById = new Map(apiParties?.map((p) => [p.id, p.color]));
-      return detail.politicians.map((p) => ({
+      return detail!.politicians.map((p) => ({
         key: p.mona_cd,
         monaCd: p.mona_cd,
         name: p.name,
-        partyName: p.party_id ?? "—",
-        partyColor: (p.party_id && colorById.get(p.party_id)) || PARTIES.ETC.color,
+        partyName: party(p.party_id).name,
+        partyColor: party(p.party_id).color,
         district: p.district,
         role: "현역 의원",
         isIncumbent: true,
-        michelin: scoreById.get(p.mona_cd)?.stars ?? null,
+        michelin: scoreById.get(p.mona_cd)?.stars ?? p.stars ?? null,
         metrics: [
-          { k: "법안 반영률", v: pct(scoreById.get(p.mona_cd)?.reflect_rate ?? null) },
-          { k: "표결 참여율", v: p.vote_participation == null ? "수집 예정" : `${p.vote_participation}%` },
+          { k: "법안 반영률", v: pct(scoreById.get(p.mona_cd)?.reflect_rate ?? p.reflect_rate ?? null) },
+          { k: "표결 참여율", v: pct(p.vote_participation) },
           { k: "대표 발의", v: `${p.bills_proposed}건` },
         ],
       }));
     }
+    if (!isMock) return [];
     return region.politicians.map((p) => ({
       key: p.id,
       monaCd: null,
@@ -190,22 +192,34 @@ function PoliticianPanel({ region, onOpen }: { region: Region; onOpen?: (monaCd:
         { k: "대표 발의", v: `${p.bills}건` },
       ],
     }));
-  }, [detail, apiParties, apiList, region.politicians, region.code]);
+  }, [isLive, isMock, detail, party, apiList, region.politicians]);
 
   const n = people.length;
+  const panelClass = "glass-strong w-full rounded-2xl p-4 @min-[1040px]:w-[256px] @min-[1240px]:w-[290px]";
+  if (n === 0) {
+    return (
+      <div className={panelClass}>
+        <p className="flex items-center gap-1.5 text-[13px] font-semibold">
+          <Users className="size-3.5 text-ink-3" /> 정치인 프로필
+        </p>
+        <p className="mt-3 text-[11px] text-ink-3">불러오는 중…</p>
+      </div>
+    );
+  }
   const pol = people[Math.min(idx, n - 1)];
-  const party = { color: pol.partyColor, name: pol.partyName };
+  const shown = { color: pol.partyColor, name: pol.partyName };
   const isIncumbent = pol.isIncumbent;
 
   return (
-    <div className="glass-strong w-full rounded-2xl p-4 @min-[1040px]:w-[256px] @min-[1240px]:w-[290px]">
+    <div className={cn(panelClass, isMock && "pm-example")}>
+      {isMock && <ExampleRibbon className="-mx-4 -mt-4 mb-3 rounded-t-[14px]" />}
       <div className="mb-3 flex items-center justify-between">
         <p className="flex items-center gap-1.5 text-[13px] font-semibold">
           <Users className="size-3.5 text-ink-3" /> 정치인 프로필
         </p>
         <div className="flex items-center gap-1">
           <span className="mr-1 text-[11px] text-ink-3 tabular">
-            {idx + 1}/{n}
+            {Math.min(idx, n - 1) + 1}/{n}
           </span>
           <IconButton className="size-6" aria-label="이전" onClick={() => setIdx((i) => (i - 1 + n) % n)} disabled={n < 2}>
             <ChevronLeft className="size-3.5" />
@@ -243,7 +257,7 @@ function PoliticianPanel({ region, onOpen }: { region: Region; onOpen?: (monaCd:
           <div className="flex items-center gap-3">
             <div
               className="grid size-11 shrink-0 place-items-center rounded-full border-2 text-sm font-semibold"
-              style={{ borderColor: party.color, background: `${party.color}22` }}
+              style={{ borderColor: shown.color, background: `${shown.color}22` }}
             >
               {pol.name.slice(-2)}
             </div>
@@ -253,7 +267,7 @@ function PoliticianPanel({ region, onOpen }: { region: Region; onOpen?: (monaCd:
                 {pol.michelin == null ? <span className="text-xs text-ink-3">—</span> : <MichelinStars count={pol.michelin} />}
               </div>
               <div className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[11px] text-ink-3">
-                <PartyTag color={party.color} name={party.name} className="text-[11px]" />
+                <PartyTag color={shown.color} name={shown.name} className="text-[11px]" />
                 <span>·</span>
                 <span>{pol.district ?? "—"}</span>
               </div>
@@ -294,13 +308,14 @@ function IssuePopup({ region, onClose }: { region: Region; onClose: () => void }
       <div className="mb-2 flex items-center justify-between">
         <p className="flex items-center gap-1.5 text-[13px] font-semibold">
           <Flame className="size-3.5 text-lime" /> {region.short} 주요 이슈
-          <ExampleBadge className="ml-0" />
         </p>
         <IconButton className="size-6" aria-label="닫기" onClick={onClose}>
           <X className="size-3.5" />
         </IconButton>
       </div>
-      <ul className="grid gap-2.5 @min-[620px]:grid-cols-3 @min-[620px]:gap-4 @min-[1040px]:grid-cols-1 @min-[1040px]:gap-2.5">
+      {/* 이슈 목록만 가상(이슈를 뽑는 분석이 아직 없음). 아래 투표율·의석은 실제(선관위) */}
+      <ExampleFrame>
+      <ul className="grid gap-2.5 p-2.5 @min-[620px]:grid-cols-3 @min-[620px]:gap-4 @min-[1040px]:grid-cols-1 @min-[1040px]:gap-2.5">
         {region.issues.map((iss, i) => (
           <li key={iss.title} className="group">
             <div className="flex items-start gap-2">
@@ -319,6 +334,7 @@ function IssuePopup({ region, onClose }: { region: Region; onClose: () => void }
           </li>
         ))}
       </ul>
+      </ExampleFrame>
       <div className="mt-3 grid grid-cols-2 gap-2 border-t border-line pt-3 text-[11px] @min-[620px]:grid-cols-4 @min-[1040px]:grid-cols-2">
         <div>
           <p className="text-ink-3">직전 투표율</p>
@@ -624,8 +640,10 @@ export function KoreaMapCard({
 
   // API 값이 있으면 실제 값, 없거나 실패하면 mock 그대로 (useLiveRegions 가 처리)
   const regions = useLiveRegions();
-  const { data: apiRegions } = useRegions(); // 같은 키라 요청은 한 번 (SWR)
+  const { data: apiRegions, isLoading: regionsLoading } = useRegions(); // 같은 키라 요청은 한 번 (SWR)
   const isLive = !!apiRegions?.length;
+  // API 가 안 되면 지도 숫자(활성도·투표율·의석)가 전부 가상 → 카드 전체에 예시 표시
+  const isMock = !isLive && !regionsLoading;
   const byCode = React.useMemo(() => Object.fromEntries(regions.map((r) => [r.code, r])), [regions]);
   const byHeat = React.useMemo(() => [...regions].sort((a, b) => b.heat - a.heat), [regions]);
   const hotRegions = React.useMemo(() => byHeat.slice(0, 3).map((r) => r.code), [byHeat]);
@@ -644,7 +662,7 @@ export function KoreaMapCard({
   };
 
   return (
-    <Card className={cn("relative overflow-hidden", expanded && "lg:min-h-[760px]")}>
+    <Card example={isMock} className={cn("relative overflow-hidden", expanded && "lg:min-h-[760px]")}>
       {/* 카드 배경광 (영상의 그린 글로브 카드 톤) */}
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(60%_55%_at_52%_48%,rgb(255_255_255/0.06),transparent_70%),radial-gradient(50%_40%_at_90%_100%,rgb(111_211_224/0.05),transparent_70%)]" />
 
@@ -667,7 +685,7 @@ export function KoreaMapCard({
             </span>
             이슈 급상승 {hotRegions.length}
           </Badge>
-          {isLive ? <Badge tone="lime">LIVE</Badge> : <ExampleBadge className="ml-0 py-0.5 text-[11px]" />}
+          {isLive && <Badge tone="lime">LIVE</Badge>}
         </div>
       </div>
 

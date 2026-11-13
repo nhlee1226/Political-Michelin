@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * CommunityFeed — AI 정제 클린 커뮤니티 "안전한 야차판"
+ * CommunityFeed — AI 정제 클린 커뮤니티 "안전한 야차판" (전부 가상 데이터 → 카드 전체에 예시 표시)
  *  - 실시간 피드: 7초마다 새 글 유입 (WebSocket 연동 지점)
  *  - AI 클린 모니터링 태그: 블라인드 / 사실 검증 완료 / 검증 중
  *  - 글쓰기 시 모의 AI 모더레이션 (실서비스: FastAPI /moderate 엔드포인트로 교체)
@@ -11,7 +11,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { BadgeCheck, EyeOff, Heart, Loader2, MessageCircle, Send, ShieldCheck, ShieldAlert } from "lucide-react";
 import { COMMUNITY_POOL, COMMUNITY_SEED, type CommunityPost } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
-import { Badge, Card, CardHeader, ExampleBadge, Soon } from "@/components/ui/primitives";
+import { Badge, Card, CardHeader, Soon } from "@/components/ui/primitives";
 import { GlossaryText } from "./glossary-text";
 
 /** 데모용 모의 모더레이션 규칙 */
@@ -142,13 +142,13 @@ export function CommunityFeed({ className, live = true }: { className?: string; 
   };
 
   return (
-    <Card className={cn("flex flex-col", className)}>
+    // 게시글·통계 모두 가상 (커뮤니티 기능은 아직 없음)
+    <Card example className={cn("flex flex-col", className)}>
       <CardHeader
         icon={<ShieldCheck className="size-4 text-lime" />}
         title={
           <span className="flex items-center gap-2">
             안전한 야차판 <Badge tone="lime">AI 클린</Badge>
-            <ExampleBadge className="ml-0" />
           </span>
         }
         subtitle="AI가 혐오 표현을 걸러내고 사실 주장을 검증합니다"

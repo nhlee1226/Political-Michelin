@@ -3,7 +3,8 @@
  * ------------------------------------------------------------------
  * ⚠️ 중립성 원칙
  *  - 모든 정당·정치인·뉴스·댓글은 "가상(fictional)" 데이터입니다.
- *  - 정당은 '정당 A/B/C' 로만 표기하며 실제 정당 색(적/청 등)을 쓰지 않습니다.
+ *  - 정당은 '정당 A/B/C' 로만 표기하며 실제 정당 색(적/청 등)도, 실제 정당에 배정한 중립 팔레트 색도 쓰지 않습니다(회색 명도만).
+ *  - 화면에서 이 파일 값을 보여줄 때는 카드에 예시 표시(Card example / ExampleFrame)를 붙입니다.
  *  - 지역별 수치는 정당 간 우열이 한쪽으로 쏠리지 않도록 고르게 분포시켰습니다.
  *  - 실제 API(FastAPI) 연동 시 이 파일의 타입을 그대로 응답 스키마로 사용하세요.
  */
@@ -87,9 +88,10 @@ export interface CommunityPost {
 /* ───────────────────────── Parties ───────────────────────── */
 
 export const PARTIES: Record<PartyId, Party> = {
-  A: { id: "A", name: "정당 A", short: "A", color: "#14a894" },
-  B: { id: "B", name: "정당 B", short: "B", color: "#8b6fe8" },
-  C: { id: "C", name: "정당 C", short: "C", color: "#b87d0f" },
+  // 가상 정당은 회색 명도로만 구분 — 실제 정당에 배정된 중립 팔레트(parties.color)와 겹치면 "정당 A = 실제 ○○당"으로 읽힐 수 있음
+  A: { id: "A", name: "정당 A", short: "A", color: "#c4cad3" },
+  B: { id: "B", name: "정당 B", short: "B", color: "#8f98a5" },
+  C: { id: "C", name: "정당 C", short: "C", color: "#5f6874" },
   ETC: { id: "ETC", name: "기타", short: "기타", color: "#6b7280" },
 };
 export const PARTY_ORDER: PartyId[] = ["A", "B", "C", "ETC"];

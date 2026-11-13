@@ -3,17 +3,26 @@
 /**
  * PoliticianDetailSheet — 오른쪽에서 열리는 의원 상세 패널 (usePolitician → /api/politicians/[id])
  * 정치인 표의 한 줄, Map View 정치인 프로필 카드·지역 의원 목록에서 연다.
- * 공식 데이터가 없는 지표는 숫자 대신 상태 문구로만 표시한다.
+ * 지표·본회의 표결(찬성·반대·기권·불참)·최근 대표발의 법안 모두 실제 데이터.
+ * 공식 데이터가 없는 지표(공약 이행률·출석률)는 숫자 대신 상태 문구로만 표시한다.
  */
 import * as React from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { ExternalLink, FileText, Loader2, X } from "lucide-react";
-import { PARTIES } from "@/lib/mock-data";
-import { useParties, usePolitician, type ApiPoliticianDetail } from "@/lib/api";
+import { ExternalLink, FileText, Loader2, Vote, X } from "lucide-react";
+import { usePartyLookup, usePolitician, type ApiPoliticianDetail } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { Badge, IconButton, MichelinStars, PartyTag } from "@/components/ui/primitives";
 
 const REFLECT_HINT = "원안·수정가결 + 대안반영 ÷ 대표발의";
+const VOTE_HINT = "(찬성 + 반대 + 기권) ÷ 본회의 표결 대상 법안";
+
+/** 본회의 표결 4종 — 정당 색과 겹치지 않는 화면 기본색 */
+const VOTE_KINDS = [
+  { key: "votes_yes", label: "찬성", color: "var(--color-lime)" },
+  { key: "votes_no", label: "반대", color: "var(--color-warn)" },
+  { key: "votes_abstain", label: "기권", color: "var(--color-cyan)" },
+  { key: "votes_absent", label: "불참", color: "var(--chart-muted)" },
+] as const;
 
 /** 지역구 표기: 비례대표면 "비례대표" */
 export const districtLabel = (p: Pick<ApiPoliticianDetail, "elect_type" | "district">) =>
@@ -28,9 +37,37 @@ function Metric({ k, v, muted, title }: { k: string; v: React.ReactNode; muted?:
   );
 }
 
+/** 본회의 표결: 찬성·반대·기권·불참 수 (비율 막대 + 숫자) */
+function VoteBreakdown({ p }: { p: ApiPoliticianDetail }) {
+  if (!p.total_votes) {
+    return <p className="rounded-xl border border-dashed border-line px-3 py-4 text-center text-xs text-ink-3">본회의 표결 기록이 없습니다.</p>;
+  }
+  return (
+    <>
+      <div className="flex h-2 gap-0.5 overflow-hidden rounded-full" role="img" aria-label={VOTE_KINDS.map((k) => `${k.label} ${p[k.key]}건`).join(", ")}>
+        {VOTE_KINDS.map((k) => p[k.key] > 0 && <span key={k.key} style={{ flexGrow: p[k.key], background: k.color }} />)}
+      </div>
+      <div className="mt-2 grid grid-cols-4 gap-2">
+        {VOTE_KINDS.map((k) => (
+          <div key={k.key} className="rounded-lg border border-line bg-white/[0.02] p-2">
+            <p className="flex items-center gap-1 text-[10px] text-ink-3">
+              <span className="size-1.5 rounded-full" style={{ background: k.color }} />
+              {k.label}
+            </p>
+            <p className="mt-0.5 text-sm font-semibold tabular">{p[k.key].toLocaleString()}</p>
+          </div>
+        ))}
+      </div>
+      <p className="mt-2 text-[10px] leading-relaxed text-ink-3">
+        표결 대상 {p.total_votes.toLocaleString()}건 · 22대 국회에서 가결·부결된 법안의 본회의 표결 · 표결 참여율 = {VOTE_HINT}
+      </p>
+    </>
+  );
+}
+
 function Body({ p }: { p: ApiPoliticianDetail }) {
-  const { data: apiParties } = useParties();
-  const color = (p.party_id && apiParties?.find((x) => x.id === p.party_id)?.color) || PARTIES.ETC.color;
+  const party = usePartyLookup()(p.party_id);
+  const color = party.color;
 
   return (
     <>
@@ -47,7 +84,7 @@ function Body({ p }: { p: ApiPoliticianDetail }) {
             <MichelinStars count={p.stars} />
           </div>
           <div className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[11px] text-ink-3">
-            <PartyTag color={color} name={p.party_id ?? "—"} className="text-[11px]" />
+            <PartyTag color={color} name={party.name} className="text-[11px]" />
             <span>·</span>
             <span>{districtLabel(p)}</span>
             <span>·</span>
@@ -70,8 +107,9 @@ function Body({ p }: { p: ApiPoliticianDetail }) {
         />
         <Metric
           k="표결 참여율"
-          v={p.vote_participation == null ? "수집 예정" : `${p.vote_participation}%`}
+          v={p.vote_participation == null ? "표결 기록 없음" : `${p.vote_participation}%`}
           muted={p.vote_participation == null}
+          title={VOTE_HINT}
         />
         <Metric k="공약 이행률" v="공식 데이터 없음" muted />
         <Metric k="출석률" v="공식 데이터 없음" muted />
@@ -80,6 +118,11 @@ function Body({ p }: { p: ApiPoliticianDetail }) {
         <Badge className="mr-1.5 px-1.5 py-0 text-[10px]">기준</Badge>
         {p.score_rule}
       </p>
+
+      <p className="mb-2 mt-5 flex items-center gap-1.5 text-[13px] font-semibold">
+        <Vote className="size-3.5 text-ink-3" /> 본회의 표결
+      </p>
+      <VoteBreakdown p={p} />
 
       <p className="mb-2 mt-5 flex items-center gap-1.5 text-[13px] font-semibold">
         <FileText className="size-3.5 text-ink-3" /> 최근 대표발의 법안

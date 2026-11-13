@@ -32,8 +32,17 @@ import {
 import { RotateCcw, X } from "lucide-react";
 import { MAP_HEIGHT, MAP_WIDTH, REGION_PATHS } from "@/lib/korea-map-data";
 import { LABEL_H, LABEL_W, REGION_LABELS } from "@/lib/korea-map-labels";
-import { PARTIES } from "@/lib/mock-data";
-import { useNews, useParties, usePoliticians, useRegion, type ApiNews, type ApiParty, type ApiPoliticianList, type ApiRegionDetail } from "@/lib/api";
+import {
+  NO_PARTY_COLOR,
+  useNews,
+  useParties,
+  usePoliticians,
+  useRegion,
+  type ApiNews,
+  type ApiParty,
+  type ApiPoliticianList,
+  type ApiRegionDetail,
+} from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 export const WIRE = "#4d90fe"; // 와이어프레임 파랑
@@ -283,15 +292,17 @@ interface Member {
 function rankMembers(code: string, detail: ApiRegionDetail, news: ApiNews[] | undefined, list: ApiPoliticianList | undefined, parties: ApiParty[] | undefined): Member[] {
   const articles = (news ?? []).filter((n) => n.region_code === code).map((n) => `${n.headline} ${n.summary ?? ""}`);
   const stars = new Map(list?.rows.map((p) => [p.mona_cd, p.stars ?? null]));
-  const colors = new Map(parties?.map((p) => [p.id, p.color]));
+  // 정당 이름·색은 parties 표 그대로 (usePartyLookup 과 같은 규칙)
+  const partyById = new Map(parties?.map((p) => [p.id, p]));
   return detail.politicians
     .map((p) => {
       const hits = articles.map((txt) => txt.split(p.name).length - 1);
+      const party = p.party_id ? partyById.get(p.party_id) : undefined;
       return {
         monaCd: p.mona_cd,
         name: p.name,
-        party: p.party_id ?? "—",
-        color: (p.party_id && colors.get(p.party_id)) || PARTIES.ETC.color,
+        party: party?.name ?? p.party_id ?? "—",
+        color: party?.color ?? NO_PARTY_COLOR,
         district: p.district,
         term: p.term,
         bills: p.bills_proposed,
