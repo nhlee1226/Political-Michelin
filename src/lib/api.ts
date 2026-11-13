@@ -163,6 +163,8 @@ export interface ApiIndicator {
 
 export interface ApiRegionDetail extends Omit<ApiRegion, "heat" | "news_24h"> {
   politicians: ApiPolitician[];
+  /** 최근 총선 지역구 중 현재 의원이 없는 선거구 이름 (공석) */
+  vacancies: string[];
   support: { party_id: string; value: number; pollster: string; field_end: string; source_url: string }[];
   news: ApiNews[];
   /** 지방선거 당선인·공약 제목 (수집 전이면 null) */

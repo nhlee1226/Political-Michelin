@@ -268,8 +268,14 @@ export async function apiRegionDetail(code: string) {
     regionLocal(code, regionNames),
     regionIndicators(code),
   ]);
+  // 공석: 최근 총선 지역구 중 지금 그 시도 의원이 아무도 없는 선거구 (사직·의원직 상실 후 재보궐 전 등). DB 값은 그대로, 화면에만 알림.
+  // 국회 표기 '강원 원주시갑'·'세종특별자치시갑'(끝에 공백이 붙기도 함)의 마지막 토막 = 선관위 선거구 이름
+  const seated = new Set(
+    politicians.filter((p) => p.elect_type === "지역구" && p.district).map((p) => p.district!.trim().replace(/^.* /, "")),
+  );
+  const vacancies = results.districts.map((d) => d.sggName).filter((sgg) => !seated.has(sgg));
   const { heat: _heat, news_24h: _n, ...region } = r;
-  return { ...region, politicians, support, news, election: results.election, districts: results.districts, local, indicators };
+  return { ...region, politicians, vacancies, support, news, election: results.election, districts: results.districts, local, indicators };
 }
 
 /* ───────── 뉴스 · 정당 · 숫자 카드 ───────── */

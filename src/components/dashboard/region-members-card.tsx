@@ -96,6 +96,12 @@ export function RegionMembersCard({
             </button>
           </li>
         ))}
+        {isLive && detail!.vacancies?.length > 0 && (
+          <li className="flex items-center gap-2 border-t border-dashed border-line px-3 py-2.5 text-xs text-ink-3">
+            <span className="font-semibold text-ink-2">공석 {detail!.vacancies.length}</span>
+            <span className="truncate">({detail!.vacancies.join(" · ")})</span>
+          </li>
+        )}
         {rows.length === 0 && !loading && <p className="py-6 text-center text-xs text-ink-3">이 지역 의원 정보가 없습니다.</p>}
       </ul>
     </Card>
