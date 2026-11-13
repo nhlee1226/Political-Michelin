@@ -8,6 +8,9 @@ import { buildDictionary, findMentions } from "./mentions";
 import { clean, cleanUrl } from "./naver-api";
 import { applyCounts, buildCandidates, buildTurnout, partiesFromCandidates, type Item } from "./nec-parse";
 import { detectRegion } from "./region";
+import { pickLatestYear, type KosisRow } from "./kosis-parse";
+import { pledgesFromItem } from "./pledges-parse";
+import { toVoteRows, voteDate, type VoteItem } from "./votes-parse";
 
 const el = { sgId: "20240410", sgTypecode: "2" };
 const lookup = new Map([
@@ -171,4 +174,124 @@ test("네이버 응답 정리: 태그·엔티티(이름·숫자) 제거", () => 
 test("URL 정리: utm_* 와 #해시 제거", () => {
   assert.equal(cleanUrl("https://a.kr/x?id=1&utm_source=n#top"), "https://a.kr/x?id=1");
   assert.equal(cleanUrl(""), null);
+});
+
+test("본회의 표결: 날짜 변환, members 에 없는 의원·이상한 줄은 빼고, 같은 의원은 나중 표 하나만", () => {
+  const v = (monaCd: string, result: string, date = "20261001 144959", billId = "PRC_A"): VoteItem => ({
+    BILL_ID: billId,
+    MONA_CD: monaCd,
+    HG_NM: `의원${monaCd}`,
+    RESULT_VOTE_MOD: result,
+    VOTE_DATE: date,
+  });
+  const known = new Set(["M1", "M2", "M3", "M4", "M5", "M6", "M7"]);
+  const r = toVoteRows(
+    "PRC_A",
+    [
+      v("M1", "찬성"),
+      v("M2", "반대"),
+      v("M3", "기권"),
+      v("M4", "불참"),
+      v("GONE", "찬성"), // members 에 없음 → 건너뜀
+      v("M5", "무효"), // 허용되지 않는 값
+      v("M6", "찬성", ""), // 날짜 없음
+      v("M7", "찬성", "20261001 144959", "PRC_B"), // 다른 법안 줄
+      v("M1", "반대", "20261002 100000"), // 같은 의원 다시 → 나중 날짜로
+    ],
+    known,
+  );
+  assert.deepEqual(r.rows, [
+    { billId: "PRC_A", monaCd: "M1", result: "반대", voteDate: "2026-10-02" },
+    { billId: "PRC_A", monaCd: "M2", result: "반대", voteDate: "2026-10-01" },
+    { billId: "PRC_A", monaCd: "M3", result: "기권", voteDate: "2026-10-01" },
+    { billId: "PRC_A", monaCd: "M4", result: "불참", voteDate: "2026-10-01" },
+  ]);
+  assert.deepEqual([...r.unknownMembers], [["GONE", "의원GONE"]]);
+  assert.equal(r.invalid, 3);
+  assert.equal(voteDate("2026-10-01 14:49:59"), "2026-10-01");
+  assert.equal(voteDate(null), null);
+});
+
+test("지방선거 당선인: 당선인만으로 행, 빈 정당(교육감)·구시군은 null, regions 에 없는 시도는 코드 비움", () => {
+  const el9 = { sgId: "20260603", sgTypecode: "3" };
+  const w = (huboid: string, name: string, sdName: string, jdName: string, dugsu: string, dugyul: string): Item => ({
+    huboid,
+    name,
+    sdName,
+    sggName: sdName, // 시·도지사·교육감은 선거구 = 시도
+    wiwName: "",
+    jdName,
+    dugsu,
+    dugyul,
+  });
+  const rows = buildCandidates(
+    [],
+    [w("1", "가나다", "서울특별시", "가정당", "2575819", "49.22"), w("2", "라마바", "전남광주통합특별시", "", "1000", "51.00")],
+    el9,
+    lookup,
+  );
+  assert.deepEqual(
+    rows.map((r) => [r.huboid, r.regionCode, r.partyName, r.wiwName, r.votes, r.voteRate, r.isWinner]),
+    [
+      ["1", "11", "가정당", null, 2575819, 49.22, true],
+      ["2", null, null, null, 1000, 51, true],
+    ],
+  );
+});
+
+test("선거공약: 원문 그대로(공백·줄바꿈 유지), 빈 칸 건너뜀, 빈 분야는 null, 순번 중복은 오류", () => {
+  const content = "□ 목 표\n  ○ 첫째 줄  \n\n□ 이행방법 ";
+  const it: Item = {
+    cnddtId: "100",
+    prmsCnt: "2",
+    prmsOrd1: "1",
+    prmsRealmName1: "주택1",
+    prmsTitle1: " 제목 하나 ",
+    prmmCont1: content,
+    prmsOrd2: "2",
+    prmsRealmName2: "",
+    prmsTitle2: "제목 둘",
+    prmmCont2: "내용",
+    prmsOrd3: "",
+    prmsRealmName3: "",
+    prmsTitle3: "",
+    prmmCont3: "",
+  };
+  const cand = { sgId: "20260603", sgTypecode: "3", huboid: "100" };
+  const r = pledgesFromItem(it, cand);
+  assert.equal(r.declared, 2);
+  assert.deepEqual(r.rows, [
+    { ...cand, pledgeNo: 1, realm: "주택1", title: " 제목 하나 ", content },
+    { ...cand, pledgeNo: 2, realm: null, title: "제목 둘", content: "내용" },
+  ]);
+  assert.throws(() => pledgesFromItem({ ...it, prmsOrd2: "1" }, cand), /순번 1/);
+});
+
+test("KOSIS: 통합특별시가 따로 나온 연도·시도가 빠진 연도는 건너뛰고, 정식 이름으로만 연결", () => {
+  const rs = [
+    { code: "24", name: "광주광역시" },
+    { code: "36", name: "전라남도" },
+    { code: "32", name: "강원특별자치도" },
+  ];
+  const row = (year: string, C1: string, C1_NM: string, DT: string | null): KosisRow => ({ C1, C1_NM, PRD_DE: year, DT, UNIT_NM: "%" });
+  const rows = [
+    row("2026", "12", "전남광주통합특별시", "30.1"), // 통합 → 2026 건너뜀
+    row("2026", "32", "강원특별자치도", "25.0"),
+    row("2025", "1224", "광주광역시", "18.8"), // 통합특별시 아래 칸이어도 이름으로 연결
+    row("2025", "32", "강원특별자치도", "26.8"), // 전라남도 없음 → 2025 건너뜀
+    row("2024", "1224", "광주광역시", "17.5"),
+    row("2024", "1236", "전라남도", "27.2"),
+    row("2024", "51", "강원도", "25.4"), // 옛 이름
+    row("2024", "41610", "광주시", "99"), // 경기도 광주시 — 짧은 이름 '광주'로 섞이면 안 됨
+    row("2024", "00", "전국", "20"),
+  ];
+  const r = pickLatestYear(rows, rs);
+  assert.equal(r.year, 2024);
+  assert.deepEqual(Object.fromEntries([...r.values].map(([k, v]) => [k, v.value])), { "24": 17.5, "36": 27.2, "32": 25.4 });
+  assert.deepEqual(
+    r.skipped.map((s) => s.year),
+    ["2026", "2025"],
+  );
+  assert.match(r.skipped[0].reason, /전남광주통합특별시/);
+  assert.match(r.skipped[1].reason, /전라남도/);
 });

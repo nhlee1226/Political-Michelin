@@ -5,12 +5,40 @@
  * (실제 프로젝트에서는 `npx shadcn add card badge switch tooltip` 후 교체 가능)
  */
 import * as React from "react";
-import { Star } from "lucide-react";
+import { FlaskConical, Star } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+/* ── 예시(가상 데이터) 표시 ───────────────────────────────
+ * 실제 데이터가 아닌 영역은 한눈에 알 수 있게: 점선 테두리 + 흐린 내용 + "예시 데이터 · 실제 아님" 띠.
+ * 스타일은 globals.css 의 .pm-example / .pm-example-ribbon */
+export function ExampleRibbon({ className }: { className?: string }) {
+  return (
+    <div className={cn("pm-example-ribbon", className)} role="note">
+      <FlaskConical className="size-3 shrink-0" aria-hidden />
+      예시 데이터 · 실제 아님
+    </div>
+  );
+}
+
+/** 카드 안의 일부만 예시일 때 그 부분을 감쌈 */
+export function ExampleFrame({ className, children }: { className?: string; children: React.ReactNode }) {
+  return (
+    <div className={cn("pm-example rounded-xl", className)}>
+      <ExampleRibbon className="rounded-t-[10px]" />
+      {children}
+    </div>
+  );
+}
+
 /* ── Card ─────────────────────────────────────────────── */
-export function Card({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn("glass rounded-2xl", className)} {...props} />;
+/** example: 카드 전체가 가상 데이터일 때 (점선 테두리 + 흐린 내용 + 띠) */
+export function Card({ className, example, children, ...props }: React.HTMLAttributes<HTMLDivElement> & { example?: boolean }) {
+  return (
+    <div className={cn("glass rounded-2xl", example && "pm-example", className)} {...props}>
+      {example && <ExampleRibbon className="rounded-t-[14px]" />}
+      {children}
+    </div>
+  );
 }
 
 export function CardHeader({
@@ -85,15 +113,6 @@ export function Badge({
       )}
       {...props}
     />
-  );
-}
-
-/** 아직 mock 데이터인 카드 제목 옆에 붙이는 표시 */
-export function ExampleBadge({ className }: { className?: string }) {
-  return (
-    <Badge className={cn("ml-1.5 px-1.5 py-0 align-middle text-[10px]", className)} title="실제 데이터가 아닌 예시입니다">
-      예시
-    </Badge>
   );
 }
 

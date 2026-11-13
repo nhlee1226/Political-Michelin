@@ -4,7 +4,7 @@
  * 먼저 collect:members 를 돌려서 members 가 채워져 있어야 대표발의자를 연결할 수 있습니다.
  *
  * 아직 실제 키로 검증하지 않은 초안입니다. 응답 필드 이름이 다르면 raw_responses 의 assembly:bills 샘플을 보고
- * FIELD 만 고치면 됩니다. 표결(bill_votes) 수집기는 아직 없습니다.
+ * FIELD 만 고치면 됩니다. 본회의 표결(bill_votes)은 이 수집기 다음에 collect:votes 로 채웁니다.
  */
 import { sql } from "drizzle-orm";
 import { bills, members } from "../../src/db/schema";

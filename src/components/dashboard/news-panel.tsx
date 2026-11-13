@@ -13,7 +13,7 @@ import { ArrowRight, ArrowUpRight, Newspaper, ScanSearch, Sparkles, Undo2 } from
 import { NEWS, REGION_BY_CODE, type NewsItem } from "@/lib/mock-data";
 import { useNews, type ApiNews } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import { Badge, Card, CardHeader, ExampleBadge, IconButton, Segmented } from "@/components/ui/primitives";
+import { Badge, Card, CardHeader, IconButton, Segmented } from "@/components/ui/primitives";
 import { GlossaryText } from "./glossary-text";
 
 /** 객관화 이후 잔여 편향 지수 (AI 재작성 결과, 데모용 계산) */
@@ -261,15 +261,18 @@ export function NewsPanel({
     const t = setInterval(tick, 60_000);
     return () => clearInterval(t);
   }, []);
-  const { data: fetched } = useNews(region, limit ?? 20);
+  const { data: fetched, isLoading: newsLoading } = useNews(region, limit ?? 20);
   // keepPreviousData 로 이전 지역 기사가 남아 있을 수 있어 지역이 맞는 것만
   const regionNews = region ? fetched?.filter((n) => n.region_code === region) : fetched;
-  // 지역 기사가 0건일 때, 수집 자체가 안 된 건지(→ mock) 그 지역만 없는 건지 구분용
-  const { data: anyNews } = useNews(undefined, 1);
+  // 지역 기사가 0건일 때, 수집 자체가 안 된 건지(→ 가상 기사를 예시로) 그 지역만 없는 건지 구분용
+  const { data: anyNews, isLoading: anyLoading } = useNews(undefined, 1);
   const hasLive = !!anyNews?.length || !!regionNews?.length;
+  // 불러오는 동안에는 가상 기사를 잠깐이라도 보이지 않게 비워 둠
+  const loading = !hasLive && (newsLoading || anyLoading);
+  const isMock = !hasLive && !loading;
 
   const live = (regionNews ?? []).filter((n) => byFilter(filter)(n.bias));
-  const mock = NEWS.filter((n) => byFilter(filter)(n.bias)).slice(0, limit ?? NEWS.length);
+  const mock = isMock ? NEWS.filter((n) => byFilter(filter)(n.bias)).slice(0, limit ?? NEWS.length) : [];
   const count = hasLive ? live.length : mock.length;
   const noAnalysis = hasLive && !(regionNews ?? []).some((n) => n.bias != null);
   React.useEffect(() => {
@@ -280,18 +283,15 @@ export function NewsPanel({
   const avg = analyzed.length ? `${Math.round(analyzed.reduce((a, b) => a + b, 0) / analyzed.length)}%` : "분석 전";
   const subtitle = hasLive
     ? `${region ? `${REGION_BY_CODE[region]?.short} ` : ""}수집 ${regionNews?.length ?? 0}건 · 평균 편향 지수 ${avg}`
-    : `크롤링 ${NEWS.length}건 · 평균 편향 지수 ${avg}`;
+    : loading
+      ? "불러오는 중…"
+      : `크롤링 ${NEWS.length}건 · 평균 편향 지수 ${avg}`;
 
   return (
-    <Card className={cn("flex flex-col", className)}>
+    <Card example={isMock} className={cn("flex flex-col", className)}>
       <CardHeader
         icon={<Newspaper className="size-4" />}
-        title={
-          <>
-            AI 실시간 뉴스 리포트
-            {!hasLive && <ExampleBadge />}
-          </>
-        }
+        title="AI 실시간 뉴스 리포트"
         subtitle={subtitle}
         action={
           onOpen && (
@@ -318,7 +318,7 @@ export function NewsPanel({
         {hasLive
           ? live.map((n) => <LiveNewsCard key={n.id} item={n} />)
           : mock.map((n) => <NewsCard key={n.id} item={n} aiMode={aiMode} />)}
-        {count === 0 && <p className="py-8 text-center text-xs text-ink-3">해당 조건의 뉴스가 없습니다.</p>}
+        {count === 0 && !loading && <p className="py-8 text-center text-xs text-ink-3">해당 조건의 뉴스가 없습니다.</p>}
       </div>
     </Card>
   );

@@ -31,29 +31,30 @@ import {
   X,
   type LucideIcon,
 } from "lucide-react";
-import {
-  BILL_STAGES,
-  BILLS,
-  PARTIES,
-  PLEDGE_DOCS,
-  SCHEDULE,
-  type Politician,
-  type Region,
-} from "@/lib/mock-data";
+import { BILL_STAGES, BILLS, SCHEDULE } from "@/lib/mock-data";
 import { useNews, useRegions } from "@/lib/dashboard-data";
+import {
+  usePartyLookup,
+  usePoliticians,
+  useRegion,
+  useRegions as useApiRegions,
+  type ApiLocalWinner,
+  type ApiPolitician,
+} from "@/lib/api";
 import { useTheme } from "@/lib/theme";
 import { cn } from "@/lib/utils";
-import { Badge, ExampleBadge, MichelinStars, Segmented, Soon, Switch } from "@/components/ui/primitives";
+import { Badge, ExampleFrame, MichelinStars, Segmented, Soon, Switch } from "@/components/ui/primitives";
 
 type PanelKey = "regions" | "politicians" | "schedule" | "bills" | "pledges" | "news" | "settings" | "help";
 
-const MENU: { key: PanelKey; icon: LucideIcon; label: string; desc: string }[] = [
-  { key: "regions", icon: Plus, label: "관심 지역", desc: "자주 보는 시·도를 모아 이슈 활성도와 1순위 이슈를 바로 확인합니다." },
-  { key: "politicians", icon: Star, label: "즐겨찾는 정치인", desc: "별표한 정치인의 미슐랭 등급과 의정 지표를 모아 봅니다." },
-  { key: "schedule", icon: CalendarDays, label: "선거·국회 일정", desc: "다가오는 본회의·공청회·선거 일정을 D-day 순으로 보여줍니다." },
-  { key: "bills", icon: Gavel, label: "법안 추적", desc: "관심 법안이 발의 → 위원회 → 본회의 → 공포 중 어디까지 왔는지 추적합니다." },
-  { key: "pledges", icon: FileText, label: "공약 문서", desc: "정치인별 공약집과 이행률을 확인합니다. 선택 지역 기준으로 걸러 볼 수 있습니다." },
-  { key: "news", icon: Bookmark, label: "저장한 뉴스", desc: "나중에 다시 읽을 기사를 저장합니다. AI 객관화 헤드라인으로 표시됩니다." },
+/** example: 아직 가상 데이터인 메뉴 (일정·법안 단계는 DB 에 없음) → 패널 내용에 예시 표시 */
+const MENU: { key: PanelKey; icon: LucideIcon; label: string; desc: string; example?: boolean }[] = [
+  { key: "regions", icon: Plus, label: "관심 지역", desc: "자주 보는 시·도를 모아 이슈 활성도와 최근 기사 수를 바로 확인합니다." },
+  { key: "politicians", icon: Star, label: "즐겨찾는 정치인", desc: "별표한 국회의원의 별점과 의정 지표(반영률·표결 참여율)를 모아 봅니다." },
+  { key: "schedule", icon: CalendarDays, label: "선거·국회 일정", desc: "다가오는 본회의·공청회·선거 일정을 D-day 순으로 보여줍니다.", example: true },
+  { key: "bills", icon: Gavel, label: "법안 추적", desc: "관심 법안이 발의 → 위원회 → 본회의 → 공포 중 어디까지 왔는지 추적합니다.", example: true },
+  { key: "pledges", icon: FileText, label: "공약 문서", desc: "선택한 시·도의 지방선거 당선인 공약 제목을 보여줍니다 (선관위). 이행률은 공식 데이터가 없습니다." },
+  { key: "news", icon: Bookmark, label: "저장한 뉴스", desc: "나중에 다시 읽을 기사를 저장합니다." },
 ];
 const SETTINGS = { key: "settings" as const, icon: Settings, label: "설정", desc: "화면 테마와 AI 객관화 모드를 설정합니다." };
 const HELP = { key: "help" as const, icon: HelpCircle, label: "도움말", desc: "빠른 메뉴의 각 아이콘이 하는 일을 안내합니다." };
@@ -116,6 +117,8 @@ function RegionsPanel({
   onSelectRegion: (c: string) => void;
 }) {
   const { regions: REGIONS } = useRegions();
+  const { data: apiRegions } = useApiRegions();
+  const news24h = new Map(apiRegions?.map((r) => [r.code, r.news_24h]));
   const mine = REGIONS.filter((r) => interests.has(r.code));
   const rest = REGIONS.filter((r) => !interests.has(r.code));
   return (
@@ -141,7 +144,9 @@ function RegionsPanel({
                   <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-white/[0.06]">
                     <div className="h-full rounded-full bg-lime/80" style={{ width: `${r.heat}%` }} />
                   </div>
-                  <p className="mt-1.5 truncate text-[11px] text-ink-2">1순위 이슈 · {r.issues[0].title}</p>
+                  {news24h.has(r.code) && (
+                    <p className="mt-1.5 truncate text-[11px] text-ink-2">최근 24시간 지역 기사 {news24h.get(r.code)}건</p>
+                  )}
                 </button>
                 <button
                   onClick={() => toggle(r.code)}
@@ -172,29 +177,32 @@ function RegionsPanel({
   );
 }
 
+/** 즐겨찾는 정치인 — 실제 국회의원(/api/politicians). 즐겨찾기는 MONA_CD 로 이 브라우저에 저장. 누르면 상세 패널 */
 function PoliticiansPanel({
   favorites,
   toggle,
-  onSelectRegion,
+  onOpenPolitician,
 }: {
   favorites: Set<string>;
   toggle: (id: string) => void;
-  onSelectRegion: (c: string) => void;
+  onOpenPolitician: (monaCd: string) => void;
 }) {
   const [q, setQ] = React.useState("");
-  const { politicians: ALL_POLITICIANS } = useRegions();
-  const favs = ALL_POLITICIANS.filter((p) => favorites.has(p.id));
+  const { data, error } = usePoliticians();
+  const partyOf = usePartyLookup();
+  const all = data?.rows ?? [];
+  const favs = all.filter((p) => favorites.has(p.mona_cd));
   const results = q.trim()
-    ? ALL_POLITICIANS.filter((p) => !favorites.has(p.id) && (p.name.includes(q.trim()) || p.district.includes(q.trim())))
+    ? all.filter((p) => !favorites.has(p.mona_cd) && (p.name.includes(q.trim()) || !!p.district?.includes(q.trim()))).slice(0, 30)
     : [];
 
-  const item = (p: Politician & { region: Region }) => {
-    const party = PARTIES[p.party];
-    const fav = favorites.has(p.id);
+  const item = (p: ApiPolitician) => {
+    const party = partyOf(p.party_id);
+    const fav = favorites.has(p.mona_cd);
     return (
-      <li key={p.id}>
+      <li key={p.mona_cd}>
         <Row className="flex items-center gap-2.5 p-2.5">
-          <button onClick={() => onSelectRegion(p.region.code)} className="flex min-w-0 flex-1 items-center gap-2.5 text-left">
+          <button onClick={() => onOpenPolitician(p.mona_cd)} className="flex min-w-0 flex-1 items-center gap-2.5 text-left">
             <span
               className="grid size-8 shrink-0 place-items-center rounded-full border-2 text-[11px] font-semibold"
               style={{ borderColor: party.color, background: `${party.color}22` }}
@@ -204,16 +212,18 @@ function PoliticiansPanel({
             <span className="min-w-0">
               <span className="flex items-center gap-1.5">
                 <span className="truncate text-[13px] font-semibold">{p.name}</span>
-                <MichelinStars count={p.michelin} />
+                {p.stars && <MichelinStars count={p.stars} />}
               </span>
               <span className="block truncate text-[11px] text-ink-3">
-                {party.name} · {p.district}
-                {p.role === "현역 의원" && ` · 이행 ${p.pledgeRate}% · 출석 ${p.attendance}%`}
+                {party.name} · {p.elect_type === "비례대표" ? "비례대표" : (p.district ?? "—")}
+              </span>
+              <span className="block truncate text-[11px] text-ink-3 tabular">
+                반영률 {p.reflect_rate == null ? "—" : `${p.reflect_rate}%`} · 표결 참여 {p.vote_participation == null ? "—" : `${p.vote_participation}%`}
               </span>
             </span>
           </button>
           <button
-            onClick={() => toggle(p.id)}
+            onClick={() => toggle(p.mona_cd)}
             aria-label={fav ? `${p.name} 즐겨찾기 해제` : `${p.name} 즐겨찾기`}
             aria-pressed={fav}
             className="grid size-7 shrink-0 place-items-center rounded-full hover:bg-white/[0.08]"
@@ -236,6 +246,7 @@ function PoliticiansPanel({
           className="min-w-0 flex-1 bg-transparent text-xs placeholder:text-ink-3 focus:outline-none"
         />
       </label>
+      {!data && <p className="mt-3 text-center text-[11px] text-ink-3">{error ? "의원 목록을 불러오지 못했습니다." : "의원 목록을 불러오는 중…"}</p>}
       {q.trim() && (
         <>
           <SectionLabel>검색 결과 {results.length}명</SectionLabel>
@@ -339,49 +350,63 @@ function BillsPanel({ followed, toggle }: { followed: Set<string>; toggle: (id: 
   );
 }
 
+/** 공약 문서 — 선택한 시·도의 지방선거 당선인 공약 제목 (실제, 선관위). 누르면 지도 탭의 그 지역으로 (원문은 거기서) */
 function PledgesPanel({ selectedRegion, onSelectRegion }: { selectedRegion: string; onSelectRegion: (c: string) => void }) {
-  const [scope, setScope] = React.useState<"all" | "region">("all");
-  const { byCode: REGION_BY_CODE } = useRegions();
-  const region = REGION_BY_CODE[selectedRegion];
-  const docs = scope === "region" ? PLEDGE_DOCS.filter((d) => d.region === selectedRegion) : PLEDGE_DOCS;
+  const [scope, setScope] = React.useState<"head" | "mayors">("head");
+  const { data, error } = useRegion(selectedRegion);
+  const detail = data?.code === selectedRegion ? data : undefined;
+  const local = detail?.local;
+  const winners: ApiLocalWinner[] = !local
+    ? []
+    : scope === "head"
+      ? [local.governor, local.superintendent].filter((w): w is ApiLocalWinner => !!w)
+      : local.mayors;
   return (
     <>
       <Segmented
         value={scope}
         onChange={setScope}
         options={[
-          { value: "all", label: "전체" },
-          { value: "region", label: `선택 지역 (${region.short})` },
+          { value: "head", label: "시·도지사·교육감" },
+          { value: "mayors", label: "구·시·군의 장" },
         ]}
       />
-      <ul className="mt-3 space-y-2">
-        {docs.length === 0 && <Empty>{region.name}에 등록된 공약 문서가 없습니다.</Empty>}
-        {docs.map((d) => (
-          <li key={d.id}>
-            <button onClick={() => onSelectRegion(d.region)} className="block w-full text-left">
+      <p className="mt-2 text-[11px] text-ink-3">
+        {detail ? `${detail.name} · ${local?.election.name ?? "지방선거"} 당선인` : error ? "공약을 불러오지 못했습니다." : "불러오는 중…"}
+      </p>
+      <ul className="mt-2 space-y-2">
+        {detail && winners.length === 0 && <Empty>이 지역의 당선인 공약 데이터가 없습니다.</Empty>}
+        {winners.map((w) => (
+          <li key={w.id}>
+            <button onClick={() => onSelectRegion(selectedRegion)} className="block w-full text-left">
               <Row className="transition hover:border-white/15">
                 <div className="flex items-start gap-2.5">
                   <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-white/[0.06] text-ink-2">
                     <FileText className="size-4" />
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p className="text-[13px] font-semibold leading-snug">{d.title}</p>
+                    <p className="text-[13px] font-semibold leading-snug">{w.name}</p>
                     <p className="mt-0.5 text-[11px] text-ink-3">
-                      {d.owner} · {REGION_BY_CODE[d.region].short} · {d.category}
+                      {w.office} · {w.sgg_name} · 공약 {w.pledges.length}개
                     </p>
                   </div>
                 </div>
-                <div className="mt-2.5 flex items-center gap-2">
-                  <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/[0.06]">
-                    <div className="h-full rounded-full bg-cyan/80" style={{ width: `${d.progress}%` }} />
-                  </div>
-                  <span className="text-[11px] text-ink-2 tabular">이행 {d.progress}%</span>
-                </div>
+                {w.pledges.length > 0 && (
+                  <ol className="mt-2 space-y-1 border-t border-line pt-2">
+                    {w.pledges.map((pl) => (
+                      <li key={pl.no} className="flex gap-1.5 text-[11px] leading-snug text-ink-2">
+                        <span className="shrink-0 text-ink-3 tabular">{pl.no}</span>
+                        <span>{pl.title ?? "(제목 없음)"}</span>
+                      </li>
+                    ))}
+                  </ol>
+                )}
               </Row>
             </button>
           </li>
         ))}
       </ul>
+      <p className="px-1 pt-3 text-[11px] leading-relaxed text-ink-3">이행률은 공식 데이터가 없어 표시하지 않습니다. 누르면 지도에서 공약 원문을 볼 수 있습니다.</p>
     </>
   );
 }
@@ -565,20 +590,23 @@ function RailButton({
 export function SideRail({
   selectedRegion,
   onSelectRegion,
+  onOpenPolitician,
   aiMode,
   onAiModeChange,
 }: {
   selectedRegion: string;
   onSelectRegion: (code: string) => void;
+  /** 즐겨찾는 정치인을 누르면 상세 패널 */
+  onOpenPolitician: (monaCd: string) => void;
   aiMode: boolean;
   onAiModeChange: (v: boolean) => void;
 }) {
   const [open, setOpen] = React.useState<PanelKey | null>(null);
-  const { politicians: ALL_POLITICIANS } = useRegions();
   const rootRef = React.useRef<HTMLDivElement>(null);
 
   const [interests, toggleInterest] = useStoredSet("pm-interest-regions", ["11", "31"]);
-  const [favorites, toggleFavorite] = useStoredSet("pm-fav-politicians", [ALL_POLITICIANS[0].id]);
+  // 실제 의원(MONA_CD) 기준이라 예전 가상 인물용 저장값과 섞이지 않게 새 키
+  const [favorites, toggleFavorite] = useStoredSet("pm-fav-members", []);
   const [followed, toggleFollow] = useStoredSet("pm-followed-bills", ["b1"]);
   const [saved, toggleSaved] = useStoredSet("pm-saved-news", []);
 
@@ -646,11 +674,7 @@ export function SideRail({
                 <panel.icon className="size-4" />
               </span>
               <div className="min-w-0 flex-1">
-                <h2 className="text-[15px] font-semibold">
-                  {panel.label}
-                  {/* 메뉴 6개는 아직 mock 데이터 (설정·도움말 제외) */}
-                  {MENU.some((m) => m.key === panel.key) && <ExampleBadge />}
-                </h2>
+                <h2 className="text-[15px] font-semibold">{panel.label}</h2>
                 <p className="mt-0.5 text-[11px] leading-relaxed text-ink-3">{panel.desc}</p>
               </div>
               <button
@@ -663,9 +687,31 @@ export function SideRail({
             </header>
             <div className="scroll-thin min-h-0 flex-1 overflow-y-auto p-4">
               {open === "regions" && <RegionsPanel interests={interests} toggle={toggleInterest} onSelectRegion={goRegion} />}
-              {open === "politicians" && <PoliticiansPanel favorites={favorites} toggle={toggleFavorite} onSelectRegion={goRegion} />}
-              {open === "schedule" && <SchedulePanel />}
-              {open === "bills" && <BillsPanel followed={followed} toggle={toggleFollow} />}
+              {open === "politicians" && (
+                <PoliticiansPanel
+                  favorites={favorites}
+                  toggle={toggleFavorite}
+                  onOpenPolitician={(id) => {
+                    onOpenPolitician(id);
+                    setOpen(null);
+                  }}
+                />
+              )}
+              {/* 일정·법안 단계는 DB 에 없어 가상 데이터 */}
+              {open === "schedule" && (
+                <ExampleFrame>
+                  <div className="p-3">
+                    <SchedulePanel />
+                  </div>
+                </ExampleFrame>
+              )}
+              {open === "bills" && (
+                <ExampleFrame>
+                  <div className="p-3">
+                    <BillsPanel followed={followed} toggle={toggleFollow} />
+                  </div>
+                </ExampleFrame>
+              )}
               {open === "pledges" && <PledgesPanel selectedRegion={selectedRegion} onSelectRegion={goRegion} />}
               {open === "news" && <NewsPanel saved={saved} toggle={toggleSaved} />}
               {open === "settings" && <SettingsPanel aiMode={aiMode} onAiModeChange={onAiModeChange} />}

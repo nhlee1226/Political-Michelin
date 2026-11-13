@@ -23,6 +23,7 @@ import { CommunityFeed } from "./community-feed";
 import { ActivityCard, IssueTimelineCard, PartyTrendCard, PledgeCard } from "./kpi-charts";
 import { BiasReportCard, PoliticianTable } from "./extra-cards";
 import { RegionMembersCard } from "./region-members-card";
+import { RegionLocalCard } from "./region-local-card";
 import { PoliticianDetailSheet } from "./politician-detail-sheet";
 
 const TODAY = new Intl.DateTimeFormat("ko-KR", { year: "numeric", month: "long", day: "numeric", weekday: "long" }).format(
@@ -49,13 +50,14 @@ function useHeadline(
   heat: number | null,
   detail: ApiRegionDetail | undefined,
 ): { title: [string, string]; desc: string; kpis: Kpi[] } {
-  const r = REGION_BY_CODE[regionCode];
+  // 시도 이름은 API(지금 이름: 강원특별자치도 등)가 있으면 그것
+  const r = { ...REGION_BY_CODE[regionCode], ...(detail ? { name: detail.name, short: detail.short } : {}) };
   const s = stats ?? null;
   switch (tab) {
     case "map":
       return {
         title: ["지역별", "정치 지도"],
-        desc: `${r.name} 선택됨 · 시·도를 누르면 의석 수·투표율, 국회의원, 지역 뉴스를 보여줍니다.`,
+        desc: `${r.name} 선택됨 · 시·도를 누르면 의석 수·투표율, 국회의원, 시·도지사·교육감·구시군장과 공약, 지역 지표, 지역 뉴스를 보여줍니다.`,
         kpis: [
           { label: "이슈 활성도", value: heat, caption: `${r.short} · 100점 만점 · 최근 24시간 기사`, accent: true },
           {
@@ -150,7 +152,13 @@ export default function PoliticalMichelinDashboard() {
       <DashboardHeader tab={tab} onTabChange={setTab} aiMode={aiMode} onAiModeChange={setAiMode} onSearch={search} />
 
       <div className="mx-auto flex max-w-[1680px] gap-5 px-4 pb-10 pt-6 sm:px-6">
-        <SideRail selectedRegion={region} onSelectRegion={selectFromTable} aiMode={aiMode} onAiModeChange={setAiMode} />
+        <SideRail
+          selectedRegion={region}
+          onSelectRegion={selectFromTable}
+          onOpenPolitician={setDetailId}
+          aiMode={aiMode}
+          onAiModeChange={setAiMode}
+        />
 
         <main className="min-w-0 flex-1">
           {/* ── Page headline + Flip KPI ── */}
@@ -196,6 +204,8 @@ export default function PoliticalMichelinDashboard() {
                   <div className="col-span-12">
                     <KoreaMapCard selected={region} onSelect={setRegion} onOpenPolitician={setDetailId} expanded />
                   </div>
+                  {/* 선택 지역의 지역 지표(KOSIS) + 지방선거 당선인·공약(선관위) */}
+                  <RegionLocalCard region={region} className="col-span-12" />
                   {/* 선택 지역의 실제 의원 | 지역 뉴스 */}
                   <RegionMembersCard
                     region={region}
@@ -264,8 +274,8 @@ export default function PoliticalMichelinDashboard() {
 
           <footer className="mt-8 flex flex-col gap-2 border-t border-line pt-5 text-[11px] text-ink-3 sm:flex-row sm:justify-between">
             <p>
-              © 2026 정치 미슐랭 · 팀 [더 킹] · 의원·법안은 국회 공개 데이터, 뉴스는 네이버 뉴스 검색 기준입니다. &quot;예시&quot; 배지가
-              붙은 카드는 가상 데이터입니다.
+              © 2026 정치 미슐랭 · 팀 [더 킹] · 의원·법안·표결은 국회 공개 데이터, 당선인·공약은 선관위, 지역 지표는 KOSIS, 뉴스는 네이버 뉴스 검색
+              기준입니다. 점선 테두리와 &quot;예시 데이터 · 실제 아님&quot; 띠가 붙은 부분은 가상 데이터입니다.
             </p>
             <p>데이터 출처 표기 원칙 · 정치적 중립성 가이드라인 · 개인정보처리방침</p>
           </footer>
