@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test scripts/collectors/*.test.ts",
+    "test": "tsx --test scripts/collectors/*.test.ts scripts/analyze/*.test.ts",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "db:seed": "tsx scripts/seed.ts",
@@ -19,9 +19,11 @@
     "collect:votes": "tsx scripts/collectors/votes.ts",
     "collect:local": "tsx scripts/collectors/local.ts",
     "collect:pledges": "tsx scripts/collectors/pledges.ts",
-    "collect:kosis": "tsx scripts/collectors/kosis.ts"
+    "collect:kosis": "tsx scripts/collectors/kosis.ts",
+    "analyze:news": "tsx scripts/analyze/news.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^1.8.0",
     "clsx": "^2.1.1",
     "drizzle-orm": "^0.45.4",
     "framer-motion": "^14.9.0",
@@ -33,7 +35,8 @@
     "recharts": "^3.10.1",
     "server-only": "^0.0.1",
     "swr": "^2.3.6",
-    "tailwind-merge": "^3.7.0"
+    "tailwind-merge": "^3.7.0",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.3.3",
