@@ -91,6 +91,46 @@ test("본문 추출: 스크립트·메뉴·저작권 줄은 버리고 문장만"
   assert.ok(!body.includes("스크립트") && !body.includes("저작권자") && !body.includes("경제"));
 });
 
+test("본문 추출: 본문 뒤 관련 기사 제목·미리보기는 버리고, 따옴표로 끝나는 인용 문장은 남김", () => {
+  const p = (t: string) => `<p>${t}</p>`;
+  const body = [
+    "가나당 원내대표는 이날 국회에서 열린 의원총회에서 법안 처리 일정을 다시 설명했다.",
+    "다라당은 법안이 충분한 논의 없이 처리됐다며 본회의 표결에 불참하기로 했다.",
+    "\"헌정질서를 지키기 위해 끝까지 싸울 것이고 국민께 그 이유를 계속 설명하겠습니다\"",
+    "양당은 다음 주 원내대표 회동을 열어 남은 쟁점 법안 처리 순서를 다시 협의할 예정이다.",
+    "국회의장은 양당이 합의하지 못하면 다음 본회의에서 법안을 차례로 표결에 부치겠다고 밝혔다.",
+  ];
+  const related = [
+    "철도노조 총력결의…\"인력 감축 고집하면 12월 10일 총파업\"",
+    "내년부터 시행될 예정이던 가상자산 과세가 2029년으로 미뤄질 것으로 전망된다. 이 부총…",
+    "영상 밥 먹고 나서 ‘이것’ 한잔 마셨을 뿐인데…“혈당 쑥 내려갔다” 연구결과 나왔다",
+    "본지는 한국신문윤리위원회의 서약사로서 신문윤리강령을 준수합니다.",
+    "[이 사람] 홍길동 가나당 예시시 당협위원장 “시민 신뢰부터 다시 세우겠다”",
+    "예시국 “세 나라 정상, 19일 예시시에서 회담”…21세기 새 질서 열리나?",
+    "‘신제품 출시’ 배우 홍길동, 피부 문제로 올해 ‘강제 휴식’…“촬영을 못 할 정도였다”",
+    "상원에서는 홍길동 의원이 원내대표를 맡을 가능성이 높다. 하원에서는 김철수 가나당 ...",
+    "'예시국 하원의장 유력' 홍길동 \"관세 없애고 전쟁 막겠다\"",
+  ];
+  const out = extractBody(`<article>${body.map(p).join("")}</article><aside>${related.map(p).join("")}</aside>`)!;
+  for (const b of body) assert.ok(out.includes(b), b);
+  for (const r of related) assert.ok(!out.includes(r), r);
+});
+
+test("본문 추출: <meta content> 속성값은 본문으로 읽지 않음", () => {
+  const sentence = (n: number) => `가나당 대표는 ${n}일 국회에서 기자들과 만나 이번 법안에 대한 입장을 자세히 설명했다고 밝혔다.`;
+  const lines = [1, 2, 3, 4].map(sentence);
+  const html = `<head><meta itemprop="articleBody" content="${lines.join("")}"/></head><body><div id="articleBody">${lines.map((l) => `<p>${l}</p>`).join("")}</div></body>`;
+  const out = extractBody(html)!;
+  for (const l of lines) assert.equal(out.split(l).length - 1, 1, l); // 본문에 한 번씩만, meta 쪽은 없음
+});
+
+test("본문 추출: 두 번 감싼 HTML 기호(&amp;ldquo;)도 따옴표로 풂", () => {
+  const line = (n: number) => `김 위원장은 ${n}일 &amp;ldquo;거주 여부와 관계없이 기본공제를 동일하게 적용해야 한다는 의견이 많다&amp;rdquo;고 말했다.`;
+  const out = extractBody(`<article>${[1, 2, 3, 4].map((n) => `<p>${line(n)}</p>`).join("")}</article>`)!;
+  assert.ok(out.includes("“거주 여부와 관계없이") && out.includes("의견이 많다”고 말했다."));
+  assert.ok(!out.includes("&"));
+});
+
 test("본문 추출: 글이 너무 짧으면 null", () => {
   assert.equal(extractBody("<html><body><p>로그인이 필요합니다.</p></body></html>"), null);
 });

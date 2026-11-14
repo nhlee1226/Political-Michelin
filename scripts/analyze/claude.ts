@@ -11,7 +11,7 @@ import { keepGrounded, type Evidence } from "./score";
 
 export const MODEL = "claude-opus-5-5";
 /** 모델이나 PROMPT 를 바꾸면 뒤 번호를 올린다 → 그 기사들을 다시 분석 */
-export const MODEL_VERSION = `${MODEL}/v1`;
+export const MODEL_VERSION = `${MODEL}/v2`;
 
 const Output = z.object({
   assessable: z.boolean().describe("정치적 시각을 판단할 수 있는 기사인가 (정치와 무관하거나 글이 너무 짧으면 false)"),
@@ -39,7 +39,10 @@ direction 은 그 근거가 어느 쪽에 유리하게 작용하는지다. 진�
 - excerpt 는 주어진 기사 글에 있는 문장을 한 글자도 바꾸지 않고 옮긴다. 요약하거나 다듬은 문장은 자동으로 버려진다.
 - 기사에 적힌 내용만 근거로 삼는다. 사실 여부를 네 지식으로 판정하지 않는다. 언론사나 기자의 평판도 고려하지 않는다.
 - 어떤 정당에 불리한 사실을 보도했다는 것만으로는 편향이 아니다. 서술 방식(누구 말을 실었나, 어떤 말로 썼나)을 본다.
+- 한국 국내 정치(한국의 정당·국회·정부·선거)를 다룬 기사만 판단한다. 미국 민주당·공화당 같은 외국 정당은 한국의 진보·보수 진영이 아니다. 외국 정치 기사는 한국 정치인의 발언이 일부 실려 있어도 그 대목에서만 근거를 찾고, 그런 대목이 없으면 assessable 을 false 로 한다.
+- 지자체장의 건의나 행사 소식처럼 진영 간 쟁점이 없는 기사도 assessable 을 false 로 한다.
 - 정치와 무관한 기사이거나 글이 너무 짧아 판단할 수 없으면 assessable 을 false 로 하고 evidence 를 비운다.
+- 본문 끝에 다른 기사의 제목이나 광고 문구가 섞여 있을 수 있다. 이 기사 자체의 문장에서만 근거를 찾는다.
 - 본문이 없고 제목과 요약만 주어지면 그 안에서 확인되는 것만 적는다.`;
 
 export interface ArticleInput {

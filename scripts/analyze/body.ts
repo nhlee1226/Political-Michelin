@@ -9,20 +9,47 @@ const TIMEOUT_MS = 10_000;
 const MIN_BODY = 200; // 이보다 짧으면 본문 추출 실패로 봄
 const MAX_BODY = 50_000; // 이보다 길면 기사 본문이 아닌 것으로 봄(목록·댓글 페이지 등)
 
-const ENTITIES: Record<string, string> = { quot: '"', amp: "&", lt: "<", gt: ">", apos: "'", nbsp: " ", middot: "·" };
-const decodeEntities = (s: string) =>
+const ENTITIES: Record<string, string> = {
+  quot: '"', amp: "&", lt: "<", gt: ">", apos: "'", nbsp: " ", middot: "·",
+  lsquo: "‘", rsquo: "’", ldquo: "“", rdquo: "”", hellip: "…", copy: "©",
+};
+const decodeOnce = (s: string) =>
   s.replace(/&(#\d+|#x[0-9a-f]+|[a-z]+);/gi, (m, e: string) =>
     e[0] === "#"
       ? String.fromCodePoint(e[1].toLowerCase() === "x" ? parseInt(e.slice(2), 16) : Number(e.slice(1)))
       : (ENTITIES[e.toLowerCase()] ?? m),
   );
+/** '&amp;ldquo;'처럼 두 번 감싼 기호를 쓰는 사이트가 있어 두 번까지 풂 */
+const decodeEntities = (s: string) => decodeOnce(decodeOnce(s));
 
 /** 기사 본문이 시작되는 자리로 흔히 쓰이는 표시 (없으면 문서 전체에서 찾음) */
 const BODY_START = /<article[\s>]|itemprop=["']articleBody["']|id=["'](?:dic_area|articleBody|article-view-content-div|articeBody|article_body|newsct_article)["']/i;
 
-/** HTML → 본문 글자. 문장 형태의 긴 줄만 남겨 메뉴·광고·기자 정보 줄을 걸러 냄 */
+const CLOSE = `["'”’)\\]]*`;
+/**
+ * 본문 문장으로 인정하는 줄. 본문 뒤에 붙는 관련 기사 제목·미리보기를 걸러 내기 위한 규칙:
+ *  - 마침표로 끝나는 줄 (단 "…", "..." 로 끝나는 미리보기는 제외)
+ *  - 줄 전체가 '"…합니다"'처럼 말끝 + 따옴표로 끝나는 인용 하나인 줄
+ *  - 물음표·느낌표로 끝나는 줄
+ *  뒤의 두 경우는 '…'가 들어 있으면 제외한다. 기사 제목은 '…'로 앞뒤를 잇는 경우가 많다.
+ */
+export function isSentence(line: string): boolean {
+  if (new RegExp(`(\\.\\.\\.|…)${CLOSE}$`).test(line)) return false;
+  if (new RegExp(`\\.${CLOSE}$`).test(line)) return true;
+  if (/…|\.\.\./.test(line)) return false;
+  // 줄 전체가 인용 하나인 경우만 (중간에 따옴표가 또 있으면 '"…" 누구 "…"' 형태의 제목)
+  if (/^["“'‘][^"“”'‘’]*(다|요|까|죠)["'”’]$/.test(line)) return true;
+  return new RegExp(`[?!]${CLOSE}$`).test(line);
+}
+/** 저작권·신문사 정보 줄 */
+const FOOTER = /무단\s*전재|재배포\s*금지|저작권자|Copyright|©|구독|제보|신문윤리|등록번호/i;
+
+/** HTML → 본문 글자. 문장으로 끝나는 긴 줄만 남겨 메뉴·광고·관련 기사·기자 정보 줄을 걸러 냄 */
 export function extractBody(html: string): string | null {
-  let s = html.replace(/<!--[\s\S]*?-->/g, " ").replace(/<(script|style|noscript|iframe|svg|figcaption)[\s\S]*?<\/\1>/gi, " ");
+  let s = html
+    .replace(/<!--[\s\S]*?-->/g, " ")
+    .replace(/<(script|style|noscript|iframe|svg|figcaption)[\s\S]*?<\/\1>/gi, " ")
+    .replace(/<meta\b[^>]*>/gi, " "); // <meta itemprop="articleBody" content="…"> 의 속성값이 본문으로 섞이지 않게
   const start = s.search(BODY_START);
   if (start >= 0) s = s.slice(start);
   const lines = decodeEntities(
@@ -30,8 +57,8 @@ export function extractBody(html: string): string | null {
   )
     .split("\n")
     .map((l) => l.replace(/\s+/g, " ").trim())
-    .filter((l) => l.length >= 30 && /[가-힣]/.test(l) && /[.?!"”’]/.test(l))
-    .filter((l) => !/무단\s*전재|재배포\s*금지|저작권자|Copyright|구독|제보/i.test(l));
+    .filter((l) => l.length >= 30 && /[가-힣]/.test(l) && isSentence(l))
+    .filter((l) => !FOOTER.test(l));
   const body = [...new Set(lines)].join("\n");
   return body.length >= MIN_BODY && body.length <= MAX_BODY ? body : null;
 }
