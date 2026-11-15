@@ -34,7 +34,7 @@ export async function POST(req: Request) {
   }
 
   const { targetType, targetId, body: text, parentId } = body;
-  if (!targetType || !VALID.includes(targetType)) {
+  if (!targetType || !VALID.includes(targetType as CommentTarget)) {
     return Response.json({ error: "target_type 이 올바르지 않습니다." }, { status: 400 });
   }
   if (!targetId) return Response.json({ error: "target_id 가 필요합니다." }, { status: 400 });
