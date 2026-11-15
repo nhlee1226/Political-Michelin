@@ -320,14 +320,52 @@ export const newsAnalysis = pgTable(
     newsId: text("news_id")
       .primaryKey()
       .references(() => newsArticles.id, { onDelete: "cascade" }),
+    /** 편향 크기 0~100 (= |lean|). 기존 화면이 쓰는 값 */
     bias: smallint("bias"),
+    /** 방향: -100(진보 시각) ~ 0(중립) ~ +100(보수 시각). 판단할 수 없으면 null */
+    lean: smallint("lean"),
+    /** 판단의 확신 정도. 근거 수와 본문 확보 여부로 계산 (scripts/analyze/score.ts) */
+    confidence: text("confidence"),
     biasSignals: text("bias_signals").array().notNull().default([]),
     objectiveHeadline: text("objective_headline"),
     objectiveSummary: text("objective_summary"),
     modelVersion: text("model_version").notNull(),
     analyzedAt: timestamp("analyzed_at", { withTimezone: true }).defaultNow().notNull(),
   },
-  (t) => [check("news_analysis_bias_check", sql`${t.bias} between 0 and 100`)],
+  (t) => [
+    check("news_analysis_bias_check", sql`${t.bias} between 0 and 100`),
+    check("news_analysis_lean_check", sql`${t.lean} between -100 and 100`),
+    check("news_analysis_confidence_check", sql`${t.confidence} in ('low', 'medium', 'high')`),
+  ],
+).enableRLS();
+
+/**
+ * 편향 판단의 근거 (기사 1건에 여러 줄). 화면의 "더보기"에 그대로 보여 줌.
+ * lean 점수는 이 줄들로만 계산한다 → 점수와 근거가 항상 맞음.
+ *  type      = 'quote_balance' 인용 균형 | 'wording' 표현 | 'headline_gap' 제목·본문 차이 | 'fact_check' 사실 검증(예정)
+ *  direction = 'progressive' 진보 쪽 | 'neutral' | 'conservative' 보수 쪽
+ *  excerpt   = 근거가 된 원문 문장(짧은 인용만 — 본문 전체는 저장하지 않음)
+ */
+export const newsEvidence = pgTable(
+  "news_evidence",
+  {
+    id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+    newsId: text("news_id")
+      .notNull()
+      .references(() => newsArticles.id, { onDelete: "cascade" }),
+    type: text("type").notNull(),
+    direction: text("direction").notNull(),
+    strength: smallint("strength").notNull(), // 1 약함 ~ 3 강함
+    excerpt: text("excerpt").notNull(),
+    explanation: text("explanation").notNull(),
+    sourceUrl: text("source_url"), // 사실 검증에 쓴 1차 자료 주소
+  },
+  (t) => [
+    index("news_evidence_news_idx").on(t.newsId),
+    check("news_evidence_type_check", sql`${t.type} in ('quote_balance', 'wording', 'headline_gap', 'fact_check')`),
+    check("news_evidence_direction_check", sql`${t.direction} in ('progressive', 'neutral', 'conservative')`),
+    check("news_evidence_strength_check", sql`${t.strength} between 1 and 3`),
+  ],
 ).enableRLS();
 
 /* ═══════════════════════════ 수기 입력 · 운영 ═══════════════════════════ */
