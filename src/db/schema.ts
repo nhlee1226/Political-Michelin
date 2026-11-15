@@ -436,7 +436,7 @@ export const comments = pgTable(
       name: "comments_parent_id_fk",
       columns: [t.parentId],
       foreignColumns: [t.id],
-    }),
+    }).onDelete("cascade"), // 글을 지우면 답글도 같이 (scripts/apply-comments-sql.ts 와 같게)
   ],
 ).enableRLS();
 
