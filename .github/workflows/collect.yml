@@ -1,6 +1,7 @@
 # 자동 수집: GitHub 서버가 정해진 시간에 수집기를 대신 실행합니다 (무료).
-# 레포 Settings → Secrets and variables → Actions 에 등록 필요:
-#   DATABASE_URL (Supabase Session pooler 주소), NAVER_HUB_CLIENT_ID, NAVER_HUB_CLIENT_SECRET
+# 키는 레포 Settings → Environments → "Political-Michelin/ENV" 의 환경 비밀값(Environment secrets)에 있음:
+#   DATABASE_URL (Supabase Session pooler 주소), NAVER_HUB_CLIENT_ID, NAVER_HUB_CLIENT_SECRET, ANTHROPIC_API_KEY
+# 환경 비밀값은 job 에 environment 를 적어야만 읽힘 (아래 environment 줄을 지우면 키가 전부 빈 값이 됨).
 # 선관위(collect:nec)는 지난 선거 결과라 한 번만 수동 실행 → 여기 넣지 않음.
 # 열린국회정보(collect:members, collect:bills)는 키 발급·검증 후 아래 주석을 풀어서 추가.
 name: collect
@@ -17,6 +18,7 @@ concurrency:
 jobs:
   collect:
     runs-on: ubuntu-latest
+    environment: Political-Michelin/ENV # 키가 이 환경의 비밀값으로 등록돼 있음
     timeout-minutes: 15
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
