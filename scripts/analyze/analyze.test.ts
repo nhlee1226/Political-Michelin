@@ -7,6 +7,7 @@ import { test } from "node:test";
 import { extractBody, robotsAllows } from "./body";
 import { allowance, estimateNext, kstDate, readBudget, startOfKstDay } from "./budget";
 import { costOf } from "./claude";
+import { readLimitBytes, storageLine, storageReport } from "./storage";
 import { keepGrounded, score, type Evidence } from "./score";
 
 const ev = (direction: Evidence["direction"], strength = 2, type: Evidence["type"] = "wording"): Evidence => ({
@@ -203,4 +204,35 @@ test("비용 계산: 모델별 가격, 캐시 쓰기 1.25배·읽기 0.1배, 모
   assert.ok(costOf("claude-unknown", u) > costOf("claude-opus-5-5", u));
   const cached = costOf("claude-haiku-5-5", { input_tokens: 0, output_tokens: 0, cache_creation_input_tokens: 1000, cache_read_input_tokens: 1000 });
   assert.ok(Math.abs(cached - (1000 * 1.25 * 0.1 + 1000 * 0.1 * 0.1) / 1e6) < 1e-12);
+});
+
+/* ───────── Supabase 잔여 용량 ───────── */
+
+const MiB = 1024 * 1024;
+
+test("용량: 쓴 만큼 빼고, 기사 1건 크기 × 하루 기사 수로 남은 날 계산", () => {
+  // 100MB 사용 / 500MB 한도, 기사 4,000건이 20MB → 1건 5KB, 하루 1,024건 → 하루 5MB → 400MB / 5MB = 80일
+  const r = storageReport({ dbBytes: 100 * MiB, limitBytes: 500 * MiB, newsBytes: 20 * MiB, articleCount: 4096, articlesPerDay: 1024 });
+  assert.equal(r.usedMb, 100);
+  assert.equal(r.freeMb, 400);
+  assert.equal(r.usedPct, 20);
+  assert.equal(r.kbPerArticle, 5);
+  assert.equal(r.mbPerDay, 5);
+  assert.equal(r.daysLeft, 80);
+  assert.equal(r.warning, undefined);
+  assert.match(storageLine(r), /100\.0 \/ 500\.0 MB \(20\.0%\).*남은 400\.0 MB.*약 80일/);
+});
+
+test("용량: 새 기사가 없으면 남은 날은 null, 80%·95% 넘으면 경고", () => {
+  assert.equal(storageReport({ dbBytes: MiB, limitBytes: 500 * MiB, newsBytes: 0, articleCount: 0, articlesPerDay: 0 }).daysLeft, null);
+  assert.match(storageReport({ dbBytes: 410 * MiB, limitBytes: 500 * MiB, newsBytes: 1, articleCount: 1, articlesPerDay: 1 }).warning!, /80%/);
+  assert.match(storageReport({ dbBytes: 480 * MiB, limitBytes: 500 * MiB, newsBytes: 1, articleCount: 1, articlesPerDay: 1 }).warning!, /거의 찼/);
+  // 한도를 넘어도 남은 용량은 0 (음수 아님)
+  assert.equal(storageReport({ dbBytes: 600 * MiB, limitBytes: 500 * MiB, newsBytes: 1, articleCount: 1, articlesPerDay: 1 }).freeMb, 0);
+});
+
+test("용량 한도 설정: 기본 500MB(Supabase Free), 잘못된 값은 오류", () => {
+  assert.equal(readLimitBytes({}), 500 * MiB);
+  assert.equal(readLimitBytes({ SUPABASE_DB_LIMIT_MB: "8192" }), 8192 * MiB);
+  assert.throws(() => readLimitBytes({ SUPABASE_DB_LIMIT_MB: "0" }));
 });
