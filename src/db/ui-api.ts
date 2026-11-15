@@ -280,12 +280,22 @@ export async function apiRegionDetail(code: string) {
 
 /* ───────── 뉴스 · 정당 · 숫자 카드 ───────── */
 
-export function apiNews(region: string | null, limit: number) {
+/**
+ * 뉴스 목록. analyzed = true 면 편향 분석이 끝난 기사만.
+ * evidence: 편향 근거 (방향 있는 근거 → 강한 근거 순). 분석 전이면 null
+ */
+export function apiNews(region: string | null, limit: number, analyzed = false) {
   return rows(sql`
     select a.id, a.url, a.source, a.title as headline, a.summary, to_json(a.published_at)#>>'{}' as published_at, a.region_code,
-           x.bias::int as bias, x.bias_signals, x.objective_headline, x.objective_summary
+           (x.news_id is not null) as analyzed,
+           x.bias::int as bias, x.lean::int as lean, x.confidence, x.bias_signals, x.objective_headline, x.objective_summary,
+           (select json_agg(json_build_object('type', e.type, 'direction', e.direction, 'strength', e.strength,
+                                              'excerpt', e.excerpt, 'explanation', e.explanation, 'source_url', e.source_url)
+                            order by (e.direction = 'neutral'), e.strength desc, e.id)
+              from news_evidence e where e.news_id = a.id) as evidence
     from news_articles a left join news_analysis x on x.news_id = a.id
     where (${region}::text is null or a.region_code = ${region})
+      and (not ${analyzed} or x.news_id is not null)
     order by a.published_at desc
     limit ${limit}`);
 }

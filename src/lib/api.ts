@@ -122,10 +122,30 @@ export interface ApiNews {
   summary: string | null;
   published_at: string;
   region_code: string | null;
+  /** 편향 분석을 했는가 (했는데 lean 이 null 이면 '판단 불가') */
+  analyzed: boolean;
+  /** 편향 크기 0~100 (= |lean|) */
   bias: number | null;
+  /** -100(진보 시각) ~ +100(보수 시각). 분석 전이거나 판단 불가면 null */
+  lean: number | null;
+  confidence: "low" | "medium" | "high" | null;
   bias_signals: string[] | null;
   objective_headline: string | null;
   objective_summary: string | null;
+  /** 편향 근거. 분석 전이거나 근거가 없으면 null */
+  evidence: ApiEvidence[] | null;
+}
+
+/** 편향 판단 근거 1개 (news_evidence) */
+export interface ApiEvidence {
+  type: "quote_balance" | "wording" | "headline_gap" | "fact_check";
+  direction: "progressive" | "neutral" | "conservative";
+  /** 1 약함 ~ 3 강함 */
+  strength: number;
+  /** 근거가 된 원문 문장 */
+  excerpt: string;
+  explanation: string;
+  source_url: string | null;
 }
 
 /** 지방선거 당선인 (시·도지사·교육감·구·시·군의 장) */
@@ -188,9 +208,13 @@ export const useRegions = () => useSWR<ApiRegion[]>("/regions", fetcher, live);
 export const useRegion = (code: string | null) =>
   useSWR<ApiRegionDetail>(code ? `/regions/${code}` : null, fetcher, live);
 
-/** region: 시도 코드, undefined = 전국, null = 요청 안 함 */
-export const useNews = (region?: string | null, limit = 20) =>
-  useSWR<ApiNews[]>(region === null ? null : `/news?limit=${limit}${region ? `&region=${region}` : ""}`, fetcher, live);
+/** region: 시도 코드, undefined = 전국, null = 요청 안 함. analyzed: 편향 분석된 기사만 */
+export const useNews = (region?: string | null, limit = 20, analyzed = false) =>
+  useSWR<ApiNews[]>(
+    region === null ? null : `/news?limit=${limit}${region ? `&region=${region}` : ""}${analyzed ? "&analyzed=1" : ""}`,
+    fetcher,
+    live,
+  );
 
 /** 목록은 별점 기준 문장을 응답 헤더로 주므로 헤더까지 읽음 */
 async function politiciansFetcher(path: string): Promise<ApiPoliticianList> {
