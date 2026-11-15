@@ -5,6 +5,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { extractBody, robotsAllows } from "./body";
+import { allowance, estimateNext, kstDate, readBudget, startOfKstDay } from "./budget";
+import { costOf } from "./claude";
 import { keepGrounded, score, type Evidence } from "./score";
 
 const ev = (direction: Evidence["direction"], strength = 2, type: Evidence["type"] = "wording"): Evidence => ({
@@ -142,4 +144,63 @@ test("robots.txt: Disallow 는 막고, 더 구체적인 Allow 는 통과, 다른
   assert.equal(robotsAllows(txt, "/private/open/1"), true);
   assert.equal(robotsAllows("User-agent: *\nDisallow: /\n", "/news/1"), false);
   assert.equal(robotsAllows("User-agent: *\nDisallow:\n", "/news/1"), true);
+});
+
+/* ───────── 예산 ───────── */
+
+const cfg = { totalUsd: 4.5, from: kstDate("2026-11-15"), until: kstDate("2026-12-15") };
+const at = (iso: string) => new Date(iso); // 시각은 한국 시간(+09:00)으로 적음
+
+test("예산: 남은 돈을 남은 날수로 고르게 나눔 (30일 기간 첫날 = 4.5 / 30)", () => {
+  const a = allowance(cfg, 0, 0, at("2026-11-15T10:00:00+09:00"));
+  assert.ok(Math.abs(a.todayUsd - 0.15) < 1e-9);
+  assert.equal(a.stop, undefined);
+});
+
+test("예산: 오늘 쓴 만큼 오늘 몫이 줄고, 다 쓰면 멈춤", () => {
+  assert.ok(Math.abs(allowance(cfg, 0.1, 0.1, at("2026-11-15T20:00:00+09:00")).todayUsd - 0.05) < 1e-9);
+  const done = allowance(cfg, 0.15, 0.15, at("2026-11-15T23:00:00+09:00"));
+  assert.equal(done.todayUsd, 0);
+  assert.match(done.stop!, /오늘 몫/);
+});
+
+test("예산: 어제 덜 쓴 돈은 남은 날들에 다시 나뉨", () => {
+  // 첫날 0원 사용 → 둘째 날 몫 = 4.5 / 29
+  const a = allowance(cfg, 0, 0, at("2026-11-16T09:00:00+09:00"));
+  assert.ok(Math.abs(a.todayUsd - 4.5 / 29) < 1e-9);
+});
+
+test("예산: 기간 밖이거나 총액을 다 쓰면 0", () => {
+  assert.equal(allowance(cfg, 0, 0, at("2026-11-14T23:59:00+09:00")).todayUsd, 0);
+  assert.equal(allowance(cfg, 0, 0, at("2026-12-15T00:00:00+09:00")).todayUsd, 0);
+  assert.equal(allowance(cfg, 4.5, 0, at("2026-11-20T12:00:00+09:00")).todayUsd, 0);
+  // 마지막 날에는 남은 돈 전부를 쓸 수 있음
+  assert.ok(Math.abs(allowance(cfg, 4, 0, at("2026-12-14T12:00:00+09:00")).todayUsd - 0.5) < 1e-9);
+});
+
+test("예산: 한국 날짜 경계 (UTC 15시 = 한국 다음 날 0시)", () => {
+  assert.equal(startOfKstDay(at("2026-11-15T14:59:00Z")).toISOString(), "2026-11-14T15:00:00.000Z");
+  assert.equal(startOfKstDay(at("2026-11-15T15:00:00Z")).toISOString(), "2026-11-15T15:00:00.000Z");
+});
+
+test("예산 설정: 기본값과 잘못된 값", () => {
+  const d = readBudget({});
+  assert.equal(d.totalUsd, 4.5);
+  assert.equal(d.from.toISOString(), "2026-11-14T15:00:00.000Z");
+  assert.throws(() => readBudget({ ANALYZE_BUDGET_USD: "다섯" }));
+  assert.throws(() => readBudget({ ANALYZE_BUDGET_FROM: "2026-12-20" }));
+});
+
+test("다음 1건 예상 비용: 최근 호출 중 가장 비싼 값, 기록이 없으면 기본값", () => {
+  assert.equal(estimateNext([0.002, 0.004, 0.003]), 0.004);
+  assert.equal(estimateNext([]), 0.01);
+});
+
+test("비용 계산: 모델별 가격, 캐시 쓰기 1.25배·읽기 0.1배, 모르는 모델은 비싸게", () => {
+  const u = { input_tokens: 4000, output_tokens: 4000 };
+  assert.ok(Math.abs(costOf("claude-haiku-5-5", u) - (4000 * 0.1 + 4000 * 0.5) / 1e6) < 1e-12);
+  assert.ok(Math.abs(costOf("claude-opus-5-5", u) - (4000 * 4 + 4000 * 20) / 1e6) < 1e-12);
+  assert.ok(costOf("claude-unknown", u) > costOf("claude-opus-5-5", u));
+  const cached = costOf("claude-haiku-5-5", { input_tokens: 0, output_tokens: 0, cache_creation_input_tokens: 1000, cache_read_input_tokens: 1000 });
+  assert.ok(Math.abs(cached - (1000 * 1.25 * 0.1 + 1000 * 0.1 * 0.1) / 1e6) < 1e-12);
 });

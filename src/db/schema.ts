@@ -371,6 +371,25 @@ export const newsEvidence = pgTable(
 /* ═══════════════════════════ 수기 입력 · 운영 ═══════════════════════════ */
 
 /** 정당 지지도: 공식 API 없음. 여론조사 발표 원문을 보고 팀이 입력 (출처 필수) */
+/**
+ * Claude API 호출 기록 (비용·예산 관리용). 거절·실패한 호출도 요금이 나가므로 모두 남긴다.
+ * scripts/analyze/budget.ts 가 이 표의 합계로 남은 예산과 오늘 쓸 수 있는 금액을 계산한다.
+ */
+export const apiUsage = pgTable(
+  "api_usage",
+  {
+    id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+    newsId: text("news_id"), // 기사 삭제와 무관하게 비용 기록은 남김 (FK 없음)
+    model: text("model").notNull(),
+    inputTokens: integer("input_tokens").notNull(),
+    outputTokens: integer("output_tokens").notNull(),
+    costUsd: numeric("cost_usd", { precision: 10, scale: 6, mode: "number" }).notNull(),
+    note: text("note"), // 'ok' | 실패 사유 | 수동 기록 설명
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [index("api_usage_created_idx").on(t.createdAt)],
+).enableRLS();
+
 export const supportPolls = pgTable(
   "support_polls",
   {
