@@ -19,7 +19,7 @@ import { SideRail } from "./side-rail";
 import { FlipCounter } from "./flip-counter";
 import { KoreaMapCard } from "./korea-map-card";
 import { NewsPanel } from "./news-panel";
-import { CommunityFeed } from "./community-feed";
+import { CommunityFeed, CommunityStatsCard, CommunityGuideCard } from "./community-feed";
 import { ActivityCard, IssueTimelineCard, PartyTrendCard, PledgeCard } from "./kpi-charts";
 import { BiasReportCard, PoliticianTable } from "./extra-cards";
 import { RegionMembersCard } from "./region-members-card";
@@ -264,8 +264,8 @@ export default function PoliticalMichelinDashboard() {
                 <div className="grid grid-cols-12 gap-4">
                   <CommunityFeed className="col-span-12 h-[760px] lg:col-span-8" />
                   <div className="col-span-12 flex flex-col gap-4 lg:col-span-4">
-                    <BiasReportCard />
-                    <NewsPanel aiMode={aiMode} limit={2} onOpen={go("news")} />
+                    <CommunityStatsCard />
+                    <CommunityGuideCard />
                   </div>
                 </div>
               )}

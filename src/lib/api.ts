@@ -213,6 +213,80 @@ export const useLocalWinner = (id: string | null) =>
 
 export const useStats = () => useSWR<ApiStats>("/stats", fetcher, live);
 
+/* ── 인증 ─────────────────────────────────────────────── */
+export interface ApiUser {
+  id: string;
+  email: string;
+  name: string;
+  role: "user" | "admin";
+}
+
+/**
+ * 현재 로그인한 사용자. 비로그인이면 null.
+ * 로그인·회원가입은 서버 액션이 redirect 하므로 페이지가 다시 로드되어 자연스럽게 갱신됨.
+ * 로그아웃 후에도 redirect 로 페이지가 바뀌므로 별도 mutate 불필요.
+ */
+export function useUser() {
+  return useSWR<ApiUser | null>("/auth/me", async (path: string) => {
+    const res = await fetch(`${API}${path}`, { cache: "no-store" });
+    if (!res.ok) return null;
+    return res.json() as Promise<ApiUser | null>;
+  });
+}
+
+/* ── 커뮤니티 (댓글·게시글) ─────────────────────────── */
+export interface ApiComment {
+  id: string;
+  body: string;
+  author: string;
+  userId: string;
+  parentId: string | null;
+  isBlinded: boolean;
+  isUnderReview: boolean;
+  createdAt: string;
+}
+
+export type CommentTarget = "post" | "news" | "politician";
+
+/**
+ * 특정 대상의 댓글 목록. 비로그인도 읽기 가능.
+ * 작성·삭제 후엔 mutate 로 갱신.
+ */
+export function useComments(targetType: CommentTarget, targetId: string) {
+  return useSWR<ApiComment[]>(
+    `/comments?target_type=${targetType}&target_id=${encodeURIComponent(targetId)}`,
+    fetcher,
+    { refreshInterval: 30_000, revalidateOnFocus: true, keepPreviousData: true },
+  );
+}
+
+/** 댓글 작성. 성공하면 생성된 댓글 반환. */
+export async function postComment(opts: {
+  targetType: CommentTarget;
+  targetId: string;
+  body: string;
+  parentId?: string | null;
+}): Promise<ApiComment | { error: string }> {
+  const res = await fetch(`${API}/comments`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(opts),
+  });
+  const data = await res.json();
+  if (!res.ok) return { error: (data as { error?: string }).error ?? "작성 실패" };
+  return data as ApiComment;
+}
+
+/** 댓글 삭제. */
+export async function deleteComment(id: string): Promise<{ ok: boolean; error?: string }> {
+  const res = await fetch(`${API}/comments/${id}`, { method: "DELETE" });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    return { ok: false, error: (data as { error?: string }).error ?? "삭제 실패" };
+  }
+  return { ok: true };
+}
+
 /** 정당이 없거나 정당 표에 없는 이름일 때 쓰는 회색 */
 export const NO_PARTY_COLOR = "#6b7280";
 

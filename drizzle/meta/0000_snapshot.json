@@ -1,0 +1,1883 @@
+{
+  "id": "4de45176-4e21-4f8e-a08c-d161f2a9a92b",
+  "prevId": "00000000-0000-0000-0000-000000000000",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.bill_votes": {
+      "name": "bill_votes",
+      "schema": "",
+      "columns": {
+        "bill_id": {
+          "name": "bill_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "mona_cd": {
+          "name": "mona_cd",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "result": {
+          "name": "result",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "vote_date": {
+          "name": "vote_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "bill_votes_member_idx": {
+          "name": "bill_votes_member_idx",
+          "columns": [
+            {
+              "expression": "mona_cd",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "bill_votes_bill_id_bills_bill_id_fk": {
+          "name": "bill_votes_bill_id_bills_bill_id_fk",
+          "tableFrom": "bill_votes",
+          "tableTo": "bills",
+          "columnsFrom": [
+            "bill_id"
+          ],
+          "columnsTo": [
+            "bill_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "bill_votes_mona_cd_members_mona_cd_fk": {
+          "name": "bill_votes_mona_cd_members_mona_cd_fk",
+          "tableFrom": "bill_votes",
+          "tableTo": "members",
+          "columnsFrom": [
+            "mona_cd"
+          ],
+          "columnsTo": [
+            "mona_cd"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "bill_votes_bill_id_mona_cd_pk": {
+          "name": "bill_votes_bill_id_mona_cd_pk",
+          "columns": [
+            "bill_id",
+            "mona_cd"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "bill_votes_result_check": {
+          "name": "bill_votes_result_check",
+          "value": "\"bill_votes\".\"result\" in ('찬성', '반대', '기권', '불참')"
+        }
+      },
+      "isRLSEnabled": true
+    },
+    "public.bills": {
+      "name": "bills",
+      "schema": "",
+      "columns": {
+        "bill_id": {
+          "name": "bill_id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "bill_no": {
+          "name": "bill_no",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "unit": {
+          "name": "unit",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "proposer_mona_cd": {
+          "name": "proposer_mona_cd",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "propose_date": {
+          "name": "propose_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "committee": {
+          "name": "committee",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "proc_result": {
+          "name": "proc_result",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "detail_url": {
+          "name": "detail_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "bills_proposer_idx": {
+          "name": "bills_proposer_idx",
+          "columns": [
+            {
+              "expression": "proposer_mona_cd",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "bills_proposer_mona_cd_members_mona_cd_fk": {
+          "name": "bills_proposer_mona_cd_members_mona_cd_fk",
+          "tableFrom": "bills",
+          "tableTo": "members",
+          "columnsFrom": [
+            "proposer_mona_cd"
+          ],
+          "columnsTo": [
+            "mona_cd"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": true
+    },
+    "public.election_candidates": {
+      "name": "election_candidates",
+      "schema": "",
+      "columns": {
+        "sg_id": {
+          "name": "sg_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sg_typecode": {
+          "name": "sg_typecode",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "huboid": {
+          "name": "huboid",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "hanja_name": {
+          "name": "hanja_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "party_name": {
+          "name": "party_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "giho": {
+          "name": "giho",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "gender": {
+          "name": "gender",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "birthday": {
+          "name": "birthday",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "age": {
+          "name": "age",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sd_name": {
+          "name": "sd_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sgg_name": {
+          "name": "sgg_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "wiw_name": {
+          "name": "wiw_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "region_code": {
+          "name": "region_code",
+          "type": "char(2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "job": {
+          "name": "job",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "edu": {
+          "name": "edu",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "career1": {
+          "name": "career1",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "career2": {
+          "name": "career2",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "votes": {
+          "name": "votes",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "vote_rate": {
+          "name": "vote_rate",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "is_winner": {
+          "name": "is_winner",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "election_candidates_region_idx": {
+          "name": "election_candidates_region_idx",
+          "columns": [
+            {
+              "expression": "region_code",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "election_candidates_district_idx": {
+          "name": "election_candidates_district_idx",
+          "columns": [
+            {
+              "expression": "sg_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "sg_typecode",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "sgg_name",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "election_candidates_region_code_regions_code_fk": {
+          "name": "election_candidates_region_code_regions_code_fk",
+          "tableFrom": "election_candidates",
+          "tableTo": "regions",
+          "columnsFrom": [
+            "region_code"
+          ],
+          "columnsTo": [
+            "code"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "election_candidates_election_fk": {
+          "name": "election_candidates_election_fk",
+          "tableFrom": "election_candidates",
+          "tableTo": "elections",
+          "columnsFrom": [
+            "sg_id",
+            "sg_typecode"
+          ],
+          "columnsTo": [
+            "sg_id",
+            "sg_typecode"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "election_candidates_sg_id_sg_typecode_huboid_pk": {
+          "name": "election_candidates_sg_id_sg_typecode_huboid_pk",
+          "columns": [
+            "sg_id",
+            "sg_typecode",
+            "huboid"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": true
+    },
+    "public.election_districts": {
+      "name": "election_districts",
+      "schema": "",
+      "columns": {
+        "sg_id": {
+          "name": "sg_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sg_typecode": {
+          "name": "sg_typecode",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sd_name": {
+          "name": "sd_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sgg_name": {
+          "name": "sgg_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "region_code": {
+          "name": "region_code",
+          "type": "char(2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "electors": {
+          "name": "electors",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "voters": {
+          "name": "voters",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "valid_votes": {
+          "name": "valid_votes",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "invalid_votes": {
+          "name": "invalid_votes",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "abstentions": {
+          "name": "abstentions",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "election_districts_region_code_regions_code_fk": {
+          "name": "election_districts_region_code_regions_code_fk",
+          "tableFrom": "election_districts",
+          "tableTo": "regions",
+          "columnsFrom": [
+            "region_code"
+          ],
+          "columnsTo": [
+            "code"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "election_districts_election_fk": {
+          "name": "election_districts_election_fk",
+          "tableFrom": "election_districts",
+          "tableTo": "elections",
+          "columnsFrom": [
+            "sg_id",
+            "sg_typecode"
+          ],
+          "columnsTo": [
+            "sg_id",
+            "sg_typecode"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "election_districts_sg_id_sg_typecode_sd_name_sgg_name_pk": {
+          "name": "election_districts_sg_id_sg_typecode_sd_name_sgg_name_pk",
+          "columns": [
+            "sg_id",
+            "sg_typecode",
+            "sd_name",
+            "sgg_name"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": true
+    },
+    "public.election_pledges": {
+      "name": "election_pledges",
+      "schema": "",
+      "columns": {
+        "sg_id": {
+          "name": "sg_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sg_typecode": {
+          "name": "sg_typecode",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "huboid": {
+          "name": "huboid",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "pledge_no": {
+          "name": "pledge_no",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "realm": {
+          "name": "realm",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "content": {
+          "name": "content",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "election_pledges_candidate_fk": {
+          "name": "election_pledges_candidate_fk",
+          "tableFrom": "election_pledges",
+          "tableTo": "election_candidates",
+          "columnsFrom": [
+            "sg_id",
+            "sg_typecode",
+            "huboid"
+          ],
+          "columnsTo": [
+            "sg_id",
+            "sg_typecode",
+            "huboid"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "election_pledges_sg_id_sg_typecode_huboid_pledge_no_pk": {
+          "name": "election_pledges_sg_id_sg_typecode_huboid_pledge_no_pk",
+          "columns": [
+            "sg_id",
+            "sg_typecode",
+            "huboid",
+            "pledge_no"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": true
+    },
+    "public.election_turnout": {
+      "name": "election_turnout",
+      "schema": "",
+      "columns": {
+        "sg_id": {
+          "name": "sg_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sg_typecode": {
+          "name": "sg_typecode",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sd_name": {
+          "name": "sd_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "wiw_name": {
+          "name": "wiw_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "region_code": {
+          "name": "region_code",
+          "type": "char(2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "electors": {
+          "name": "electors",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "voters": {
+          "name": "voters",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "turnout": {
+          "name": "turnout",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "election_turnout_region_code_regions_code_fk": {
+          "name": "election_turnout_region_code_regions_code_fk",
+          "tableFrom": "election_turnout",
+          "tableTo": "regions",
+          "columnsFrom": [
+            "region_code"
+          ],
+          "columnsTo": [
+            "code"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "election_turnout_election_fk": {
+          "name": "election_turnout_election_fk",
+          "tableFrom": "election_turnout",
+          "tableTo": "elections",
+          "columnsFrom": [
+            "sg_id",
+            "sg_typecode"
+          ],
+          "columnsTo": [
+            "sg_id",
+            "sg_typecode"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "election_turnout_sg_id_sg_typecode_sd_name_wiw_name_pk": {
+          "name": "election_turnout_sg_id_sg_typecode_sd_name_wiw_name_pk",
+          "columns": [
+            "sg_id",
+            "sg_typecode",
+            "sd_name",
+            "wiw_name"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": true
+    },
+    "public.elections": {
+      "name": "elections",
+      "schema": "",
+      "columns": {
+        "sg_id": {
+          "name": "sg_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sg_typecode": {
+          "name": "sg_typecode",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "election_date": {
+          "name": "election_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "elections_sg_id_sg_typecode_pk": {
+          "name": "elections_sg_id_sg_typecode_pk",
+          "columns": [
+            "sg_id",
+            "sg_typecode"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": true
+    },
+    "public.members": {
+      "name": "members",
+      "schema": "",
+      "columns": {
+        "mona_cd": {
+          "name": "mona_cd",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "party_id": {
+          "name": "party_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "region_code": {
+          "name": "region_code",
+          "type": "char(2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "district": {
+          "name": "district",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "elect_type": {
+          "name": "elect_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "term": {
+          "name": "term",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "committee": {
+          "name": "committee",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "unit": {
+          "name": "unit",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 22
+        },
+        "photo_url": {
+          "name": "photo_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "members_region_idx": {
+          "name": "members_region_idx",
+          "columns": [
+            {
+              "expression": "region_code",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "members_party_idx": {
+          "name": "members_party_idx",
+          "columns": [
+            {
+              "expression": "party_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "members_party_id_parties_id_fk": {
+          "name": "members_party_id_parties_id_fk",
+          "tableFrom": "members",
+          "tableTo": "parties",
+          "columnsFrom": [
+            "party_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "members_region_code_regions_code_fk": {
+          "name": "members_region_code_regions_code_fk",
+          "tableFrom": "members",
+          "tableTo": "regions",
+          "columnsFrom": [
+            "region_code"
+          ],
+          "columnsTo": [
+            "code"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "members_elect_type_check": {
+          "name": "members_elect_type_check",
+          "value": "\"members\".\"elect_type\" in ('지역구', '비례대표')"
+        }
+      },
+      "isRLSEnabled": true
+    },
+    "public.news_analysis": {
+      "name": "news_analysis",
+      "schema": "",
+      "columns": {
+        "news_id": {
+          "name": "news_id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "bias": {
+          "name": "bias",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "bias_signals": {
+          "name": "bias_signals",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'"
+        },
+        "objective_headline": {
+          "name": "objective_headline",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "objective_summary": {
+          "name": "objective_summary",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "model_version": {
+          "name": "model_version",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "analyzed_at": {
+          "name": "analyzed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "news_analysis_news_id_news_articles_id_fk": {
+          "name": "news_analysis_news_id_news_articles_id_fk",
+          "tableFrom": "news_analysis",
+          "tableTo": "news_articles",
+          "columnsFrom": [
+            "news_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "news_analysis_bias_check": {
+          "name": "news_analysis_bias_check",
+          "value": "\"news_analysis\".\"bias\" between 0 and 100"
+        }
+      },
+      "isRLSEnabled": true
+    },
+    "public.news_articles": {
+      "name": "news_articles",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "url": {
+          "name": "url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "naver_url": {
+          "name": "naver_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "source": {
+          "name": "source",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "summary": {
+          "name": "summary",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "published_at": {
+          "name": "published_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "region_code": {
+          "name": "region_code",
+          "type": "char(2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "query": {
+          "name": "query",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "collected_at": {
+          "name": "collected_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "news_articles_published_idx": {
+          "name": "news_articles_published_idx",
+          "columns": [
+            {
+              "expression": "published_at",
+              "isExpression": false,
+              "asc": false,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "news_articles_region_idx": {
+          "name": "news_articles_region_idx",
+          "columns": [
+            {
+              "expression": "region_code",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "published_at",
+              "isExpression": false,
+              "asc": false,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "news_articles_region_code_regions_code_fk": {
+          "name": "news_articles_region_code_regions_code_fk",
+          "tableFrom": "news_articles",
+          "tableTo": "regions",
+          "columnsFrom": [
+            "region_code"
+          ],
+          "columnsTo": [
+            "code"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "news_articles_url_unique": {
+          "name": "news_articles_url_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "url"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": true
+    },
+    "public.news_mentions": {
+      "name": "news_mentions",
+      "schema": "",
+      "columns": {
+        "news_id": {
+          "name": "news_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "kind": {
+          "name": "kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ref": {
+          "name": "ref",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "label": {
+          "name": "label",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "news_mentions_ref_idx": {
+          "name": "news_mentions_ref_idx",
+          "columns": [
+            {
+              "expression": "kind",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "ref",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "news_mentions_news_id_news_articles_id_fk": {
+          "name": "news_mentions_news_id_news_articles_id_fk",
+          "tableFrom": "news_mentions",
+          "tableTo": "news_articles",
+          "columnsFrom": [
+            "news_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "news_mentions_news_id_kind_ref_pk": {
+          "name": "news_mentions_news_id_kind_ref_pk",
+          "columns": [
+            "news_id",
+            "kind",
+            "ref"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "news_mentions_kind_check": {
+          "name": "news_mentions_kind_check",
+          "value": "\"news_mentions\".\"kind\" in ('party', 'member', 'candidate')"
+        }
+      },
+      "isRLSEnabled": true
+    },
+    "public.parties": {
+      "name": "parties",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "short": {
+          "name": "short",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "color": {
+          "name": "color",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "aliases": {
+          "name": "aliases",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'"
+        },
+        "is_active": {
+          "name": "is_active",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "source": {
+          "name": "source",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": true
+    },
+    "public.raw_responses": {
+      "name": "raw_responses",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "identity": {
+            "type": "always",
+            "name": "raw_responses_id_seq",
+            "schema": "public",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "cache": "1",
+            "cycle": false
+          }
+        },
+        "source": {
+          "name": "source",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "params": {
+          "name": "params",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "payload": {
+          "name": "payload",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "fetched_at": {
+          "name": "fetched_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "raw_responses_source_idx": {
+          "name": "raw_responses_source_idx",
+          "columns": [
+            {
+              "expression": "source",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "fetched_at",
+              "isExpression": false,
+              "asc": false,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": true
+    },
+    "public.region_indicators": {
+      "name": "region_indicators",
+      "schema": "",
+      "columns": {
+        "region_code": {
+          "name": "region_code",
+          "type": "char(2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "indicator": {
+          "name": "indicator",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "year": {
+          "name": "year",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "value": {
+          "name": "value",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "unit": {
+          "name": "unit",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "source_org_id": {
+          "name": "source_org_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "source_tbl_id": {
+          "name": "source_tbl_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "region_indicators_region_code_regions_code_fk": {
+          "name": "region_indicators_region_code_regions_code_fk",
+          "tableFrom": "region_indicators",
+          "tableTo": "regions",
+          "columnsFrom": [
+            "region_code"
+          ],
+          "columnsTo": [
+            "code"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "region_indicators_region_code_indicator_year_pk": {
+          "name": "region_indicators_region_code_indicator_year_pk",
+          "columns": [
+            "region_code",
+            "indicator",
+            "year"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": true
+    },
+    "public.regions": {
+      "name": "regions",
+      "schema": "",
+      "columns": {
+        "code": {
+          "name": "code",
+          "type": "char(2)",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "short": {
+          "name": "short",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": true
+    },
+    "public.support_polls": {
+      "name": "support_polls",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "identity": {
+            "type": "always",
+            "name": "support_polls_id_seq",
+            "schema": "public",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "cache": "1",
+            "cycle": false
+          }
+        },
+        "region_code": {
+          "name": "region_code",
+          "type": "char(2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "party_id": {
+          "name": "party_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "value": {
+          "name": "value",
+          "type": "numeric(4, 1)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "pollster": {
+          "name": "pollster",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "field_start": {
+          "name": "field_start",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "field_end": {
+          "name": "field_end",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sample_size": {
+          "name": "sample_size",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "margin_of_error": {
+          "name": "margin_of_error",
+          "type": "numeric(3, 1)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "source_url": {
+          "name": "source_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "support_polls_region_idx": {
+          "name": "support_polls_region_idx",
+          "columns": [
+            {
+              "expression": "region_code",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "field_end",
+              "isExpression": false,
+              "asc": false,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "support_polls_region_code_regions_code_fk": {
+          "name": "support_polls_region_code_regions_code_fk",
+          "tableFrom": "support_polls",
+          "tableTo": "regions",
+          "columnsFrom": [
+            "region_code"
+          ],
+          "columnsTo": [
+            "code"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "support_polls_party_id_parties_id_fk": {
+          "name": "support_polls_party_id_parties_id_fk",
+          "tableFrom": "support_polls",
+          "tableTo": "parties",
+          "columnsFrom": [
+            "party_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "support_polls_value_check": {
+          "name": "support_polls_value_check",
+          "value": "\"support_polls\".\"value\" between 0 and 100"
+        }
+      },
+      "isRLSEnabled": true
+    },
+    "public.user_bookmarks": {
+      "name": "user_bookmarks",
+      "schema": "",
+      "columns": {
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "news_id": {
+          "name": "news_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "user_bookmarks_user_idx": {
+          "name": "user_bookmarks_user_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "user_bookmarks_user_id_users_id_fk": {
+          "name": "user_bookmarks_user_id_users_id_fk",
+          "tableFrom": "user_bookmarks",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "user_bookmarks_user_id_news_id_pk": {
+          "name": "user_bookmarks_user_id_news_id_pk",
+          "columns": [
+            "user_id",
+            "news_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": true
+    },
+    "public.user_follows": {
+      "name": "user_follows",
+      "schema": "",
+      "columns": {
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "kind": {
+          "name": "kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "target_id": {
+          "name": "target_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "user_follows_user_idx": {
+          "name": "user_follows_user_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "user_follows_user_id_users_id_fk": {
+          "name": "user_follows_user_id_users_id_fk",
+          "tableFrom": "user_follows",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "user_follows_user_id_kind_target_id_pk": {
+          "name": "user_follows_user_id_kind_target_id_pk",
+          "columns": [
+            "user_id",
+            "kind",
+            "target_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": true
+    },
+    "public.users": {
+      "name": "users",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "password_hash": {
+          "name": "password_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "role": {
+          "name": "role",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'user'"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "users_email_idx": {
+          "name": "users_email_idx",
+          "columns": [
+            {
+              "expression": "email",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "users_email_unique": {
+          "name": "users_email_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "email"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": true
+    }
+  },
+  "enums": {},
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

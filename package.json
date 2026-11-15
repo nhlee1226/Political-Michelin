@@ -11,6 +11,8 @@
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "db:seed": "tsx scripts/seed.ts",
+    "db:apply-user-items": "tsx scripts/apply-user-items-sql.ts",
+    "db:apply-comments": "tsx scripts/apply-comments-sql.ts",
     "check:keys": "tsx scripts/check-keys.ts",
     "collect:news": "tsx scripts/collectors/news.ts",
     "collect:nec": "tsx scripts/collectors/nec.ts",
@@ -22,9 +24,11 @@
     "collect:kosis": "tsx scripts/collectors/kosis.ts"
   },
   "dependencies": {
+    "bcryptjs": "^3.0.3",
     "clsx": "^2.1.1",
     "drizzle-orm": "^0.45.4",
     "framer-motion": "^14.9.0",
+    "jose": "^6.2.17",
     "lucide-react": "^1.66.0",
     "next": "^16.4.3",
     "postgres": "^4.0.0",
@@ -33,10 +37,12 @@
     "recharts": "^3.10.1",
     "server-only": "^0.0.1",
     "swr": "^2.3.6",
-    "tailwind-merge": "^3.7.0"
+    "tailwind-merge": "^3.7.0",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.3.3",
+    "@types/bcryptjs": "^2.4.6",
     "@types/node": "^26.6.6",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",

@@ -356,6 +356,90 @@ export const supportPolls = pgTable(
   ],
 ).enableRLS();
 
+/* ═══════════════════════════ 인증 · 사용자 ═══════════════════════════ */
+
+/** 사용자 계정. 비밀번호는 bcrypt 해시로 저장. role: user | admin */
+export const users = pgTable(
+  "users",
+  {
+    id: text("id").primaryKey(), // uuid (앱에서 생성)
+    email: text("email").notNull().unique(),
+    passwordHash: text("password_hash").notNull(),
+    name: text("name").notNull(),
+    role: text("role", { enum: ["user", "admin"] }).notNull().default("user"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [index("users_email_idx").on(t.email)],
+).enableRLS();
+
+/**
+ * 사용자 팔로우 — 관심 지역·즐겨찾는 정치인.
+ * (userId, kind, targetId) 복합 PK. kind 로 대상 테이블을 구분 (region | politician).
+ */
+export const userFollows = pgTable(
+  "user_follows",
+  {
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    kind: text("kind", { enum: ["region", "politician"] }).notNull(),
+    targetId: text("target_id").notNull(), // region code | MONA_CD
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.kind, t.targetId] }), index("user_follows_user_idx").on(t.userId)],
+).enableRLS();
+
+/**
+ * 사용자 북마크 — 저장한 뉴스.
+ * (userId, newsId) 복합 PK. 기사 본문은 저장하지 않으므로 news_articles.id(SHA-1) 만 참조.
+ */
+export const userBookmarks = pgTable(
+  "user_bookmarks",
+  {
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    newsId: text("news_id").notNull(), // news_articles.id (URL SHA-1)
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.newsId] }), index("user_bookmarks_user_idx").on(t.userId)],
+).enableRLS();
+
+/**
+ * 댓글·게시글 — target_type 으로 대상을 구분하는 통합 테이블.
+ *  - post: 자유 게시판 (target_id = 'board')
+ *  - news: 뉴스 댓글 (target_id = news_articles.id)
+ *  - politician: 정치인 한줄평 (target_id = MONA_CD)
+ * parent_id 는 답글(1단계)용. 모더레이션: isBlinded(블라인드), isUnderReview(검증 중).
+ */
+export const comments = pgTable(
+  "comments",
+  {
+    id: text("id").primaryKey(), // uuid (앱에서 생성)
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    targetType: text("target_type", { enum: ["post", "news", "politician"] }).notNull(),
+    targetId: text("target_id").notNull(),
+    parentId: text("parent_id"), // 답글의 부모 comments.id (self-ref, cascade)
+    body: text("body").notNull(),
+    isBlinded: boolean("is_blinded").default(false).notNull(),
+    isUnderReview: boolean("is_under_review").default(false).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [
+    index("comments_target_idx").on(t.targetType, t.targetId),
+    index("comments_user_idx").on(t.userId),
+    index("comments_parent_idx").on(t.parentId),
+    foreignKey({
+      name: "comments_parent_id_fk",
+      columns: [t.parentId],
+      foreignColumns: [t.id],
+    }),
+  ],
+).enableRLS();
+
 /** 외부 API 원본 응답 (필드 이름 확인·재처리용, 키는 저장하지 않음) */
 export const rawResponses = pgTable(
   "raw_responses",

@@ -3,7 +3,7 @@
  * DB 가 없거나(DATABASE_URL 미설정) 연결에 실패하면 빈 값/ mock 으로 대신해서 화면은 계속 동작합니다.
  */
 import "server-only";
-import { and, desc, eq, gte, isNotNull, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNotNull, sql } from "drizzle-orm";
 import { db } from "./index";
 import {
   bills,
@@ -181,6 +181,33 @@ export async function countNewsSince(since: Date): Promise<number> {
   return n;
 }
 
+/** 저장한 뉴스 — id 목록으로 기사 본문(제목·요약·객관화) 조회. /my 페이지용 */
+export async function getNewsByIds(ids: string[]): Promise<NewsItem[]> {
+  if (!db || ids.length === 0) return [];
+  const rows = await db
+    .select({ a: newsArticles, x: newsAnalysis })
+    .from(newsArticles)
+    .leftJoin(newsAnalysis, eq(newsAnalysis.newsId, newsArticles.id))
+    .where(inArray(newsArticles.id, ids))
+    .orderBy(desc(newsArticles.publishedAt));
+  const now = new Date();
+  return rows.map(({ a, x }) => ({
+    id: a.id,
+    source: a.source,
+    time: relativeTime(a.publishedAt, now),
+    publishedAt: a.publishedAt.toISOString(),
+    category: a.query,
+    headline: a.title,
+    original: a.summary ?? "",
+    url: a.url,
+    objectiveHeadline: x?.objectiveHeadline ?? null,
+    objective: x?.objectiveSummary ?? null,
+    bias: x?.bias ?? null,
+    biasSignals: x?.biasSignals ?? [],
+    region: a.regionCode ?? undefined,
+  }));
+}
+
 /** 언급량 추이: 최근 N일 동안 날짜(KST)별 언급 기사 수. kind 로 정당/인물 구분 */
 export async function getMentionTrends(opts: { kind?: "party" | "member" | "candidate"; days?: number; top?: number } = {}) {
   if (!db) return [];
@@ -353,6 +380,35 @@ export async function getMember(id: string) {
     .orderBy(sql`${bills.proposeDate} desc nulls last`)
     .limit(10);
   return { source: "assembly" as const, member: m, recentBills };
+}
+
+/** 즐겨찾는 정치인 — MONA_CD 목록으로 의원 조회. /my 페이지용 */
+export async function getMembersByIds(monaCds: string[]): Promise<ElectedMember[]> {
+  if (!db || monaCds.length === 0) return [];
+  const colors = await partyColors();
+  const billCount = db
+    .select({ monaCd: bills.proposerMonaCd, n: sql<number>`count(*)::int`.as("n") })
+    .from(bills)
+    .groupBy(bills.proposerMonaCd)
+    .as("bc");
+  const rows = await db
+    .select({ m: members, bills: billCount.n })
+    .from(members)
+    .leftJoin(billCount, eq(billCount.monaCd, members.monaCd))
+    .where(inArray(members.monaCd, monaCds));
+  return rows.map(({ m, bills: b }) => ({
+    id: m.monaCd,
+    name: m.name,
+    partyName: m.partyId,
+    partyColor: (m.partyId && colors.get(m.partyId)) || NEUTRAL,
+    regionCode: m.regionCode,
+    district: m.district,
+    term: m.term,
+    billsProposed: b ?? 0,
+    votes: null,
+    voteRate: null,
+    source: "assembly" as const,
+  }));
 }
 
 export async function getParties() {

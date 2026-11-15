@@ -6,10 +6,11 @@
  *  [검색(의원 이름·지역구 → Politicians)] [AI 객관화 모드 토글] [알림] [로그인] — 뒤의 셋은 준비 중
  */
 import * as React from "react";
-import { Bell, LayoutDashboard, LogIn, Map, MessagesSquare, Newspaper, Search, Sparkles, Star, Users } from "lucide-react";
+import { Bell, LayoutDashboard, Map, MessagesSquare, Newspaper, Search, Sparkles, Star, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { IconButton, Soon, Switch } from "@/components/ui/primitives";
 import { SlidingTabs, type TabItem } from "./sliding-tabs";
+import { UserMenu } from "@/components/auth/user-menu";
 
 export type TabKey = "overview" | "map" | "news" | "politicians" | "community";
 
@@ -121,21 +122,15 @@ export function DashboardHeader({
             </div>
           </Soon>
 
-          {/* 알림·로그인 — 준비 중 */}
+          {/* 알림 — 준비 중 */}
           <Soon className="hidden sm:inline-flex">
             <IconButton aria-label="알림" className="relative" disabled>
               <Bell className="size-4" />
             </IconButton>
           </Soon>
 
-          <Soon>
-            <button
-              disabled
-              className="flex items-center gap-1.5 rounded-full bg-ink px-3 py-1.5 text-xs font-semibold text-canvas transition hover:bg-white"
-            >
-              <LogIn className="size-3.5" /> 로그인
-            </button>
-          </Soon>
+          {/* 사용자 메뉴 (로그인/로그아웃) */}
+          <UserMenu />
         </div>
       </div>
     </header>

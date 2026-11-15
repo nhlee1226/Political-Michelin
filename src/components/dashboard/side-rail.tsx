@@ -42,6 +42,7 @@ import {
   type ApiPolitician,
 } from "@/lib/api";
 import { useTheme } from "@/lib/theme";
+import { useSyncedSet } from "@/lib/user-items";
 import { cn } from "@/lib/utils";
 import { Badge, ExampleFrame, MichelinStars, Segmented, Soon, Switch } from "@/components/ui/primitives";
 
@@ -61,31 +62,6 @@ const HELP = { key: "help" as const, icon: HelpCircle, label: "도움말", desc:
 const ALL_PANELS = [...MENU, SETTINGS, HELP];
 
 const stripTerms = (s: string) => s.replace(/\[\[(.+?)\]\]/g, "$1");
-
-/* ── localStorage 에 보관하는 id 집합 ── */
-function useStoredSet(key: string, initial: string[]) {
-  const [set, setSet] = React.useState<Set<string>>(() => new Set(initial));
-  React.useEffect(() => {
-    try {
-      const v = localStorage.getItem(key);
-      if (v) setSet(new Set(JSON.parse(v) as string[]));
-    } catch {}
-  }, [key]);
-  const toggle = React.useCallback(
-    (id: string) =>
-      setSet((prev) => {
-        const next = new Set(prev);
-        if (next.has(id)) next.delete(id);
-        else next.add(id);
-        try {
-          localStorage.setItem(key, JSON.stringify([...next]));
-        } catch {}
-        return next;
-      }),
-    [key],
-  );
-  return [set, toggle] as const;
-}
 
 /** D-day 라벨 (오늘 기준) */
 function dday(date: string) {
@@ -479,7 +455,7 @@ function SettingsPanel({ aiMode, onAiModeChange }: { aiMode: boolean; onAiModeCh
         </Soon>
       </Row>
       <p className="px-1 pt-1 text-[11px] leading-relaxed text-ink-3">
-        관심 지역·즐겨찾기·추적 법안·저장한 뉴스는 이 브라우저에만 저장됩니다.
+        관심 지역·즐겨찾는 정치인·저장한 뉴스는 로그인 시 계정에 저장되고, 비로그인 시에는 이 브라우저에만 저장됩니다. (법안 추적은 브라우저 저장)
       </p>
     </div>
   );
@@ -604,11 +580,11 @@ export function SideRail({
   const [open, setOpen] = React.useState<PanelKey | null>(null);
   const rootRef = React.useRef<HTMLDivElement>(null);
 
-  const [interests, toggleInterest] = useStoredSet("pm-interest-regions", ["11", "31"]);
-  // 실제 의원(MONA_CD) 기준이라 예전 가상 인물용 저장값과 섞이지 않게 새 키
-  const [favorites, toggleFavorite] = useStoredSet("pm-fav-members", []);
-  const [followed, toggleFollow] = useStoredSet("pm-followed-bills", ["b1"]);
-  const [saved, toggleSaved] = useStoredSet("pm-saved-news", []);
+  // 로그인 시 DB, 비로그인 시 localStorage (법안은 mock 데이터라 항상 localStorage)
+  const [interests, toggleInterest] = useSyncedSet("pm-interest-regions", ["11", "31"], "region");
+  const [favorites, toggleFavorite] = useSyncedSet("pm-fav-members", [], "politician");
+  const [followed, toggleFollow] = useSyncedSet("pm-followed-bills", ["b1"], "bill");
+  const [saved, toggleSaved] = useSyncedSet("pm-saved-news", [], "news");
 
   // 바깥 클릭 · Esc 로 닫기
   React.useEffect(() => {
