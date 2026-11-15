@@ -26,10 +26,10 @@
   --color-warn: #fbbf24;
   --color-bad: #f87171;
 
-  /* 가상 정당 팔레트 (실제 정당 색과 무관, 색각이상 검증 완료) */
-  --color-party-a: #14a894;
-  --color-party-b: #8b6fe8;
-  --color-party-c: #b87d0f;
+  /* 가상 정당 팔레트 (mock-data.ts 의 PARTIES 와 같음). 실제 정당 색은 DB parties.color 의 중립 팔레트 */
+  --color-party-a: #c4cad3;
+  --color-party-b: #8f98a5;
+  --color-party-c: #5f6874;
   --color-party-etc: #6b7280;
 
   --animate-flip: flip 0.5s cubic-bezier(0.3, 0.7, 0.3, 1);
@@ -118,6 +118,26 @@ html[data-theme="light"] {
   to { transform: translateY(0); opacity: 1; }
 }
 
+/* Map View 지역 클릭 "설계" 연출 (region-burst.tsx) */
+@keyframes pm-ghost {
+  from { transform: translateY(6px); opacity: 0.55; filter: blur(1.5px); }
+  to { transform: translateY(0); opacity: 0; filter: blur(0); }
+}
+@keyframes pm-blink { 50% { opacity: 0; } }
+@keyframes pm-wiggle {
+  0%, 100% { transform: translate(0, 0); }
+  25% { transform: translate(1.5px, -1px); }
+  50% { transform: translate(2.5px, 1px); }
+  75% { transform: translate(-1px, 2px); }
+}
+/* 글자가 들어올 때 6px 아래에서 올라오며 사라지는 흐린 잔상 */
+.pm-ghost {
+  position: absolute; left: 0; top: 0; pointer-events: none;
+  animation: pm-ghost var(--pm-ghost, 320ms) ease-out forwards;
+}
+.pm-caret { animation: pm-blink 0.5s steps(1) infinite; }
+.pm-wiggle { animation: pm-wiggle 2.4s ease-in-out infinite; }
+
 html { color-scheme: dark; }
 body { transition: background-color 0.3s, color 0.3s; }
 body {
@@ -169,6 +189,34 @@ body {
   box-shadow: 0 1px 0 var(--glass-highlight) inset, 0 30px 60px -20px rgb(0 0 0 / 0.5);
 }
 
+/* ── 예시(가상 데이터) 영역 — primitives.tsx 의 Card example / ExampleFrame ──
+   처음 보는 사람도 실제 데이터와 헷갈리지 않게: 굵은 점선 테두리 + 빗금 띠 문구 + 내용은 흐리고 색을 뺌.
+   경고색(amber)은 정당 색 팔레트에 없는 색. */
+.pm-example {
+  border: 2px dashed color-mix(in srgb, var(--color-warn) 60%, transparent);
+}
+.pm-example > :not(.pm-example-ribbon) {
+  opacity: 0.55;
+  filter: saturate(0.35);
+}
+.pm-example-ribbon {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 4px 12px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  color: var(--color-warn);
+  border-bottom: 2px dashed color-mix(in srgb, var(--color-warn) 60%, transparent);
+  background:
+    repeating-linear-gradient(135deg, color-mix(in srgb, var(--color-warn) 16%, transparent) 0 6px, transparent 6px 12px),
+    color-mix(in srgb, var(--color-warn) 8%, transparent);
+}
+
 .scroll-thin { scrollbar-width: thin; scrollbar-color: var(--chart-muted) transparent; }
 .scroll-thin::-webkit-scrollbar { width: 6px; height: 6px; }
 .scroll-thin::-webkit-scrollbar-thumb { background: var(--chart-muted); border-radius: 9999px; }
@@ -177,4 +225,6 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+  .pm-ghost { display: none; }
+  .pm-wiggle, .pm-caret { animation: none; }
 }

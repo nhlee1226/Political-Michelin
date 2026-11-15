@@ -2,3 +2,9 @@ node_modules
 .next
 next-env.d.ts
 *.tsbuildinfo
+
+.env*
+!.env.example
+
+# next dev 가 자동 생성
+AGENTS.md

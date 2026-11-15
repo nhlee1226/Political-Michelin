@@ -5,12 +5,40 @@
  * (실제 프로젝트에서는 `npx shadcn add card badge switch tooltip` 후 교체 가능)
  */
 import * as React from "react";
-import { Star } from "lucide-react";
+import { FlaskConical, Star } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+/* ── 예시(가상 데이터) 표시 ───────────────────────────────
+ * 실제 데이터가 아닌 영역은 한눈에 알 수 있게: 점선 테두리 + 흐린 내용 + "예시 데이터 · 실제 아님" 띠.
+ * 스타일은 globals.css 의 .pm-example / .pm-example-ribbon */
+export function ExampleRibbon({ className }: { className?: string }) {
+  return (
+    <div className={cn("pm-example-ribbon", className)} role="note">
+      <FlaskConical className="size-3 shrink-0" aria-hidden />
+      예시 데이터 · 실제 아님
+    </div>
+  );
+}
+
+/** 카드 안의 일부만 예시일 때 그 부분을 감쌈 */
+export function ExampleFrame({ className, children }: { className?: string; children: React.ReactNode }) {
+  return (
+    <div className={cn("pm-example rounded-xl", className)}>
+      <ExampleRibbon className="rounded-t-[10px]" />
+      {children}
+    </div>
+  );
+}
+
 /* ── Card ─────────────────────────────────────────────── */
-export function Card({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn("glass rounded-2xl", className)} {...props} />;
+/** example: 카드 전체가 가상 데이터일 때 (점선 테두리 + 흐린 내용 + 띠) */
+export function Card({ className, example, children, ...props }: React.HTMLAttributes<HTMLDivElement> & { example?: boolean }) {
+  return (
+    <div className={cn("glass rounded-2xl", example && "pm-example", className)} {...props}>
+      {example && <ExampleRibbon className="rounded-t-[14px]" />}
+      {children}
+    </div>
+  );
 }
 
 export function CardHeader({
@@ -88,17 +116,31 @@ export function Badge({
   );
 }
 
+/**
+ * 아직 동작하지 않는 컨트롤을 감싸 흐리게 하고 "준비 중" 툴팁을 띄움.
+ * disabled 버튼은 마우스 이벤트가 없어 title 이 안 뜨는 브라우저가 있으므로 바깥 span 에 title 을 둡니다.
+ */
+export function Soon({ children, className }: { children: React.ReactNode; className?: string }) {
+  return (
+    <span title="준비 중" className={cn("inline-flex cursor-not-allowed opacity-40 [&_*]:pointer-events-none", className)}>
+      {children}
+    </span>
+  );
+}
+
 /* ── Switch ──────────────────────────────────────────── */
 export function Switch({
   checked,
   onCheckedChange,
   label,
   className,
+  disabled,
 }: {
   checked: boolean;
   onCheckedChange: (v: boolean) => void;
   label: string;
   className?: string;
+  disabled?: boolean;
 }) {
   return (
     <button
@@ -106,6 +148,7 @@ export function Switch({
       role="switch"
       aria-checked={checked}
       aria-label={label}
+      disabled={disabled}
       onClick={() => onCheckedChange(!checked)}
       className={cn(
         "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full border transition-colors duration-300",
@@ -131,24 +174,29 @@ export function Segmented<T extends string>({
   className,
 }: {
   value: T;
-  options: { value: T; label: string }[];
+  /** soon: 아직 데이터가 없어 누를 수 없는 항목 (흐리게 + "준비 중" 툴팁) */
+  options: { value: T; label: string; soon?: boolean }[];
   onChange: (v: T) => void;
   className?: string;
 }) {
   return (
     <div className={cn("inline-flex rounded-full border border-line bg-white/[0.03] p-0.5", className)}>
-      {options.map((o) => (
-        <button
-          key={o.value}
-          onClick={() => onChange(o.value)}
-          className={cn(
-            "rounded-full px-2.5 py-1 text-[11px] font-medium transition",
-            value === o.value ? "bg-white/[0.12] text-ink" : "text-ink-3 hover:text-ink-2",
-          )}
-        >
-          {o.label}
-        </button>
-      ))}
+      {options.map((o) => {
+        const btn = (
+          <button
+            key={o.value}
+            onClick={() => onChange(o.value)}
+            disabled={o.soon}
+            className={cn(
+              "rounded-full px-2.5 py-1 text-[11px] font-medium transition",
+              value === o.value ? "bg-white/[0.12] text-ink" : "text-ink-3 hover:text-ink-2",
+            )}
+          >
+            {o.label}
+          </button>
+        );
+        return o.soon ? <Soon key={o.value}>{btn}</Soon> : btn;
+      })}
     </div>
   );
 }
