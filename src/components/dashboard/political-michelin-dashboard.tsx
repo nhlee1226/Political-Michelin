@@ -33,6 +33,9 @@ const TODAY = new Intl.DateTimeFormat("ko-KR", { year: "numeric", month: "long",
 const NO_AI = "AI 분석 후 표시";
 const NO_DATA = "공식 데이터 없음";
 const NO_COMMUNITY = "커뮤니티 준비 중";
+/** 평균 편향 지수 = 기사별 치우침 크기(|lean|, 0~100) 평균. 진보·보수 방향은 나누지 않음 */
+const BIAS_CAPTION = "/100 · 방향 없이 치우친 정도";
+const SOON = "준비 중";
 
 interface Kpi {
   label: string;
@@ -76,8 +79,8 @@ function useHeadline(
         kpis: [
           { label: "오늘 수집 기사", value: s?.news_24h ?? null, caption: "최근 24시간 · 네이버 뉴스", accent: true },
           { label: "뉴스 출처", value: s?.sources_7d ?? null, caption: "최근 7일 · 언론사" },
-          { label: "평균 편향 지수", value: s?.avg_bias ?? null, caption: s?.avg_bias == null ? NO_AI : "%" },
-          { label: "객관화 변환", value: null, caption: NO_AI },
+          { label: "평균 편향 지수", value: s?.avg_bias ?? null, caption: s?.avg_bias == null ? NO_AI : BIAS_CAPTION },
+          { label: "객관화 변환", value: null, caption: SOON },
         ],
       };
     case "politicians":
@@ -114,7 +117,7 @@ function useHeadline(
         kpis: [
           { label: "추적 중인 의원", value: s?.members ?? null, caption: "제22대 국회 전원" },
           { label: "오늘 수집 기사", value: s?.news_24h ?? null, caption: "최근 24시간 · 네이버 뉴스", accent: true },
-          { label: "평균 편향 지수", value: s?.avg_bias ?? null, caption: s?.avg_bias == null ? NO_AI : "%" },
+          { label: "평균 편향 지수", value: s?.avg_bias ?? null, caption: s?.avg_bias == null ? NO_AI : BIAS_CAPTION },
         ],
       };
   }
