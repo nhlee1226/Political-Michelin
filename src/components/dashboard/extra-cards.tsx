@@ -2,28 +2,22 @@
 
 /**
  * 보조 카드
- *  - BiasReportCard    : AI 편향성 객관화 리포트 (오늘 분석 기사의 편향 지수 분포) — 가상 데이터, 카드 전체 예시 표시
+ *  - BiasReportCard    : AI 편향성 객관화 리포트 — 실제 편향 분석 집계(news_analysis·news_evidence, useStats).
+ *                        분석된 기사 수 · 근거 문장 수 · 치우침 크기 분포. 진보·보수 방향은 나누지 않음
  *  - PoliticianTable   : 정치인 미슐랭 랭킹 테이블 — 실제 의원(별점·반영률·본회의 표결 수·참여율), API 가 안 될 때만 가상 의원을 예시로
  */
 import * as React from "react";
 import { Bar, BarChart, Cell, ResponsiveContainer, Tooltip, XAxis } from "recharts";
 import { ArrowDownUp, ScanSearch, Search, Users } from "lucide-react";
 import { PARTIES, REGIONS, type Politician } from "@/lib/mock-data";
-import { usePartyLookup, usePoliticians } from "@/lib/api";
+import { usePartyLookup, usePoliticians, useStats } from "@/lib/api";
 import { districtLabel } from "./politician-detail-sheet";
 import { cn } from "@/lib/utils";
 import { Badge, Card, CardHeader, MichelinStars, PartyTag, Segmented } from "@/components/ui/primitives";
-import { GlossaryText } from "./glossary-text";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-/** 오늘 분석된 기사 편향 지수 분포 (10점 구간, 단위: 건) */
-const BIAS_DIST = [
-  { bin: "0", n: 1820 }, { bin: "10", n: 2410 }, { bin: "20", n: 2190 }, { bin: "30", n: 1760 },
-  { bin: "40", n: 1310 }, { bin: "50", n: 1080 }, { bin: "60", n: 860 }, { bin: "70", n: 690 },
-  { bin: "80", n: 480 }, { bin: "90", n: 247 },
-];
-// 단일 색상(라임) 명도 단계 = 크기(편향 정도)
+// 단일 색상(라임) 명도 단계 = 치우침 크기. 진보·보수 방향은 색으로 나누지 않음
 const binColor = (i: number) => `color-mix(in srgb, var(--color-lime) ${Math.round((0.18 + (i / 9) * 0.72) * 100)}%, transparent)`;
 
 function DistTooltip({ active, payload }: any) {
@@ -31,58 +25,90 @@ function DistTooltip({ active, payload }: any) {
   const d = payload[0].payload;
   return (
     <div className="glass-strong rounded-xl px-3 py-2 text-xs">
-      <p className="text-ink-3">편향 지수 {d.bin}~{+d.bin + 9}%</p>
-      <p className="font-semibold tabular">{d.n.toLocaleString()}건</p>
+      <p className="text-ink-3">
+        치우침 {d.bin}~{+d.bin === 90 ? 100 : +d.bin + 9}
+      </p>
+      <p className="font-semibold tabular">{d.n.toLocaleString("ko-KR")}건</p>
     </div>
   );
 }
 
-export function BiasReportCard({ className }: { className?: string }) {
-  const total = BIAS_DIST.reduce((a, d) => a + d.n, 0);
-  const high = BIAS_DIST.slice(6).reduce((a, d) => a + d.n, 0);
+function StatTile({ label, value, unit, note, accent }: { label: string; value: React.ReactNode; unit?: string; note?: string; accent?: boolean }) {
   return (
-    // AI 편향 분석(news_analysis)이 아직 없어 전부 가상 숫자
-    <Card example className={cn("flex flex-col", className)}>
-      <CardHeader icon={<ScanSearch className="size-4" />} title="AI 편향성 객관화 리포트" subtitle="오늘 분석된 기사의 편향 지수 분포" />
-      <div className="grid grid-cols-2 gap-2 px-5 pt-3">
-        <div className="rounded-lg border border-line p-2.5">
-          <p className="text-[10px] text-ink-3">편향 60% 이상</p>
-          <p className="text-lg font-semibold tabular">
-            {high.toLocaleString()}
-            <span className="ml-1 text-[11px] font-normal text-ink-3">{Math.round((high / total) * 100)}%</span>
-          </p>
-        </div>
-        <div className="rounded-lg border border-lime/20 bg-lime/[0.05] p-2.5">
-          <p className="text-[10px] text-ink-3">AI 객관화 변환</p>
-          <p className="text-lg font-semibold tabular text-lime">
-            {(1964).toLocaleString()}
-            <span className="ml-1 text-[11px] font-normal text-ink-3">건</span>
-          </p>
-        </div>
-      </div>
-      <div className="h-[140px] px-3 pt-3">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={BIAS_DIST} margin={{ top: 4, right: 4, left: 4, bottom: 0 }} barCategoryGap={2}>
-            <XAxis dataKey="bin" tickLine={false} axisLine={false} tick={{ fill: "var(--chart-axis)", fontSize: 10 }} />
-            <Tooltip content={<DistTooltip />} cursor={{ fill: "var(--chart-grid)" }} />
-            <Bar dataKey="n" radius={[4, 4, 0, 0]}>
-              {BIAS_DIST.map((_, i) => (
-                <Cell key={i} fill={binColor(i)} />
-              ))}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
-      <div className="mt-auto space-y-1.5 border-t border-line px-5 py-4 text-[11px] text-ink-3">
-        <p className="flex items-center justify-between">
-          <span>낮음 (중립 서술)</span>
-          <span className="h-1.5 w-24 rounded-full bg-gradient-to-r from-lime/20 to-lime/90" />
-          <span>높음 (감정·일방)</span>
+    <div className={cn("rounded-lg border p-2.5", accent ? "border-lime/20 bg-lime/[0.05]" : "border-line")}>
+      <p className="text-[10px] text-ink-3">{label}</p>
+      <p className={cn("text-lg font-semibold tabular", accent && "text-lime")}>
+        {value}
+        {unit && <span className="ml-0.5 text-[11px] font-normal text-ink-3">{unit}</span>}
+      </p>
+      {note && <p className="text-[10px] text-ink-3">{note}</p>}
+    </div>
+  );
+}
+
+/** 편향 분석을 마친 기사 전체의 실제 집계. 치우침 = |진보↔보수 점수| (0~100), 방향은 보여주지 않음 */
+export function BiasReportCard({ className }: { className?: string }) {
+  const { data: s, error } = useStats();
+  const dist = (s?.bias_dist ?? []).map((n, i) => ({ bin: String(i * 10), n }));
+  // DB 가 없을 때 /stats 응답에는 이 값들이 빠져 있음 → 0 으로 보고 "아직 없음" 표시
+  const analyzed = s?.analyzed ?? 0;
+  const judged = s?.bias_judged ?? 0;
+  const undecided = analyzed - judged;
+  return (
+    <Card className={cn("flex flex-col", className)}>
+      <CardHeader
+        icon={<ScanSearch className="size-4" />}
+        title="AI 편향성 객관화 리포트"
+        subtitle="편향 분석을 마친 기사 전체 · 진보·보수 방향 없이 치우친 정도만"
+      />
+      {!s ? (
+        <p className="px-5 py-10 text-center text-xs text-ink-3">{error ? "편향 분석 집계를 불러오지 못했습니다." : "불러오는 중…"}</p>
+      ) : analyzed === 0 ? (
+        <p className="mx-5 my-5 rounded-xl border border-dashed border-line px-3 py-8 text-center text-xs text-ink-3">
+          아직 분석된 기사가 없습니다.
         </p>
-        <p className="leading-relaxed">
-          <GlossaryText text="편향 지수는 감정 어휘, 인용 균형, 출처 명확성을 종합한 점수입니다. [[여론조사]] 인용 기사는 표본·오차범위 표기 여부도 반영합니다." />
-        </p>
-      </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-3 gap-2 px-5 pt-3">
+            <StatTile
+              label="분석된 기사"
+              value={analyzed.toLocaleString("ko-KR")}
+              unit="건"
+              note={undecided > 0 ? `판단 불가 ${undecided}건 포함` : undefined}
+            />
+            <StatTile label="근거 문장" value={(s.evidence_total ?? 0).toLocaleString("ko-KR")} unit="개" />
+            <StatTile label="평균 치우침" value={s.avg_bias ?? "—"} unit={s.avg_bias == null ? undefined : "/ 100"} accent />
+          </div>
+          <div className="h-[140px] px-3 pt-3">
+            {judged > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={dist} margin={{ top: 4, right: 4, left: 4, bottom: 0 }} barCategoryGap={2}>
+                  <XAxis dataKey="bin" tickLine={false} axisLine={false} tick={{ fill: "var(--chart-axis)", fontSize: 10 }} />
+                  <Tooltip content={<DistTooltip />} cursor={{ fill: "var(--chart-grid)" }} />
+                  <Bar dataKey="n" radius={[4, 4, 0, 0]}>
+                    {dist.map((_, i) => (
+                      <Cell key={i} fill={binColor(i)} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <p className="grid h-full place-items-center text-xs text-ink-3">치우침을 판단할 수 있었던 기사가 아직 없습니다.</p>
+            )}
+          </div>
+          <div className="mt-auto space-y-1.5 border-t border-line px-5 py-4 text-[11px] text-ink-3">
+            <p className="flex items-center justify-between">
+              <span>0 (균형)</span>
+              <span className="h-1.5 w-24 rounded-full bg-gradient-to-r from-lime/20 to-lime/90" />
+              <span>100 (한쪽으로 치우침)</span>
+            </p>
+            <p className="leading-relaxed">
+              치우침은 진보↔보수 점수(−100~+100)의 크기만 0~100으로 본 값입니다. 점수는 AI가 기사 원문에서 뽑은 근거 문장(인용 균형·표현·제목과
+              본문 차이·사실 검증)으로만 계산합니다. 막대는 구간별 기사 수이고, 판단 불가 기사는 빠집니다.
+            </p>
+          </div>
+        </>
+      )}
     </Card>
   );
 }

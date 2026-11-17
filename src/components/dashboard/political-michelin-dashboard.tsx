@@ -72,7 +72,7 @@ function useHeadline(
     case "news":
       return {
         title: ["뉴스·이슈", "리포트"],
-        desc: "네이버 뉴스 검색으로 모은 기사의 제목·요약·원문 링크를 보여줍니다. 편향 분석은 준비 중입니다.",
+        desc: "네이버 뉴스 검색으로 모은 기사의 제목·요약·원문 링크를 보여줍니다. AI 편향 분석을 마친 기사에는 진보↔보수 치우침과 그 근거 문장을 함께 보여줍니다.",
         kpis: [
           { label: "오늘 수집 기사", value: s?.news_24h ?? null, caption: "최근 24시간 · 네이버 뉴스", accent: true },
           { label: "뉴스 출처", value: s?.sources_7d ?? null, caption: "최근 7일 · 언론사" },

@@ -320,7 +320,14 @@ export async function apiStats() {
         where (published_at at time zone 'Asia/Seoul')::date
               between (now() at time zone 'Asia/Seoul')::date - 27 and (now() at time zone 'Asia/Seoul')::date - 14) as news_prev_14d,
       (select count(*)::int from news_analysis)                                                            as analyzed,
-      (select round(avg(bias))::int from news_analysis)                                                    as avg_bias`);
+      (select round(avg(bias))::int from news_analysis)                                                    as avg_bias,
+      -- 편향 리포트 카드: 근거 문장 수, 치우침을 판단한 기사 수(판단 불가 = bias null 제외),
+      -- 치우침 크기(bias = |lean|, 방향 없음) 10점 구간 분포 [0~9, 10~19, …, 90~100]
+      (select count(*)::int from news_evidence)                                                            as evidence_total,
+      (select count(bias)::int from news_analysis)                                                         as bias_judged,
+      (select json_agg(coalesce(x.n, 0) order by b) from generate_series(0, 9) b
+         left join (select least(bias / 10, 9)::int as bin, count(*)::int as n
+                    from news_analysis where bias is not null group by 1) x on x.bin = b)               as bias_dist`);
   // 최근 14일(오늘 포함, 한국 시간) 날짜별 수집 기사 수 — 기사가 없는 날은 0
   const news_daily = await rows<{ day: string; n: number }>(sql`
     select to_char(d, 'YYYY-MM-DD') as day, coalesce(a.n, 0)::int as n

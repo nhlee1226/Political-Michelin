@@ -90,8 +90,16 @@ export interface ApiStats {
   news_updated_at: string | null;
   bills_total: number;
   bills_passed: number;
+  /** 편향 분석을 마친 기사 수 (news_analysis) */
   analyzed: number;
+  /** 평균 치우침 0~100 (= |lean| 평균, 판단 불가 제외) */
   avg_bias: number | null;
+  /** 편향 근거 문장 수 (news_evidence) */
+  evidence_total: number;
+  /** 치우침을 판단한 기사 수 (analyzed - 판단 불가) */
+  bias_judged: number;
+  /** 치우침 크기 10점 구간별 기사 수 10칸 [0~9, 10~19, …, 90~100] */
+  bias_dist: number[];
   /** 별점 3개 의원 수 */
   three_star: number;
   /** 대표발의 1건 이상 의원의 평균 법안 반영률(%) */
