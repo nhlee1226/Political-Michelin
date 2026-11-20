@@ -57,9 +57,29 @@ npm run dev              # http://localhost:3000  (1분마다 DB 를 다시 읽�
 | `npm run collect:local` | 선관위 → 제9회 지방선거(2026-06-03) 시·도지사·구시군장·교육감 당선인 (`elections` · `election_candidates`) |
 | `npm run collect:pledges` | 선관위 → 지방선거 당선인 선거공약 원문 (`election_pledges`, collect:local 다음에 실행) |
 | `npm run collect:kosis` | KOSIS → 시도별 주민등록인구·고령인구비율·재정자립도 (`region_indicators`, 17개 시도가 모두 있는 최신 연도) |
+| `npm run auto` | **기관별 자동 수집 스케줄러** — 주기가 됐고 오늘 호출 한도가 남은 수집기만 실행 (아래 "기관별 자동 수집") |
+| `npm run auto -- --dry` | 실행하지 않고 계획만 보기 (작업별 다음 예정·기관별 오늘 호출 수) |
+| `npm run auto -- --job votes` / `--only kosis --force` | 작업 하나 / 기관 하나를 지금 실행 (주기 무시, 하루 한도는 지킴) |
 | `npm run analyze:news` / `analyze:news -- 50` | Claude 로 뉴스 편향 근거 추출 → `news_analysis`·`news_evidence`·`api_usage` (기본 최대 15건, 예산 안에서) |
 
-수집은 모두 덮어쓰기(upsert)라 여러 번 실행해도 중복이 쌓이지 않습니다. 외부 API 원본은 `raw_responses` 에 남으므로, 응답 필드 이름이 다르면 원본을 보고 각 수집기의 `FIELD` 만 고치면 됩니다. 자동 수집(GitHub Actions)은 `.github/workflows/collect.yml` — 30분마다 뉴스.
+수집은 모두 덮어쓰기(upsert)라 여러 번 실행해도 중복이 쌓이지 않습니다. 외부 API 원본은 `raw_responses` 에 남으므로, 응답 필드 이름이 다르면 원본을 보고 각 수집기의 `FIELD` 만 고치면 됩니다. 자동 수집(GitHub Actions)은 두 개 — `.github/workflows/collect.yml`(30분마다 뉴스 + 편향 분석), `.github/workflows/auto-collect.yml`(매시간 기관별 자동 수집, 아래).
+
+## 기관별 자동 수집 (`npm run auto`)
+손으로 `npm run collect:*` 를 돌리지 않아도 데이터가 최신으로 유지되도록 만든 스케줄러입니다 (`scripts/auto/run.ts`).
+우리가 가진 인증키(기관)마다 **성향**(데이터가 바뀌는 빠르기)과 **토큰**(인증키 하루 호출 한도)이 달라서, 수집기마다 주기와 예상 호출 수를 따로 정했습니다. 정의는 `src/lib/collect-schedule.ts` 한 곳에만 있습니다.
+
+| 기관 (인증키) | 성향 | 하루 호출 한도 (자동 수집 몫 80%) | 작업 · 주기 |
+|---|---|---|---|
+| 열린국회정보 (`ASSEMBLY_API_KEY`) | 의원은 가끔, 법안은 매일, 표결은 본회의 날 | 3,000 (공개 한도 없음 → 자체 한도) | 의원·정당 하루 · 법안 하루 · 표결 하루(새로 표결된 법안만) |
+| 공공데이터포털 선관위 (`DATA_GO_KR_KEY`) | 확정된 선거 결과라 거의 안 바뀜 | 10,000 (개발계정 API마다) | 총선 결과 30일 · 지방선거 당선인 30일 · 공약 30일 |
+| KOSIS (`KOSIS_API_KEY`) | 1년 단위 통계 | 1,000 (공개 한도 없음, 분당 200회 → 0.3초 간격) | 시도 지표 7일 |
+
+1. GitHub Actions 가 매시간 `npm run auto` 를 깨웁니다. GitHub 예약 실행은 늦거나 빠지는 일이 잦아서 **주기 판단은 GitHub 이 아니라 우리 코드가** 합니다.
+2. 스케줄러는 `collect_log` 표에서 작업별 마지막 성공 시각과 기관별 오늘(한국 날짜) 쓴 호출 수를 읽고, 작업마다 순서대로 확인합니다: 인증키 있음 → 기관이 오늘 '한도 초과'로 답하지 않았음 → 같은 회차 앞 단계 성공 → 주기가 됨 → 오늘 남은 호출 ≥ 예상 호출.
+3. 실행할 수집기는 별도 프로세스로 띄우고 "이번 최대 호출 수"를 넘겨 줍니다. 모든 기관 API 호출은 `scripts/collectors/api-fetch.ts` 를 지나가며 호출 수를 세고, 기관별 최소 간격을 지키고, 최대 호출에 닿으면 멈추고, 기관의 한도 초과 응답(공공데이터포털 코드 22, HTTP 429)을 알아챕니다.
+4. 결과(성공·실패·한도 초과, 호출 수, 마지막 출력 줄)를 `collect_log` 에 한 줄씩 남기고, Actions 실행 화면 Summary 에 표로 보여 줍니다. 실패하면 2시간 뒤(주기가 더 짧으면 그 주기 뒤) 다시 시도하고, 한도 초과면 한국 자정까지 그 기관을 쉽니다.
+
+`collect_log` 표는 스케줄러가 처음 실행될 때 `scripts/sql/add-collect-log.sql` 로 스스로 만듭니다. 현황은 `GET /api/collect-status`. 뉴스 수집·편향 분석은 `collect.yml` 이 따로 돌리며 이 스케줄러와 관계없습니다.
 
 ## API (Next.js 라우트, 같은 서버)
 | 경로 | 내용 |
@@ -72,17 +92,24 @@ npm run dev              # http://localhost:3000  (1분마다 DB 를 다시 읽�
 | `GET /api/news?region=11&limit=20` | 수집 기사 (+ AI 분석 결과가 있으면 함께) |
 | `GET /api/trends?kind=party&days=7` | 정당/인물 언급량 날짜별 추이 |
 | `GET /api/parties` | 정당 이름·색 |
+| `GET /api/collect-status` | 기관별 자동 수집 현황: 성향·하루 한도·오늘 호출 수, 작업별 주기·마지막 성공·다음 예정, 최근 실행 20줄 |
 
 ## 폴더 구조
 ```
 docker-compose.yml            로컬 PostgreSQL
 drizzle.config.ts             drizzle-kit 설정 (.env.local 의 DATABASE_URL)
-.github/workflows/collect.yml 자동 수집 (뉴스 30분마다)
+.github/workflows/collect.yml 자동 수집 (뉴스 30분마다 + 편향 분석)
+.github/workflows/auto-collect.yml 기관별 자동 수집 (매시간 스케줄러를 깨움)
 scripts/
 ├─ seed.ts                    시도·선거 기준 데이터
 ├─ check-keys.ts              키·DB 연결 확인
+├─ auto/                      기관별 자동 수집 스케줄러 (npm run auto)
+│  ├─ run.ts                  때가 된 수집기만 실행 · 호출 수 기록 · 요약 표
+│  ├─ log.ts                  collect_log 표 준비·기록
+│  └─ auto.test.ts            주기·한도 규칙 테스트
 └─ collectors/
    ├─ common.ts               .env.local 읽기 · DB 연결 · 원본 보관 · 시도명→코드
+   ├─ api-fetch.ts            기관 API 호출 공통 창구 (호출 수 세기 · 간격 · 최대 호출 · 한도 초과 감지)
    ├─ nec.ts / nec-parse.ts   선관위 수집 / 응답→행 변환(순수 함수)
    ├─ local.ts / nec-api.ts   지방선거 당선인 수집 / 선관위 API 호출 공통 함수
    ├─ pledges.ts / pledges-parse.ts 선거공약 수집 / 응답→행 변환(순수 함수)
@@ -107,9 +134,11 @@ src/
 ├─ db/
 │  ├─ schema.ts               통합 스키마 (유일한 정의, 출처별 섹션)
 │  ├─ client.ts / index.ts    DB 연결 (스크립트 공용 / 서버 전용)
-│  └─ queries.ts              화면·API 조회 함수 (의석·투표율·활성도·언급량 계산은 여기 한 곳)
+│  ├─ queries.ts              화면·API 조회 함수 (의석·투표율·활성도·언급량 계산은 여기 한 곳)
+│  └─ collect-log.ts          자동 수집 기록 조회 (스케줄러·/api/collect-status 공용)
 ├─ components/                대시보드 UI (아래 참고)
 └─ lib/
+   ├─ collect-schedule.ts     기관·인증키별 성향·하루 한도, 작업별 주기, 실행 판단 규칙 (순수 함수)
    ├─ dashboard-data.tsx      서버 데이터 → 컴포넌트 공급 (useRegions · useNews · useElectedMembers · useDataSources)
    ├─ live-types.ts           실데이터 화면 타입
    ├─ mock-data.ts            타입 + 샘플 데이터

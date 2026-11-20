@@ -8,6 +8,7 @@
  */
 import { sql } from "drizzle-orm";
 import { bills, members } from "../../src/db/schema";
+import { apiFetch } from "./api-fetch";
 import { db, env, run, saveRaw } from "./common";
 
 const SERVICE = "nzmimeepazxkubdpn"; // 국회의원 발의법률안
@@ -31,7 +32,7 @@ type Row = Record<string, string | null>;
 
 async function fetchPage(page: number): Promise<{ rows: Row[]; total: number }> {
   const q = new URLSearchParams({ KEY: env("ASSEMBLY_API_KEY"), Type: "json", AGE: String(UNIT), pIndex: String(page), pSize: String(PAGE) });
-  const body = await (await fetch(`${BASE}/${SERVICE}?${q}`, { signal: AbortSignal.timeout(30_000) })).json();
+  const body = await (await apiFetch("assembly", `${BASE}/${SERVICE}?${q}`, { signal: AbortSignal.timeout(30_000) })).json();
   if (!body[SERVICE]) {
     if (page === 1) throw new Error(JSON.stringify(body.RESULT ?? body));
     return { rows: [], total: 0 }; // 마지막 페이지 다음

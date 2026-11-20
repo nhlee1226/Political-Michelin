@@ -11,6 +11,7 @@
  */
 import { sql } from "drizzle-orm";
 import { electionCandidates, electionDistricts, electionTurnout, parties, regions } from "../../src/db/schema";
+import { apiFetch } from "./api-fetch";
 import { db, env, regionLookup, run, saveRaw, sleep } from "./common";
 import {
   ELECTIONS,
@@ -40,7 +41,7 @@ async function fetchAll(path: string, params: Record<string, string>): Promise<I
       numOfRows: "500",
       ...params,
     });
-    const text = await (await fetch(`${BASE}/${path}?${q}`, { signal: AbortSignal.timeout(30_000) })).text();
+    const text = await (await apiFetch("data_go_kr", `${BASE}/${path}?${q}`, { signal: AbortSignal.timeout(30_000) })).text();
     let res;
     try {
       res = JSON.parse(text).response;

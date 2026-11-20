@@ -3,6 +3,7 @@
  * collect:nec(nec.ts)에도 같은 fetchAll 이 들어 있음. 22대 총선 수집 코드는 그대로 두려고 옮기지 않았으니,
  * 나중에 nec.ts 를 고칠 일이 생기면 이 파일의 fetchAll 을 import 하도록 바꾸면 됩니다.
  */
+import { apiFetch } from "./api-fetch";
 import { env, sleep } from "./common";
 import type { Item } from "./nec-parse";
 
@@ -24,7 +25,7 @@ export async function fetchAll(path: string, params: Record<string, string>): Pr
       numOfRows: "500",
       ...params,
     });
-    const text = await (await fetch(`${NEC_BASE}/${path}?${q}`, { signal: AbortSignal.timeout(30_000) })).text();
+    const text = await (await apiFetch("data_go_kr", `${NEC_BASE}/${path}?${q}`, { signal: AbortSignal.timeout(30_000) })).text();
     let res;
     try {
       res = JSON.parse(text).response;
