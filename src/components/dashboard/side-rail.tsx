@@ -4,7 +4,8 @@
  * SideRail — 좌측 빠른 메뉴 (lg 이상에서만 표시)
  * ------------------------------------------------------------------
  * 아이콘을 누르면 오른쪽으로 플라이아웃 패널이 열리고, 패널 머리말에 그 메뉴의 역할을 한 줄로 설명한다.
- *  관심 지역 · 즐겨찾는 정치인 · 선거·국회 일정 · 법안 추적 · 공약 문서 · 저장한 뉴스
+ *  관심 지역 · 즐겨찾는 정치인 · 공약 문서 · 저장한 뉴스
+ *  (선거·국회 일정, 법안 추적은 가상 데이터라 SHOW_EXAMPLE_CARDS 가 true 일 때만)
  *  ─ 라이트/다크 스위치 · 설정 · 도움말
  * 관심 지역/즐겨찾기/팔로우/저장 목록은 이 브라우저(localStorage)에 보관한다.
  * 지역·정치인·공약을 누르면 onSelectRegion 으로 지도 탭의 해당 지역으로 이동한다.
@@ -25,7 +26,6 @@ import {
   Plus,
   Search,
   Settings,
-  Sparkles,
   Star,
   Sun,
   X,
@@ -41,15 +41,16 @@ import {
   type ApiLocalWinner,
   type ApiPolitician,
 } from "@/lib/api";
+import { SHOW_EXAMPLE_CARDS } from "@/lib/flags";
 import { useTheme } from "@/lib/theme";
 import { useSyncedSet } from "@/lib/user-items";
 import { cn } from "@/lib/utils";
-import { Badge, ExampleFrame, MichelinStars, Segmented, Soon, Switch } from "@/components/ui/primitives";
+import { Badge, ExampleFrame, MichelinStars, Segmented } from "@/components/ui/primitives";
 
 type PanelKey = "regions" | "politicians" | "schedule" | "bills" | "pledges" | "news" | "settings" | "help";
 
 /** example: 아직 가상 데이터인 메뉴 (일정·법안 단계는 DB 에 없음) → 패널 내용에 예시 표시 */
-const MENU: { key: PanelKey; icon: LucideIcon; label: string; desc: string; example?: boolean }[] = [
+const ALL_MENU: { key: PanelKey; icon: LucideIcon; label: string; desc: string; example?: boolean }[] = [
   { key: "regions", icon: Plus, label: "관심 지역", desc: "자주 보는 시·도를 모아 이슈 활성도와 최근 기사 수를 바로 확인합니다." },
   { key: "politicians", icon: Star, label: "즐겨찾는 정치인", desc: "별표한 국회의원의 별점과 의정 지표(반영률·표결 참여율)를 모아 봅니다." },
   { key: "schedule", icon: CalendarDays, label: "선거·국회 일정", desc: "다가오는 본회의·공청회·선거 일정을 D-day 순으로 보여줍니다.", example: true },
@@ -57,7 +58,9 @@ const MENU: { key: PanelKey; icon: LucideIcon; label: string; desc: string; exam
   { key: "pledges", icon: FileText, label: "공약 문서", desc: "선택한 시·도의 지방선거 당선인 공약 제목을 보여줍니다 (선관위). 이행률은 공식 데이터가 없습니다." },
   { key: "news", icon: Bookmark, label: "저장한 뉴스", desc: "나중에 다시 읽을 기사를 저장합니다." },
 ];
-const SETTINGS = { key: "settings" as const, icon: Settings, label: "설정", desc: "화면 테마와 AI 객관화 모드를 설정합니다." };
+/** 가상 데이터 메뉴(일정·법안 추적)는 발표용으로 숨김 */
+const MENU = SHOW_EXAMPLE_CARDS ? ALL_MENU : ALL_MENU.filter((m) => !m.example);
+const SETTINGS = { key: "settings" as const, icon: Settings, label: "설정", desc: "화면 테마를 설정합니다." };
 const HELP = { key: "help" as const, icon: HelpCircle, label: "도움말", desc: "빠른 메뉴의 각 아이콘이 하는 일을 안내합니다." };
 const ALL_PANELS = [...MENU, SETTINGS, HELP];
 
@@ -424,7 +427,7 @@ function NewsPanel({ saved, toggle }: { saved: Set<string>; toggle: (id: string)
   );
 }
 
-function SettingsPanel({ aiMode, onAiModeChange }: { aiMode: boolean; onAiModeChange: (v: boolean) => void }) {
+function SettingsPanel() {
   const [theme, setTheme] = useTheme();
   return (
     <div className="space-y-2">
@@ -442,20 +445,8 @@ function SettingsPanel({ aiMode, onAiModeChange }: { aiMode: boolean; onAiModeCh
           ]}
         />
       </Row>
-      <Row className="flex items-center justify-between gap-3">
-        <div>
-          <p className="flex items-center gap-1.5 text-[13px] font-semibold">
-            <Sparkles className="size-3.5 text-lime" /> AI 객관화 모드
-          </p>
-          <p className="mt-0.5 text-[11px] text-ink-3">뉴스를 감정 표현을 덜어낸 요약으로 기본 표시합니다.</p>
-        </div>
-        {/* AI 분석 전이라 준비 중 */}
-        <Soon>
-          <Switch checked={aiMode} onCheckedChange={onAiModeChange} label="AI 객관화 모드" disabled />
-        </Soon>
-      </Row>
       <p className="px-1 pt-1 text-[11px] leading-relaxed text-ink-3">
-        관심 지역·즐겨찾는 정치인·저장한 뉴스는 로그인 시 계정에 저장되고, 비로그인 시에는 이 브라우저에만 저장됩니다. (법안 추적은 브라우저 저장)
+        관심 지역·즐겨찾는 정치인·저장한 뉴스는 로그인 시 계정에 저장되고, 비로그인 시에는 이 브라우저에만 저장됩니다.
       </p>
     </div>
   );
@@ -567,15 +558,11 @@ export function SideRail({
   selectedRegion,
   onSelectRegion,
   onOpenPolitician,
-  aiMode,
-  onAiModeChange,
 }: {
   selectedRegion: string;
   onSelectRegion: (code: string) => void;
   /** 즐겨찾는 정치인을 누르면 상세 패널 */
   onOpenPolitician: (monaCd: string) => void;
-  aiMode: boolean;
-  onAiModeChange: (v: boolean) => void;
 }) {
   const [open, setOpen] = React.useState<PanelKey | null>(null);
   const rootRef = React.useRef<HTMLDivElement>(null);
@@ -690,7 +677,7 @@ export function SideRail({
               )}
               {open === "pledges" && <PledgesPanel selectedRegion={selectedRegion} onSelectRegion={goRegion} />}
               {open === "news" && <NewsPanel saved={saved} toggle={toggleSaved} />}
-              {open === "settings" && <SettingsPanel aiMode={aiMode} onAiModeChange={onAiModeChange} />}
+              {open === "settings" && <SettingsPanel />}
               {open === "help" && <HelpPanel onOpen={setOpen} />}
             </div>
           </motion.section>

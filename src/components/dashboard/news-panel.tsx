@@ -240,7 +240,7 @@ function NewsCard({ item, aiMode }: { item: NewsItem; aiMode: boolean }) {
 }
 
 /** published_at → "3분 전" (mock 의 time 표기와 맞춤) */
-function timeAgo(iso: string) {
+export function timeAgo(iso: string) {
   const t = new Date(iso).getTime();
   if (Number.isNaN(t)) return "시간 —";
   const min = Math.max(0, Math.floor((Date.now() - t) / 60_000)); // 미래 시각(시계 오차)은 0
@@ -267,7 +267,7 @@ const decodeEntities = (s: string) =>
  * 뉴스 요약에 섞여 오는 HTML 태그·엔티티를 지우고 공백을 정리 (태그를 렌더하지 않고 글자만 남김).
  * 엔티티로 감싼 태그(&lt;b&gt;)도 있어 풀고 나서 한 번 더 지움.
  */
-function plainText(html: string | null) {
+export function plainText(html: string | null) {
   if (!html) return "";
   return stripTags(decodeEntities(stripTags(html)))
     .replace(/\s+/g, " ")
@@ -387,7 +387,7 @@ export function NewsPanel({
   limit?: number;
   /** 지정하면 그 시도 기사만 */
   region?: string;
-  /** ↗ 누르면 News/Issues 화면으로. News/Issues 안에서는 넘기지 않아 아이콘이 사라짐 */
+  /** ↗ 누르면 뉴스 화면으로. 뉴스 화면 안에서는 넘기지 않아 아이콘이 사라짐 */
   onOpen?: () => void;
 }) {
   const [filter, setFilter] = React.useState<Filter>("all");
@@ -430,17 +430,17 @@ export function NewsPanel({
       }`
     : loading
       ? "불러오는 중…"
-      : `크롤링 ${NEWS.length}건 · 평균 편향 지수 ${avgMock}`;
+      : `수집 ${NEWS.length}건 · 평균 편향 지수 ${avgMock}`;
 
   return (
     <Card example={isMock} className={cn("flex flex-col", className)}>
       <CardHeader
         icon={<Newspaper className="size-4" />}
-        title="AI 실시간 뉴스 리포트"
+        title="AI 뉴스 리포트"
         subtitle={subtitle}
         action={
           onOpen && (
-            <IconButton aria-label="News/Issues 화면으로" title="News/Issues 화면으로" onClick={onOpen}>
+            <IconButton aria-label="뉴스 화면으로" title="뉴스 화면으로" onClick={onOpen}>
               <ArrowUpRight className="size-4" />
             </IconButton>
           )
