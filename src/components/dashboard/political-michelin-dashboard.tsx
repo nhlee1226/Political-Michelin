@@ -26,7 +26,7 @@ import { BiasReportCard, PoliticianTable } from "./extra-cards";
 import { RegionMembersCard } from "./region-members-card";
 import { RegionLocalCard } from "./region-local-card";
 import { PoliticianDetailSheet } from "./politician-detail-sheet";
-import { BuildStoryCard, StarRuleCard } from "./about-cards";
+import { BuildStoryCard, CollectStatusCard, StarRuleCard } from "./about-cards";
 
 const TODAY = new Intl.DateTimeFormat("ko-KR", { year: "numeric", month: "long", day: "numeric", weekday: "long" }).format(
   new Date(),
@@ -247,6 +247,8 @@ export default function PoliticalMichelinDashboard() {
                 <div className="grid grid-cols-12 gap-4">
                   {/* 1행: 우리가 만든 과정 (수집 → 정리 → 분석 → 지도) */}
                   <BuildStoryCard className="col-span-12" />
+                  {/* 기관(인증키)별 자동 최신화 현황 — 자동 수집 API 가 없는 배포에서는 스스로 숨음 */}
+                  <CollectStatusCard className="col-span-12" />
 
                   {/* 2행: 뉴스 | 커뮤니티 */}
                   <NewsPanel aiMode={aiMode} onOpen={go("news")} className="col-span-12 h-[600px] md:col-span-6" />

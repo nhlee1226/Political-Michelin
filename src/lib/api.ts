@@ -245,6 +245,64 @@ export const useLocalWinner = (id: string | null) =>
 
 export const useStats = () => useSWR<ApiStats>("/stats", fetcher, live);
 
+/* ── 기관별 자동 수집 현황 (/api/collect-status, src/db/collect-log.ts collectStatus) ── */
+export type CollectRunStatus = "ok" | "failed" | "quota" | "running";
+
+export interface ApiCollectJob {
+  id: string;
+  name: string;
+  /** '하루' | '7일' | '30일' */
+  every: string;
+  /** 주기를 이렇게 정한 이유 */
+  why: string;
+  lastOkAt: string | null;
+  lastAt: string | null;
+  lastStatus: CollectRunStatus | null;
+  nextAt: string;
+}
+
+export interface ApiCollectAgency {
+  id: "assembly" | "data_go_kr" | "kosis";
+  name: string;
+  /** 성향: 데이터가 바뀌는 빠르기 */
+  character: string;
+  /** 인증키 하루 호출 한도 */
+  dailyLimit: number;
+  limitNote: string;
+  /** 한도 중 자동 수집이 쓰는 몫 */
+  usable: number;
+  usedToday: number;
+  remainingToday: number;
+  /** 오늘 기관이 '하루 한도 초과'로 답했는지 */
+  blockedToday: boolean;
+  jobs: ApiCollectJob[];
+}
+
+export interface ApiCollectRun {
+  job: string;
+  jobName: string;
+  agency: string;
+  /** schedule = 예약 실행, button = Actions 의 Run workflow, local = PC 에서 실행 */
+  trigger: "schedule" | "button" | "local" | string;
+  status: CollectRunStatus | string;
+  calls: number;
+  message: string | null;
+  startedAt: string | null;
+  finishedAt: string | null;
+}
+
+export interface ApiCollectStatus {
+  generatedAt: string;
+  /** collect_log 표가 있고 읽혔는지. false 면 계획(기관·주기·한도)만 */
+  logReady: boolean;
+  agencies: ApiCollectAgency[];
+  recent: ApiCollectRun[];
+}
+
+/** 이 API 가 아직 없는 배포(자동 수집 PR 머지 전)에서는 404 → 한 번만 묻고 재시도하지 않음 */
+export const useCollectStatus = () =>
+  useSWR<ApiCollectStatus>("/collect-status", fetcher, { ...live, shouldRetryOnError: false });
+
 /* ── 인증 ─────────────────────────────────────────────── */
 export interface ApiUser {
   id: string;
