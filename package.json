@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test scripts/collectors/*.test.ts scripts/analyze/*.test.ts",
+    "test": "tsx --test scripts/collectors/*.test.ts scripts/analyze/*.test.ts scripts/auto/*.test.ts",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "db:seed": "tsx scripts/seed.ts",
@@ -22,6 +22,7 @@
     "collect:local": "tsx scripts/collectors/local.ts",
     "collect:pledges": "tsx scripts/collectors/pledges.ts",
     "collect:kosis": "tsx scripts/collectors/kosis.ts",
+    "auto": "tsx scripts/auto/run.ts",
     "analyze:news": "tsx scripts/analyze/news.ts"
   },
   "dependencies": {
