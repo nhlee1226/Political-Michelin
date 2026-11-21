@@ -228,6 +228,36 @@ export const useNews = (region?: string | null, limit = 20, analyzed = false) =>
     live,
   );
 
+/** right: 보수 쪽 치우침 · left: 진보 쪽 치우침 · neutral: 균형 · range: lean 범위 지정 */
+export type NewsFilter = "all" | "analyzed" | "right" | "left" | "neutral" | "range";
+
+export interface ApiNewsPage {
+  items: ApiNews[];
+  /** 지금 필터에 맞는 기사 수 */
+  total: number;
+  page: number;
+  pages: number;
+  pageSize: number;
+  /** 필터와 상관없이 그 지역 전체 기준 건수 (range 만 지금 범위 기준) */
+  counts: { total: number; analyzed: number; right: number; left: number; neutral: number; range: number };
+}
+
+/** 뉴스 리포트 페이지 단위 목록. region: 시도 코드, undefined = 전국. lean: filter=range 일 때 [최소, 최대] */
+export const useNewsPage = (
+  region: string | undefined,
+  filter: NewsFilter,
+  page: number,
+  pageSize = 20,
+  lean?: [number, number],
+) =>
+  useSWR<ApiNewsPage>(
+    `/news?page=${page}&pageSize=${pageSize}&filter=${filter}${region ? `&region=${region}` : ""}${
+      filter === "range" && lean ? `&leanMin=${lean[0]}&leanMax=${lean[1]}` : ""
+    }`,
+    fetcher,
+    live,
+  );
+
 /** 목록은 별점 기준 문장을 응답 헤더로 주므로 헤더까지 읽음 */
 async function politiciansFetcher(path: string): Promise<ApiPoliticianList> {
   const res = await fetch(`${API}${path}`);
