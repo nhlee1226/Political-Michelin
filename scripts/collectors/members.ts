@@ -7,6 +7,7 @@
  */
 import { sql } from "drizzle-orm";
 import { members, parties } from "../../src/db/schema";
+import { apiFetch } from "./api-fetch";
 import { db, env, regionLookup, run, saveRaw, toRegionCode } from "./common";
 import { assignColors } from "./nec-parse";
 
@@ -29,7 +30,7 @@ async function fetchMembers(): Promise<Row[]> {
   const rows: Row[] = [];
   for (let page = 1; ; page++) {
     const q = new URLSearchParams({ KEY: env("ASSEMBLY_API_KEY"), Type: "json", pIndex: String(page), pSize: "1000" });
-    const body = await (await fetch(`${BASE}/${SERVICE}?${q}`, { signal: AbortSignal.timeout(30_000) })).json();
+    const body = await (await apiFetch("assembly", `${BASE}/${SERVICE}?${q}`, { signal: AbortSignal.timeout(30_000) })).json();
     if (!body[SERVICE]) {
       if (page === 1) throw new Error(JSON.stringify(body.RESULT ?? body)); // 키 오류 등
       break;

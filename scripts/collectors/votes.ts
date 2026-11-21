@@ -2,6 +2,7 @@
  * 열린국회정보 국회의원 본회의 표결정보(22대) → bill_votes  (의원 × 법안: 찬성·반대·기권·불참)
  * 실행: npm run collect:votes                 (.env.local 의 ASSEMBLY_API_KEY)
  *       npm run collect:votes -- --limit 5    # 법안 5건만 (시험용)
+ *       npm run collect:votes -- --new-only   # 아직 표결을 받지 않은 법안만 (자동 수집 scripts/auto/run.ts 가 이렇게 부름)
  *
  * 먼저 collect:members, collect:bills 를 돌려서 members·bills 가 채워져 있어야 합니다.
  * 대상: bills 중 22대이면서 본회의에서 의결된 법안(VOTED_RESULTS), 최근 발의 순.
@@ -9,6 +10,7 @@
  */
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { billVotes, bills, members } from "../../src/db/schema";
+import { apiFetch } from "./api-fetch";
 import { db, env, run, saveRaw, sleep } from "./common";
 import { toVoteRows, VOTE_RESULTS, VOTED_RESULTS, type VoteItem } from "./votes-parse";
 
@@ -30,7 +32,7 @@ async function fetchVotes(billId: string): Promise<VoteItem[]> {
       pIndex: String(page),
       pSize: String(PAGE),
     });
-    const body = await (await fetch(`${BASE}/${SERVICE}?${q}`, { signal: AbortSignal.timeout(30_000) })).json();
+    const body = await (await apiFetch("assembly", `${BASE}/${SERVICE}?${q}`, { signal: AbortSignal.timeout(30_000) })).json();
     if (!body[SERVICE]) {
       if (body.RESULT?.CODE === "INFO-200") break;
       throw new Error(JSON.stringify(body.RESULT ?? body)); // 키 오류·호출 한도 등
@@ -66,6 +68,8 @@ function limitArg(): number | null {
 
 run(async () => {
   const limit = limitArg();
+  // 본회의 표결은 한 번 끝나면 바뀌지 않으므로, 자동 수집은 표결 줄이 하나도 없는 법안만 물어봄 (인증키 호출 절약)
+  const newOnly = process.argv.includes("--new-only");
 
   const known = new Set((await db.select({ monaCd: members.monaCd }).from(members)).map((m) => m.monaCd));
   if (known.size === 0) throw new Error("members 가 비어 있습니다. 먼저 npm run collect:members 를 실행하세요.");
@@ -73,12 +77,23 @@ run(async () => {
   const query = db
     .select({ billId: bills.billId })
     .from(bills)
-    .where(and(eq(bills.unit, UNIT), inArray(bills.procResult, VOTED_RESULTS)))
+    .where(
+      and(
+        eq(bills.unit, UNIT),
+        inArray(bills.procResult, VOTED_RESULTS),
+        newOnly ? sql`not exists (select 1 from ${billVotes} where ${billVotes.billId} = ${bills.billId})` : undefined,
+      ),
+    )
     .orderBy(sql`${bills.proposeDate} desc nulls last`, bills.billId)
     .$dynamic();
   const targets = await (limit ? query.limit(limit) : query);
-  if (targets.length === 0) throw new Error("대상 법안이 없습니다. 먼저 npm run collect:bills 를 실행하세요.");
-  console.log(`대상 법안 ${targets.length}건 (22대, ${VOTED_RESULTS.join("·")})${limit ? ` — --limit ${limit}` : ""}`);
+  if (targets.length === 0) {
+    if (newOnly) return console.log("새로 표결을 받을 법안이 없습니다 (이미 받은 법안은 다시 묻지 않음)");
+    throw new Error("대상 법안이 없습니다. 먼저 npm run collect:bills 를 실행하세요.");
+  }
+  console.log(
+    `대상 법안 ${targets.length}건 (22대, ${VOTED_RESULTS.join("·")}${newOnly ? ", 표결 아직 안 받은 것만" : ""})${limit ? ` — --limit ${limit}` : ""}`,
+  );
 
   const tally = Object.fromEntries(VOTE_RESULTS.map((r) => [r, 0])) as Record<string, number>;
   const unknown = new Map<string, string>();

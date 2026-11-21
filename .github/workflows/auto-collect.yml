@@ -1,0 +1,54 @@
+# 기관별 자동 수집 (열린국회정보 · 공공데이터포털 선관위 · KOSIS) — 손으로 npm run collect:* 를 돌리지 않아도 되게 함.
+#
+# GitHub 서버는 매시간 우리 스케줄러(npm run auto = scripts/auto/run.ts)를 깨우기만 하고,
+# 무엇을 돌릴지는 스케줄러가 정함: 기관별 주기(성향)와 인증키 하루 호출 한도(토큰)는 src/lib/collect-schedule.ts,
+# 마지막 성공 시각과 오늘 쓴 호출 수는 DB 의 collect_log 표. GitHub 예약 실행은 늦거나 빠질 때가 많아서(실제 평균 몇 시간 간격)
+# 주기 판단을 GitHub 에 맡기지 않고, 언제 깨어나든 '때가 된 것'만 실행함.
+#
+# 키: Settings → Environments → "Political-Michelin/ENV" 의 Environment secrets
+#   DATABASE_URL(이미 있음), ASSEMBLY_API_KEY, DATA_GO_KR_KEY(Decoding 키), KOSIS_API_KEY
+#   등록 안 된 기관은 '인증키 없음'으로 건너뜀 (실패 아님).
+# 뉴스 수집·편향 분석은 collect.yml 이 따로 돌림 (여기서 건드리지 않음).
+name: auto-collect
+
+on:
+  schedule:
+    - cron: "23 * * * *" # 매시간 23분 (UTC). 정각은 GitHub 가 붐벼 자주 빠짐
+  workflow_dispatch:
+    inputs:
+      only:
+        description: "기관 하나만 (all = 전체)"
+        type: choice
+        options: [all, assembly, data_go_kr, kosis]
+        default: all
+      force:
+        description: "주기와 상관없이 지금 실행 (하루 호출 한도 검사는 그대로)"
+        type: boolean
+        default: false
+
+concurrency:
+  group: auto-collect
+  cancel-in-progress: false
+
+jobs:
+  auto-collect:
+    runs-on: ubuntu-latest
+    environment: Political-Michelin/ENV # 키가 이 환경의 비밀값으로 등록돼 있음
+    timeout-minutes: 40
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      ASSEMBLY_API_KEY: ${{ secrets.ASSEMBLY_API_KEY }}
+      DATA_GO_KR_KEY: ${{ secrets.DATA_GO_KR_KEY }}
+      KOSIS_API_KEY: ${{ secrets.KOSIS_API_KEY }}
+      # Run workflow 버튼의 입력값 (예약 실행 때는 비어 있음)
+      AUTO_ONLY: ${{ inputs.only }}
+      AUTO_FORCE: ${{ inputs.force }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: 때가 된 수집기만 실행 (결과 표는 이 실행의 Summary)
+        run: npm run auto

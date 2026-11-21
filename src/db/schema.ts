@@ -509,3 +509,28 @@ export const rawResponses = pgTable(
   },
   (t) => [index("raw_responses_source_idx").on(t.source, t.fetchedAt.desc())],
 ).enableRLS();
+
+/**
+ * 자동 수집 기록 (scripts/auto/run.ts 가 씀). 수집기 1번 실행 = 1줄.
+ * 기관별 '오늘 쓴 호출 수'(인증키 하루 한도 검사)와 작업별 '마지막 성공 시각'(주기 판단)을 이 표에서 계산한다.
+ * 기관·작업·주기 정의는 src/lib/collect-schedule.ts. 표 생성: scripts/sql/add-collect-log.sql (스케줄러가 처음 실행될 때도 자동으로 만듦)
+ */
+export const collectLog = pgTable(
+  "collect_log",
+  {
+    id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+    job: text("job").notNull(), // 'members', 'bills', 'votes', 'nec', 'local', 'pledges', 'kosis'
+    agency: text("agency").notNull(), // 'assembly', 'data_go_kr', 'kosis'
+    trigger: text("trigger").notNull(), // 'schedule'(예약) | 'button'(Run workflow) | 'local'(내 PC)
+    status: text("status").notNull(), // 'running' | 'ok' | 'failed' | 'quota'(기관이 하루 한도 초과로 답함)
+    calls: integer("calls").default(0).notNull(), // 이번 실행에서 기관 API 를 부른 횟수
+    message: text("message"), // 수집기 마지막 출력 줄 (키 값은 지움)
+    startedAt: timestamp("started_at", { withTimezone: true }).defaultNow().notNull(),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+  },
+  (t) => [
+    index("collect_log_job_idx").on(t.job, t.startedAt.desc()),
+    index("collect_log_agency_idx").on(t.agency, t.startedAt.desc()),
+    check("collect_log_status_check", sql`${t.status} in ('running', 'ok', 'failed', 'quota')`),
+  ],
+).enableRLS();
