@@ -7,7 +7,8 @@
  *  - 3D 압출 지도: KOSTAT 시·도 경계 path (scripts/gen_map.py) 를 겹겹이 쌓아 두께 표현
  *  - 정당 색으로 칠하지 않는 무채색 지도 (중립성 유지), 선택 지역만 떠오르며 강조
  *  - 마우스 위치에 따라 3D 틸트, 지역 호버/클릭 시 하이라이트
- *  - 선택 지역: 정당 지지도 패널 / 정치인 프로필 카드 / 주요 이슈 팝업
+ *  - 선택 지역: 정치인 프로필 카드 / 최근 이슈(그 지역 실제 기사) 팝업
+ *    (정당 지지도 패널은 여론조사 데이터가 없어 SHOW_EXAMPLE_CARDS 가 true 일 때만)
  *
  * 실서비스 전환 시: 이 컴포넌트의 <svg> 레이어를 Mapbox/Kakao 지도로 교체하고
  * REGIONS 데이터를 API 응답으로 대체하면 패널 UI 는 그대로 재사용 가능합니다.
@@ -17,6 +18,7 @@ import { AnimatePresence, motion, type MotionValue } from "framer-motion";
 import {
   ChevronLeft,
   ChevronRight,
+  ExternalLink,
   Flame,
   MapPin,
   MousePointerClick,
@@ -28,7 +30,9 @@ import { MAP_HEIGHT, MAP_WIDTH, REGION_PATHS } from "@/lib/korea-map-data";
 import { LABEL_H, LABEL_W, REGION_LABELS } from "@/lib/korea-map-labels";
 import { PARTIES, PARTY_ORDER, REGION_BY_CODE, type Region } from "@/lib/mock-data";
 import { useLiveRegions, usePartyLookup, usePoliticians, useRegion, useRegions } from "@/lib/api";
+import { SHOW_EXAMPLE_CARDS } from "@/lib/flags";
 import { cn } from "@/lib/utils";
+import { plainText, timeAgo } from "./news-panel";
 import { DesignOutline, RegionBurst, useDesignRun } from "./region-burst";
 import { Badge, Card, ExampleFrame, ExampleRibbon, IconButton, MichelinStars, PartyTag } from "@/components/ui/primitives";
 
@@ -295,7 +299,16 @@ function PoliticianPanel({ region, onOpen }: { region: Region; onOpen?: (monaCd:
   );
 }
 
+/** 선택 지역의 최근 기사 3건 (실제). API 가 안 될 때만 예전 가상 이슈 목록을 예시로 */
 function IssuePopup({ region, onClose }: { region: Region; onClose: () => void }) {
+  const { data, isLoading } = useRegion(region.code);
+  // keepPreviousData 로 이전 지역 응답이 남아 있을 수 있어 코드가 같을 때만 사용
+  const detail = data?.code === region.code ? data : undefined;
+  const isMock = !detail && !isLoading;
+  const news = detail?.news.slice(0, 3) ?? [];
+  const listClass =
+    "grid gap-2.5 @min-[620px]:grid-cols-3 @min-[620px]:gap-4 @min-[1040px]:grid-cols-1 @min-[1040px]:gap-2.5";
+
   return (
     <motion.div
       key={region.code}
@@ -307,34 +320,50 @@ function IssuePopup({ region, onClose }: { region: Region; onClose: () => void }
     >
       <div className="mb-2 flex items-center justify-between">
         <p className="flex items-center gap-1.5 text-[13px] font-semibold">
-          <Flame className="size-3.5 text-lime" /> {region.short} 주요 이슈
+          <Flame className="size-3.5 text-lime" /> {region.short} 최근 이슈
         </p>
         <IconButton className="size-6" aria-label="닫기" onClick={onClose}>
           <X className="size-3.5" />
         </IconButton>
       </div>
-      {/* 이슈 목록만 가상(이슈를 뽑는 분석이 아직 없음). 아래 투표율·의석은 실제(선관위) */}
-      <ExampleFrame>
-      <ul className="grid gap-2.5 p-2.5 @min-[620px]:grid-cols-3 @min-[620px]:gap-4 @min-[1040px]:grid-cols-1 @min-[1040px]:gap-2.5">
-        {region.issues.map((iss, i) => (
-          <li key={iss.title} className="group">
-            <div className="flex items-start gap-2">
-              <span className="mt-0.5 text-[11px] font-semibold text-ink-3 tabular">0{i + 1}</span>
-              <div className="min-w-0 flex-1">
-                <p className="text-[13px] leading-snug text-ink group-hover:text-lime">{iss.title}</p>
-                <div className="mt-1 flex items-center gap-2">
-                  <Badge className="px-1.5 py-0 text-[10px]">{iss.category}</Badge>
-                  <div className="h-1 flex-1 overflow-hidden rounded-full bg-white/[0.06]">
-                    <div className="h-full rounded-full bg-lime/80" style={{ width: `${iss.heat}%` }} />
-                  </div>
-                  <span className="text-[10px] text-ink-3 tabular">{iss.heat}</span>
-                </div>
-              </div>
-            </div>
-          </li>
-        ))}
-      </ul>
-      </ExampleFrame>
+      {isMock ? (
+        <ExampleFrame>
+          <ul className={cn(listClass, "p-2.5")}>
+            {region.issues.map((iss, i) => (
+              <li key={iss.title} className="flex items-start gap-2">
+                <span className="mt-0.5 text-[11px] font-semibold text-ink-3 tabular">0{i + 1}</span>
+                <p className="min-w-0 flex-1 text-[13px] leading-snug text-ink">{iss.title}</p>
+              </li>
+            ))}
+          </ul>
+        </ExampleFrame>
+      ) : news.length ? (
+        <ul className={listClass}>
+          {news.map((n, i) => (
+            <li key={n.id}>
+              <a
+                href={n.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group flex items-start gap-2 rounded-lg"
+              >
+                <span className="mt-0.5 text-[11px] font-semibold text-ink-3 tabular">0{i + 1}</span>
+                <span className="min-w-0 flex-1">
+                  <span className="line-clamp-2 text-[13px] leading-snug text-ink group-hover:text-lime">
+                    {plainText(n.headline)}
+                  </span>
+                  <span className="mt-1 flex items-center gap-1 text-[10px] text-ink-3">
+                    {n.source ?? "언론사"} · {timeAgo(n.published_at)}
+                    <ExternalLink className="size-2.5 opacity-0 transition group-hover:opacity-100" aria-hidden />
+                  </span>
+                </span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="py-2 text-[11px] text-ink-3">{isLoading ? "불러오는 중…" : "최근 수집된 지역 기사가 없습니다."}</p>
+      )}
       <div className="mt-3 grid grid-cols-2 gap-2 border-t border-line pt-3 text-[11px] @min-[620px]:grid-cols-4 @min-[1040px]:grid-cols-2">
         <div>
           <p className="text-ink-3">직전 투표율</p>
@@ -731,10 +760,19 @@ export function KoreaMapCard({
           </AnimatePresence>
 
           <div className="flex flex-col gap-3 @min-[1040px]:contents">
-            <div data-map-obstacle className="@min-[1040px]:absolute @min-[1040px]:left-5 @min-[1040px]:top-2">
-              <SupportPanel region={region} />
-            </div>
-            <div data-map-obstacle className="@min-[1040px]:absolute @min-[1040px]:bottom-5 @min-[1040px]:left-5">
+            {SHOW_EXAMPLE_CARDS && (
+              <div data-map-obstacle className="@min-[1040px]:absolute @min-[1040px]:left-5 @min-[1040px]:top-2">
+                <SupportPanel region={region} />
+              </div>
+            )}
+            {/* 지지도 패널을 숨기면 프로필 카드를 왼쪽 위로 올려 오른쪽 위 이슈 팝업과 높이를 맞춤 */}
+            <div
+              data-map-obstacle
+              className={cn(
+                "@min-[1040px]:absolute @min-[1040px]:left-5",
+                SHOW_EXAMPLE_CARDS ? "@min-[1040px]:bottom-5" : "@min-[1040px]:top-2",
+              )}
+            >
               <PoliticianPanel region={region} onOpen={onOpenPolitician} />
             </div>
           </div>

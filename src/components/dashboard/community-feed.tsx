@@ -262,7 +262,8 @@ function CommentForm({
   );
 }
 
-export function CommunityFeed({ className }: { className?: string }) {
+/** showStats: 카드 위 블라인드·검증 중·클린 칸. 커뮤니티 탭은 옆 통계 카드와 겹쳐 끔 */
+export function CommunityFeed({ className, showStats = true }: { className?: string; showStats?: boolean }) {
   const { data: comments, isLoading } = useComments("post", "board");
   const { data: user } = useUser();
   const [replyTo, setReplyTo] = React.useState<string | null>(null);
@@ -289,18 +290,20 @@ export function CommunityFeed({ className }: { className?: string }) {
         subtitle="정치 전반의 의견을 나눕니다 · AI가 혐오 표현을 걸러내고 사실 주장을 검증합니다"
       />
 
-      <div className="mx-5 mt-3 grid grid-cols-3 gap-2">
-        {[
-          { k: "블라인드", v: blinded, c: "text-bad" },
-          { k: "검증 중", v: review, c: "text-warn" },
-          { k: "클린", v: clean, c: "text-good" },
-        ].map((s) => (
-          <div key={s.k} className="rounded-lg border border-line bg-white/[0.02] px-2.5 py-2">
-            <p className="text-[10px] text-ink-3">{s.k}</p>
-            <p className={cn("text-sm font-semibold tabular", s.c)}>{s.v.toLocaleString()}</p>
-          </div>
-        ))}
-      </div>
+      {showStats && (
+        <div className="mx-5 mt-3 grid grid-cols-3 gap-2">
+          {[
+            { k: "블라인드", v: blinded, c: "text-bad" },
+            { k: "검증 중", v: review, c: "text-warn" },
+            { k: "클린", v: clean, c: "text-good" },
+          ].map((s) => (
+            <div key={s.k} className="rounded-lg border border-line bg-white/[0.02] px-2.5 py-2">
+              <p className="text-[10px] text-ink-3">{s.k}</p>
+              <p className={cn("text-sm font-semibold tabular", s.c)}>{s.v.toLocaleString()}</p>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* 글쓰기 */}
       <div className="mx-5 mt-3">
@@ -353,7 +356,7 @@ export function CommunityFeed({ className }: { className?: string }) {
 
 /* ── Community 탭 우측 위젯 ──────────────────────────── */
 
-/** 실시간 통계 — 오늘 글 수·블라인드·검증 중·클린 분포 */
+/** 게시판 통계 — 오늘 글 수·블라인드·검증 중·클린 분포 */
 export function CommunityStatsCard() {
   const { data: comments } = useComments("post", "board");
   const all = comments ?? [];
@@ -370,7 +373,7 @@ export function CommunityStatsCard() {
     <Card className="flex flex-col">
       <CardHeader
         icon={<Activity className="size-4 text-lime" />}
-        title="실시간 통계"
+        title="게시판 통계"
         subtitle={`전체 ${all.length}개 글 · 오늘 ${today.length}개`}
       />
       <div className="grid grid-cols-3 gap-2 p-5 pt-3">
@@ -389,7 +392,7 @@ export function CommunityStatsCard() {
       <div className="px-5 pb-5">
         <div className="mb-1 flex items-center justify-between text-[10px] text-ink-3">
           <span>클린 지수</span>
-          <span className="tabular">{Math.round((clean / total) * 100)}%</span>
+          <span className="tabular">{all.length ? `${Math.round((clean / total) * 100)}%` : "—"}</span>
         </div>
         <div className="flex h-1.5 overflow-hidden rounded-full bg-white/[0.06]">
           <div className="bg-good" style={{ width: `${(clean / total) * 100}%` }} />

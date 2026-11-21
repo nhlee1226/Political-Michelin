@@ -3,7 +3,7 @@
 /**
  * 하단 데이터 시각화 KPI 카드 모음 (Recharts)
  *  1. PledgeCard        공약 이행률 (세미 링 게이지) — 가상 데이터, 카드 전체 예시 표시
- *  2. ActivityCard      의정 활동 평가 (가로 막대) — 평균 법안 반영률·평균 표결 참여율은 실제, 출석률 2개는 예시
+ *  2. ActivityCard      의정 활동 평가 (가로 막대) — 평균 법안 반영률·평균 표결 참여율은 실제, 출석률 2개는 예시(SHOW_EXAMPLE_CARDS 일 때만)
  *  3. PartyTrendCard    정당별 지지도 비교 (12주 라인) — 가상 데이터(정당 A/B/C), 카드 전체 예시 표시
  *  4. IssueTimelineCard 이슈 타임라인 — 최근 14일 날짜별 수집 기사 수(실제). API 가 안 될 때만 가상 차트를 예시로
  */
@@ -23,6 +23,7 @@ import {
 import { Activity, ArrowUpRight, ClipboardCheck, LineChart as LineIcon, Milestone, MoreHorizontal } from "lucide-react";
 import { ASSEMBLY_ACTIVITY, ISSUE_TIMELINE, PARTIES, PLEDGE_STATUS, SUPPORT_TREND } from "@/lib/mock-data";
 import { useStats } from "@/lib/api";
+import { SHOW_EXAMPLE_CARDS } from "@/lib/flags";
 import { cn } from "@/lib/utils";
 import { Card, CardHeader, ExampleFrame, IconButton, PartyTag, Segmented, Soon } from "@/components/ui/primitives";
 
@@ -163,7 +164,8 @@ function ActivityBar({ m }: { m: ActivityRow }) {
   );
 }
 
-export function ActivityCard({ className, onOpen }: { className?: string; onOpen?: () => void }) {
+/** totals: 위에 22대 발의·가결 법안 수 칸을 함께 (한눈에 탭처럼 위쪽 숫자 카드에 법안 수가 없는 화면용) */
+export function ActivityCard({ className, onOpen, totals = false }: { className?: string; onOpen?: () => void; totals?: boolean }) {
   const { data: stats } = useStats();
   // 실제: 평균 법안 반영률(bills)·평균 표결 참여율(bill_votes). 출석률은 공식 데이터가 없어 가상 값을 예시 틀 안에
   const real: ActivityRow[] = [
@@ -188,21 +190,39 @@ export function ActivityCard({ className, onOpen }: { className?: string; onOpen
         icon={<Activity className="size-4" />}
         title="의정 활동 평가"
         subtitle="국회의원 전체 평균 · 22대"
-        action={<OpenButton onOpen={onOpen} label="Politicians 화면으로" />}
+        action={<OpenButton onOpen={onOpen} label="정치인 화면으로" />}
       />
       <div className="mt-4 flex flex-1 flex-col justify-center gap-4 px-5 pb-5">
+        {totals && (
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              { k: "22대 발의 법안", v: stats?.bills_total },
+              { k: "가결 법안", v: stats?.bills_passed },
+            ].map((t) => (
+              <div key={t.k} className="rounded-xl border border-line bg-white/[0.03] px-3 py-2.5">
+                <p className="text-[10px] text-ink-3">{t.k}</p>
+                <p className="mt-0.5 text-lg font-semibold tabular">
+                  {t.v == null ? "—" : t.v.toLocaleString()}
+                  <span className="ml-0.5 text-[11px] font-normal text-ink-3">건</span>
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
         <ul className="flex flex-col gap-4">
           {real.map((m) => (
             <ActivityBar key={m.metric} m={m} />
           ))}
         </ul>
-        <ExampleFrame>
-          <ul className="flex flex-col gap-4 p-3">
-            {examples.map((m) => (
-              <ActivityBar key={m.metric} m={m} />
-            ))}
-          </ul>
-        </ExampleFrame>
+        {SHOW_EXAMPLE_CARDS && (
+          <ExampleFrame>
+            <ul className="flex flex-col gap-4 p-3">
+              {examples.map((m) => (
+                <ActivityBar key={m.metric} m={m} />
+              ))}
+            </ul>
+          </ExampleFrame>
+        )}
       </div>
     </Card>
   );
@@ -339,8 +359,8 @@ export function IssueTimelineCard({ className, onOpen }: { className?: string; o
       <CardHeader
         icon={<Milestone className="size-4" />}
         title="이슈 타임라인"
-        subtitle={isLive ? "최근 14일 수집 기사 수 · 네이버 뉴스 · 발행일 기준" : "최근 14일 정치 이슈 언급량 (뉴스·커뮤니티 합산)"}
-        action={<OpenButton onOpen={onOpen} label="News/Issues 화면으로" />}
+        subtitle={isLive ? "최근 14일 날짜별 수집 기사 수 · 발행일 기준" : "최근 14일 정치 이슈 언급량 (뉴스·커뮤니티 합산)"}
+        action={<OpenButton onOpen={onOpen} label="뉴스 화면으로" />}
       />
       <div className="flex items-baseline gap-2 px-5 pt-3">
         <p className="text-2xl font-semibold tracking-tight tabular">
@@ -354,7 +374,7 @@ export function IssueTimelineCard({ className, onOpen }: { className?: string; o
           </span>
         )}
       </div>
-      <div className="h-[190px] flex-1 px-2 pt-2">
+      <div className="h-[190px] min-h-[190px] flex-1 px-2 pt-2">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={data} margin={{ top: 14, right: 14, left: isLive ? -8 : -18, bottom: 0 }}>
             <defs>
