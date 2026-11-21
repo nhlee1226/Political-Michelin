@@ -304,9 +304,15 @@ export function apiParties() {
   return rows(sql`select id, name, short, color, is_active from parties where is_active order by id`);
 }
 
-/** 위쪽 숫자 카드 + 의정 활동 평균 + 날짜별 수집 기사 수. 아직 데이터가 없는 값(AI 분석 전의 편향 지수 등)은 null → 화면에 "—" */
+/**
+ * 위쪽 숫자 카드 + 의정 활동 평균 + 날짜별 수집 기사 수. 아직 데이터가 없는 값(AI 분석 전의 편향 지수 등)은 null → 화면에 "—"
+ * 편향 집계(analyzed·evidence_total·avg_bias·bias_judged·bias_dist)는 현재 분석 버전(가장 최근에 쓴 model_version)만 센다.
+ * 예전 버전(모델·프롬프트가 다른) 결과는 다시 분석되기 전까지 analyzed_old 로만 알려 준다 — 서로 다른 기준의 점수를 평균에 섞지 않기 위해.
+ */
 export async function apiStats() {
   const [s] = await rows(sql`
+    with cur as (select model_version as v from news_analysis order by analyzed_at desc limit 1),
+         na as (select * from news_analysis where model_version = (select v from cur))
     select
       (select count(*)::int from members)                                                                  as members,
       (select count(*)::int from news_articles where published_at > now() - interval '24 hours')           as news_24h,
@@ -319,15 +325,17 @@ export async function apiStats() {
       (select count(*)::int from news_articles
         where (published_at at time zone 'Asia/Seoul')::date
               between (now() at time zone 'Asia/Seoul')::date - 27 and (now() at time zone 'Asia/Seoul')::date - 14) as news_prev_14d,
-      (select count(*)::int from news_analysis)                                                            as analyzed,
-      (select round(avg(bias))::int from news_analysis)                                                    as avg_bias,
+      (select v from cur)                                                                                  as analysis_version,
+      (select count(*)::int from na)                                                                       as analyzed,
+      (select count(*)::int from news_analysis where model_version <> (select v from cur))                 as analyzed_old,
+      (select round(avg(bias))::int from na)                                                               as avg_bias,
       -- 편향 리포트 카드: 근거 문장 수, 치우침을 판단한 기사 수(판단 불가 = bias null 제외),
       -- 치우침 크기(bias = |lean|, 방향 없음) 10점 구간 분포 [0~9, 10~19, …, 90~100]
-      (select count(*)::int from news_evidence)                                                            as evidence_total,
-      (select count(bias)::int from news_analysis)                                                         as bias_judged,
+      (select count(*)::int from news_evidence e join na on na.news_id = e.news_id)                        as evidence_total,
+      (select count(bias)::int from na)                                                                    as bias_judged,
       (select json_agg(coalesce(x.n, 0) order by b) from generate_series(0, 9) b
          left join (select least(bias / 10, 9)::int as bin, count(*)::int as n
-                    from news_analysis where bias is not null group by 1) x on x.bin = b)               as bias_dist`);
+                    from na where bias is not null group by 1) x on x.bin = b)                          as bias_dist`);
   // 최근 14일(오늘 포함, 한국 시간) 날짜별 수집 기사 수 — 기사가 없는 날은 0
   const news_daily = await rows<{ day: string; n: number }>(sql`
     select to_char(d, 'YYYY-MM-DD') as day, coalesce(a.n, 0)::int as n

@@ -90,8 +90,12 @@ export interface ApiStats {
   news_updated_at: string | null;
   bills_total: number;
   bills_passed: number;
-  /** 편향 분석을 마친 기사 수 (news_analysis) */
+  /** 현재 분석 버전 (예: claude-sonnet-5-5/v3). 편향 집계는 모두 이 버전 결과만 셈. 분석 전이면 null */
+  analysis_version: string | null;
+  /** 현재 버전으로 편향 분석을 마친 기사 수 (news_analysis) */
   analyzed: number;
+  /** 예전 버전으로만 분석돼 있어 집계에서 뺀 기사 수 (다시 분석되면 들어감) */
+  analyzed_old: number;
   /** 평균 치우침 0~100 (= |lean| 평균, 판단 불가 제외) */
   avg_bias: number | null;
   /** 편향 근거 문장 수 (news_evidence) */
