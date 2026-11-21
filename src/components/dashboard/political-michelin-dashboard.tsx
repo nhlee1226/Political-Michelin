@@ -34,8 +34,12 @@ const TODAY = new Intl.DateTimeFormat("ko-KR", { year: "numeric", month: "long",
 
 const NO_AI = "AI 분석 후 표시";
 const NO_DATA = "공식 데이터 없음";
-/** 평균 편향 지수 = 기사별 치우침 크기(|lean|, 0~100) 평균. 진보·보수 방향은 나누지 않음 */
-const BIAS_CAPTION = "/100 · 방향 없이 치우친 정도";
+/**
+ * 평균 편향 지수 = 기사별 치우침 크기(|lean|, 0~100) 평균. 진보·보수 방향은 나누지 않음.
+ * 몇 건의 평균인지(현재 분석 버전으로 판단한 기사 수)를 함께 보여 줘 표본 크기를 알 수 있게 함
+ */
+const biasCaption = (s: ApiStats | null) =>
+  s?.avg_bias == null ? NO_AI : `/100 · 기사 ${s.bias_judged.toLocaleString("ko-KR")}건 평균 · 방향 없이 치우친 정도`;
 
 const isToday = (iso: string) => new Date(iso).toDateString() === new Date().toDateString();
 
@@ -81,9 +85,10 @@ function useHeadline(
         desc: "직접 만든 수집기로 모은 기사의 제목·요약·원문 링크를 보여줍니다. AI 편향 분석을 마친 기사에는 진보↔보수 치우침과 그 근거 문장을 함께 보여줍니다.",
         kpis: [
           { label: "오늘 수집 기사", value: s?.news_24h ?? null, caption: "최근 24시간", accent: true },
-          { label: "뉴스 출처", value: s?.sources_7d ?? null, caption: "최근 7일 · 언론사" },
+          // 기사 주소의 도메인 수를 셈(수집 API 가 언론사명을 주지 않음) → '언론사'가 아니라 '사이트'
+          { label: "뉴스 출처", value: s?.sources_7d ?? null, caption: "최근 7일 · 기사를 낸 사이트" },
           { label: "AI 분석 기사", value: s?.analyzed ?? null, caption: "건 · 근거 문장과 함께" },
-          { label: "평균 편향 지수", value: s?.avg_bias ?? null, caption: s?.avg_bias == null ? NO_AI : BIAS_CAPTION },
+          { label: "평균 편향 지수", value: s?.avg_bias ?? null, caption: biasCaption(s) },
         ],
       };
     case "politicians":
@@ -120,7 +125,7 @@ function useHeadline(
         kpis: [
           { label: "추적 중인 의원", value: s?.members ?? null, caption: "제22대 국회 전원" },
           { label: "오늘 수집 기사", value: s?.news_24h ?? null, caption: "최근 24시간", accent: true },
-          { label: "평균 편향 지수", value: s?.avg_bias ?? null, caption: s?.avg_bias == null ? NO_AI : BIAS_CAPTION },
+          { label: "평균 편향 지수", value: s?.avg_bias ?? null, caption: biasCaption(s) },
         ],
       };
   }
