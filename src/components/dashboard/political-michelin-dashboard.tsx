@@ -17,6 +17,7 @@ import { useComments, useRegion, useRegions, useStats, type ApiComment, type Api
 import { SHOW_EXAMPLE_CARDS } from "@/lib/flags";
 import { DashboardHeader, type TabKey } from "./header";
 import { SideRail } from "./side-rail";
+import { Toaster } from "@/components/ui/toaster";
 import { FlipCounter } from "./flip-counter";
 import { KoreaMapCard } from "./korea-map-card";
 import { NewsPanel, timeAgo } from "./news-panel";
@@ -318,6 +319,7 @@ export default function PoliticalMichelinDashboard() {
       </div>
 
       <PoliticianDetailSheet monaCd={detailId} onClose={() => setDetailId(null)} />
+      <Toaster />
     </div>
   );
 }
