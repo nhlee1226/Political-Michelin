@@ -52,8 +52,9 @@ npm run dev              # http://localhost:3000  (1분마다 DB 를 다시 읽�
 | `npm run collect:nec` | 선관위 → 후보·당선·득표수·득표율·선거구 합계·투표율, 정당(임시) |
 | `npm run collect:news` | 네이버 뉴스 → 기사·지역 판별·정당/인물 언급 (최근 24시간) |
 | `npm run collect:news -- 예산 국정감사` | 검색어 직접 지정 |
-| `npm run collect:members` / `collect:bills` | 열린국회정보 (연동 예정, 키 발급 후 검증 필요) |
+| `npm run collect:members` / `collect:bills` | 열린국회정보 → 22대 의원·정당 / 발의 법안과 처리 단계 날짜(소관위·법사위·본회의) |
 | `npm run collect:votes -- --limit 5` | 열린국회정보 본회의 표결 → `bill_votes` (members·bills 다음에 실행, `--limit` 은 법안 수 제한) |
+| `npm run collect:schedule` | 열린국회정보 국회 일정 통합 → `assembly_schedule` (3일 전~14일 뒤, 날짜마다 다시 받아 취소·변경 반영) |
 | `npm run collect:local` | 선관위 → 제9회 지방선거(2026-06-03) 시·도지사·구시군장·교육감 당선인 (`elections` · `election_candidates`) |
 | `npm run collect:pledges` | 선관위 → 지방선거 당선인 선거공약 원문 (`election_pledges`, collect:local 다음에 실행) |
 | `npm run collect:kosis` | KOSIS → 시도별 주민등록인구·고령인구비율·재정자립도 (`region_indicators`, 17개 시도가 모두 있는 최신 연도) |
@@ -70,7 +71,7 @@ npm run dev              # http://localhost:3000  (1분마다 DB 를 다시 읽�
 
 | 기관 (인증키) | 성향 | 하루 호출 한도 (자동 수집 몫 80%) | 작업 · 주기 |
 |---|---|---|---|
-| 열린국회정보 (`ASSEMBLY_API_KEY`) | 의원은 가끔, 법안은 매일, 표결은 본회의 날 | 3,000 (공개 한도 없음 → 자체 한도) | 의원·정당 하루 · 법안 하루 · 표결 하루(새로 표결된 법안만) |
+| 열린국회정보 (`ASSEMBLY_API_KEY`) | 의원은 가끔, 법안은 매일, 표결은 본회의 날, 회의 일정은 며칠 앞서 | 3,000 (공개 한도 없음 → 자체 한도) | 의원·정당 하루 · 법안(처리 단계 포함) 하루 · 표결 하루(새로 표결된 법안만) · 국회 일정 하루 |
 | 공공데이터포털 선관위 (`DATA_GO_KR_KEY`) | 확정된 선거 결과라 거의 안 바뀜 | 10,000 (개발계정 API마다) | 총선 결과 30일 · 지방선거 당선인 30일 · 공약 30일 |
 | KOSIS (`KOSIS_API_KEY`) | 1년 단위 통계 | 1,000 (공개 한도 없음, 분당 200회 → 0.3초 간격) | 시도 지표 7일 |
 
@@ -79,7 +80,7 @@ npm run dev              # http://localhost:3000  (1분마다 DB 를 다시 읽�
 3. 실행할 수집기는 별도 프로세스로 띄우고 "이번 최대 호출 수"를 넘겨 줍니다. 모든 기관 API 호출은 `scripts/collectors/api-fetch.ts` 를 지나가며 호출 수를 세고, 기관별 최소 간격을 지키고, 최대 호출에 닿으면 멈추고, 기관의 한도 초과 응답(공공데이터포털 코드 22, HTTP 429)을 알아챕니다.
 4. 결과(성공·실패·한도 초과, 호출 수, 마지막 출력 줄)를 `collect_log` 에 한 줄씩 남기고, Actions 실행 화면 Summary 에 표로 보여 줍니다. 실패하면 2시간 뒤(주기가 더 짧으면 그 주기 뒤) 다시 시도하고, 한도 초과면 한국 자정까지 그 기관을 쉽니다.
 
-`collect_log` 표는 스케줄러가 처음 실행될 때 `scripts/sql/add-collect-log.sql` 로 스스로 만듭니다. 현황은 `GET /api/collect-status`. 뉴스 수집·편향 분석은 `collect.yml` 이 따로 돌리며 이 스케줄러와 관계없습니다.
+`collect_log` 표는 스케줄러가 처음 실행될 때 `scripts/sql/add-collect-log.sql` 로, 법안 처리 단계 열과 `assembly_schedule` 표는 법안·일정 수집기가 처음 실행될 때 `scripts/sql/add-bill-stages.sql` 로 스스로 만듭니다 (`db:push` 필요 없음). 현황은 `GET /api/collect-status`. 뉴스 수집·편향 분석은 `collect.yml` 이 따로 돌리며 이 스케줄러와 관계없습니다.
 
 ## API (Next.js 라우트, 같은 서버)
 | 경로 | 내용 |
@@ -92,6 +93,8 @@ npm run dev              # http://localhost:3000  (1분마다 DB 를 다시 읽�
 | `GET /api/news?region=11&limit=20` | 수집 기사 (+ AI 분석 결과가 있으면 함께) |
 | `GET /api/trends?kind=party&days=7` | 정당/인물 언급량 날짜별 추이 |
 | `GET /api/parties` | 정당 이름·색 |
+| `GET /api/bills?view=active` | 법안 추적: 단계(발의 → 소관위 → 법사위 → 본회의)·지금 상태·본회의 표결 수. `view=done` 처리 끝, `q=` 제목 검색, `ids=` 추적 법안 |
+| `GET /api/schedule` | 국회 일정: 어제부터 앞으로의 본회의·위원회 회의·행사 |
 | `GET /api/collect-status` | 기관별 자동 수집 현황: 성향·하루 한도·오늘 호출 수, 작업별 주기·마지막 성공·다음 예정, 최근 실행 20줄 |
 
 ## 폴더 구조

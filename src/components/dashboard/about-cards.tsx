@@ -31,8 +31,8 @@ export function BuildStoryCard({ className }: { className?: string }) {
     {
       icon: Download,
       label: "모으기",
-      headline: "수집기 8개",
-      desc: "국회 의원·법안·표결, 선관위 선거 결과·공약, 통계청 지역 지표, 정치 뉴스를 모으는 수집기를 직접 만들었습니다. 뉴스는 자동으로 계속 모입니다.",
+      headline: "수집기 9개",
+      desc: "국회 의원·법안 처리 단계·표결·일정, 선관위 선거 결과·공약, 통계청 지역 지표, 정치 뉴스를 모으는 수집기를 직접 만들었습니다. 모두 정해 둔 주기에 맞춰 자동으로 모입니다.",
       facts: [
         { k: "수집 기사", v: `${num(s?.news_total)}건` },
         { k: "22대 법안", v: `${num(s?.bills_total)}건` },
@@ -41,8 +41,8 @@ export function BuildStoryCard({ className }: { className?: string }) {
     {
       icon: Database,
       label: "정리하기",
-      headline: "데이터베이스 표 22개",
-      desc: "출처마다 제각각인 형식을 하나의 구조로 맞춰 저장합니다. 의원·법안·표결·선거·공약·지역·뉴스·게시판이 서로 연결됩니다.",
+      headline: "데이터베이스 표 24개",
+      desc: "출처마다 제각각인 형식을 하나의 구조로 맞춰 저장합니다. 의원·법안·표결·국회 일정·선거·공약·지역·뉴스·게시판이 서로 연결됩니다.",
       facts: [
         { k: "추적 의원", v: `${num(s?.members)}명` },
         { k: "표결 수집 법안", v: `${num(s?.voted_bills)}건` },
