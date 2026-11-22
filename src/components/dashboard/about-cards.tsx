@@ -9,6 +9,7 @@
  * 숫자는 전부 실제 집계. 불러오기 전이거나 실패하면 "—".
  */
 import * as React from "react";
+import { motion, useReducedMotion } from "framer-motion";
 import { Database, Download, Hammer, Map, RefreshCw, Sparkles, Star, type LucideIcon } from "lucide-react";
 import { useCollectStatus, useStats, type ApiCollectAgency, type ApiCollectRun } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -27,6 +28,8 @@ interface Step {
 
 export function BuildStoryCard({ className }: { className?: string }) {
   const { data: s } = useStats();
+  // 모으기 → 정리하기 → 분석하기 → 보여주기가 차례로 나타남 (움직임 줄이기면 바로 보임)
+  const reduce = useReducedMotion();
   const steps: Step[] = [
     {
       icon: Download,
@@ -79,11 +82,22 @@ export function BuildStoryCard({ className }: { className?: string }) {
       />
       <ol className="grid gap-3 p-5 pt-4 sm:grid-cols-2 xl:grid-cols-4">
         {steps.map((st, i) => (
-          <li key={st.label} className="relative flex flex-col rounded-xl border border-line bg-white/[0.03] p-4">
+          <motion.li
+            key={st.label}
+            className="relative flex flex-col rounded-xl border border-line bg-white/[0.03] p-4"
+            initial={reduce ? false : { opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: i * 0.15, duration: 0.48, ease: [0.22, 1, 0.36, 1] }}
+          >
             <div className="flex items-center gap-2">
-              <span className="grid size-7 shrink-0 place-items-center rounded-full bg-lime text-[calc(12px*var(--fs))] font-bold text-canvas tabular">
+              <motion.span
+                className="grid size-7 shrink-0 place-items-center rounded-full bg-lime text-[calc(12px*var(--fs))] font-bold text-canvas tabular"
+                initial={reduce ? false : { scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ delay: i * 0.15 + 0.18, type: "spring", stiffness: 500, damping: 14 }}
+              >
                 {i + 1}
-              </span>
+              </motion.span>
               <span className="text-[calc(12px*var(--fs))] font-medium text-ink-3">{st.label}</span>
               <st.icon className="ml-auto size-4 text-ink-3" aria-hidden />
             </div>
@@ -97,7 +111,7 @@ export function BuildStoryCard({ className }: { className?: string }) {
                 </div>
               ))}
             </dl>
-          </li>
+          </motion.li>
         ))}
       </ol>
     </Card>
@@ -107,6 +121,7 @@ export function BuildStoryCard({ className }: { className?: string }) {
 /** 별점 기준 — memberScores: 대표발의 수 순위와 반영 법안 수 순위의 평균, 0.8 이상 ★★★ · 0.5 이상 ★★ */
 export function StarRuleCard({ className }: { className?: string }) {
   const { data: s } = useStats();
+  const reduce = useReducedMotion();
   const rules: { n: string; title: string; desc: string }[] = [
     { n: "1", title: "대표발의 수 순위", desc: "의원이 대표로 발의한 법안 수를 전체 의원 안에서 순위로 바꿉니다." },
     { n: "2", title: "반영 법안 수 순위", desc: "원안·수정가결과 대안반영으로 실제 반영된 법안 수의 순위입니다." },
@@ -120,8 +135,14 @@ export function StarRuleCard({ className }: { className?: string }) {
         subtitle="정당·이념 변수 없이 의정 실적만 봅니다"
       />
       <ol className="space-y-3 px-5 pt-4">
-        {rules.map((r) => (
-          <li key={r.n} className="flex gap-3">
+        {rules.map((r, i) => (
+          <motion.li
+            key={r.n}
+            className="flex gap-3"
+            initial={reduce ? false : { opacity: 0, x: -10 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: i * 0.12, duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+          >
             <span className="grid size-6 shrink-0 place-items-center rounded-full border border-line text-[calc(11px*var(--fs))] font-semibold text-ink-2 tabular">
               {r.n}
             </span>
@@ -129,7 +150,7 @@ export function StarRuleCard({ className }: { className?: string }) {
               <p className="text-[calc(13px*var(--fs))] font-semibold">{r.title}</p>
               <p className="mt-0.5 text-[calc(11px*var(--fs))] leading-relaxed text-ink-3">{r.desc}</p>
             </div>
-          </li>
+          </motion.li>
         ))}
       </ol>
       <div className="m-5 mt-4 grid grid-cols-3 gap-2 rounded-xl border border-line bg-white/[0.03] p-3 text-center">

@@ -34,7 +34,7 @@ import { SHOW_EXAMPLE_CARDS } from "@/lib/flags";
 import { cn } from "@/lib/utils";
 import { plainText, timeAgo } from "./news-panel";
 import { DesignOutline, RegionBurst, useDesignRun } from "./region-burst";
-import { Badge, Card, ExampleFrame, ExampleRibbon, IconButton, MichelinStars, PartyTag } from "@/components/ui/primitives";
+import { Badge, Card, ExampleFrame, ExampleRibbon, IconButton, MichelinStars, PartyTag, Skeleton } from "@/components/ui/primitives";
 
 // 광역시(2x) 를 도(3x) 위에 그려 클릭 가능하도록 정렬
 const PATH_ORDER = Object.keys(REGION_PATHS).sort((a, b) => (a.startsWith("3") ? -1 : 1) - (b.startsWith("3") ? -1 : 1));
@@ -206,7 +206,18 @@ function PoliticianPanel({ region, onOpen }: { region: Region; onOpen?: (monaCd:
         <p className="flex items-center gap-1.5 text-[calc(13px*var(--fs))] font-semibold">
           <Users className="size-3.5 text-ink-3" /> 정치인 프로필
         </p>
-        <p className="mt-3 text-[calc(11px*var(--fs))] text-ink-3">불러오는 중…</p>
+        <div className="mt-3 flex items-center gap-3" role="status" aria-label="정치인 프로필을 불러오는 중">
+          <Skeleton className="size-12 shrink-0 rounded-full" />
+          <div className="min-w-0 flex-1">
+            <Skeleton className="h-4 w-1/2" />
+            <Skeleton className="mt-2 h-3 w-3/4" />
+          </div>
+        </div>
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          {[0, 1, 2, 3].map((k) => (
+            <Skeleton key={k} className="h-10 rounded-lg" />
+          ))}
+        </div>
       </div>
     );
   }
@@ -362,7 +373,18 @@ function IssuePopup({ region, onClose }: { region: Region; onClose: () => void }
           ))}
         </ul>
       ) : (
-        <p className="py-2 text-[calc(11px*var(--fs))] text-ink-3">{isLoading ? "불러오는 중…" : "최근 수집된 지역 기사가 없습니다."}</p>
+        isLoading ? (
+          <ul className="space-y-2.5 py-1" role="status" aria-label="지역 기사를 불러오는 중">
+            {[84, 70, 78].map((w) => (
+              <li key={w}>
+                <Skeleton className="h-3.5" style={{ width: `${w}%` }} />
+                <Skeleton className="mt-1.5 h-2.5 w-1/3" />
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="py-2 text-[calc(11px*var(--fs))] text-ink-3">최근 수집된 지역 기사가 없습니다.</p>
+        )
       )}
       <div className="mt-3 grid grid-cols-2 gap-2 border-t border-line pt-3 text-[calc(11px*var(--fs))] @min-[620px]:grid-cols-4 @min-[1040px]:grid-cols-2">
         <div>

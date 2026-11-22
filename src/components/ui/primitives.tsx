@@ -202,6 +202,11 @@ export function Segmented<T extends string>({
 }
 
 /* ── Michelin Stars ──────────────────────────────────── */
+/** 스켈레톤 로딩 — 불러오는 동안 실제 내용 자리에 회색 뼈대를 그림 (반짝임은 globals.css .pm-skel). 크기는 className 으로 */
+export function Skeleton({ className, style }: { className?: string; style?: React.CSSProperties }) {
+  return <span aria-hidden className={cn("pm-skel block rounded-md", className)} style={style} />;
+}
+
 export function MichelinStars({ count, className }: { count: 1 | 2 | 3; className?: string }) {
   return (
     <span className={cn("inline-flex items-center gap-0.5", className)} aria-label={`미슐랭 ${count}스타`}>

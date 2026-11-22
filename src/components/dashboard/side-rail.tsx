@@ -11,7 +11,7 @@
  * 지역·정치인·공약을 누르면 onSelectRegion 으로 지도 탭의 해당 지역으로 이동한다.
  */
 import * as React from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   Bell,
   BellRing,
@@ -49,7 +49,9 @@ import { FONT_SIZES, useFontSize } from "@/lib/font-size";
 import { useTheme } from "@/lib/theme";
 import { useSyncedSet } from "@/lib/user-items";
 import { cn } from "@/lib/utils";
-import { Badge, MichelinStars, Segmented } from "@/components/ui/primitives";
+import { Badge, MichelinStars, Segmented, Skeleton } from "@/components/ui/primitives";
+import { Bump, Pop } from "@/components/ui/pop";
+import { eulReul, markToggled, toast } from "@/lib/toast";
 
 type PanelKey = "regions" | "politicians" | "schedule" | "bills" | "pledges" | "news" | "settings" | "help";
 
@@ -88,13 +90,81 @@ function Empty({ children }: { children: React.ReactNode }) {
   return <p className="rounded-xl border border-dashed border-line px-3 py-4 text-center text-xs text-ink-3">{children}</p>;
 }
 
+/* ── 스켈레톤 로딩: "불러오는 중…" 글자 대신 실제 모양대로 회색 뼈대 ── */
+function ScheduleSkeleton() {
+  return (
+    <div role="status" aria-label="일정을 불러오는 중">
+      <Skeleton className="h-7 w-56 max-w-full rounded-full" />
+      <ol className="mt-3 space-y-3">
+        {[[78, 64], [70], [82, 60]].map((ws, g) => (
+          <li key={g} className="flex gap-3">
+            <Skeleton className="h-[66px] w-14 shrink-0 rounded-xl" />
+            <ul className="min-w-0 flex-1 space-y-1.5">
+              {ws.map((w, i) => (
+                <li key={i} className="rounded-lg border border-line bg-white/[0.03] px-2.5 py-2">
+                  <Skeleton className="h-4 w-11 rounded-full" />
+                  <Skeleton className="mt-2 h-3.5" style={{ width: `${w}%` }} />
+                  <Skeleton className="mt-1.5 h-2.5" style={{ width: `${w - 30}%` }} />
+                </li>
+              ))}
+            </ul>
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+}
+function BillsSkeleton({ n = 3 }: { n?: number }) {
+  return (
+    <ul className="space-y-2" role="status" aria-label="법안을 불러오는 중">
+      {Array.from({ length: n }, (_, i) => (
+        <li key={i}>
+          <Row>
+            <div className="flex items-start gap-2">
+              <div className="min-w-0 flex-1">
+                <Skeleton className="h-4" style={{ width: `${72 - i * 8}%` }} />
+                <Skeleton className="mt-1.5 h-3 w-2/5" />
+              </div>
+              <Skeleton className="h-6 w-14 rounded-full" />
+            </div>
+            <div className="mt-3 grid grid-cols-4 justify-items-center gap-1">
+              {[0, 1, 2, 3].map((k) => (
+                <Skeleton key={k} className="size-3 rounded-full" />
+              ))}
+            </div>
+            <Skeleton className="mt-3 h-4 w-24 rounded-full" />
+          </Row>
+        </li>
+      ))}
+    </ul>
+  );
+}
+function PeopleSkeleton({ n = 3 }: { n?: number }) {
+  return (
+    <ul className="space-y-2" role="status" aria-label="의원 목록을 불러오는 중">
+      {Array.from({ length: n }, (_, i) => (
+        <li key={i}>
+          <Row className="flex items-center gap-2.5 p-2.5">
+            <Skeleton className="size-8 shrink-0 rounded-full" />
+            <div className="min-w-0 flex-1">
+              <Skeleton className="h-3.5 w-1/3" />
+              <Skeleton className="mt-1.5 h-3" style={{ width: `${60 - i * 8}%` }} />
+              <Skeleton className="mt-1.5 h-3 w-1/2" />
+            </div>
+          </Row>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 function RegionsPanel({
   interests,
   toggle,
   onSelectRegion,
 }: {
   interests: Set<string>;
-  toggle: (c: string) => void;
+  toggle: (c: string, name?: string) => void;
   onSelectRegion: (c: string) => void;
 }) {
   const { regions: REGIONS } = useRegions();
@@ -104,7 +174,7 @@ function RegionsPanel({
   const rest = REGIONS.filter((r) => !interests.has(r.code));
   return (
     <>
-      <SectionLabel>내 관심 지역 {mine.length}곳 · 누르면 지도에서 열림</SectionLabel>
+      <SectionLabel>내 관심 지역 <Bump value={mine.length} />곳 · 누르면 지도에서 열림</SectionLabel>
       {mine.length === 0 ? (
         <Empty>아래에서 지역을 추가해 보세요.</Empty>
       ) : (
@@ -115,7 +185,9 @@ function RegionsPanel({
                 <button onClick={() => onSelectRegion(r.code)} className="min-w-0 flex-1 text-left">
                   <div className="flex items-center justify-between gap-2">
                     <p className="flex items-center gap-1.5 text-[calc(14px*var(--fs))] font-semibold">
-                      <MapPin className="size-3.5 text-lime" />
+                      <Pop on id={r.code}>
+                        <MapPin className="size-3.5 text-lime" />
+                      </Pop>
                       {r.name}
                     </p>
                     <span className="text-[calc(12px*var(--fs))] text-ink-3 tabular">
@@ -130,7 +202,7 @@ function RegionsPanel({
                   )}
                 </button>
                 <button
-                  onClick={() => toggle(r.code)}
+                  onClick={() => toggle(r.code, r.short)}
                   aria-label={`${r.short} 관심 지역에서 제거`}
                   className="grid size-6 shrink-0 place-items-center rounded-full text-ink-3 hover:bg-white/[0.08] hover:text-ink"
                 >
@@ -146,10 +218,12 @@ function RegionsPanel({
         {rest.map((r) => (
           <button
             key={r.code}
-            onClick={() => toggle(r.code)}
+            onClick={() => toggle(r.code, r.short)}
             className="flex items-center gap-1 rounded-full border border-line px-2.5 py-1 text-[calc(12px*var(--fs))] text-ink-2 transition hover:border-lime/40 hover:text-lime"
           >
-            <Plus className="size-3" />
+            <Pop on={false} id={r.code}>
+              <Plus className="size-3" />
+            </Pop>
             {r.short}
           </button>
         ))}
@@ -165,7 +239,7 @@ function PoliticiansPanel({
   onOpenPolitician,
 }: {
   favorites: Set<string>;
-  toggle: (id: string) => void;
+  toggle: (id: string, name?: string) => void;
   onOpenPolitician: (monaCd: string) => void;
 }) {
   const [q, setQ] = React.useState("");
@@ -204,12 +278,14 @@ function PoliticiansPanel({
             </span>
           </button>
           <button
-            onClick={() => toggle(p.mona_cd)}
+            onClick={() => toggle(p.mona_cd, p.name)}
             aria-label={fav ? `${p.name} 즐겨찾기 해제` : `${p.name} 즐겨찾기`}
             aria-pressed={fav}
             className="grid size-7 shrink-0 place-items-center rounded-full hover:bg-white/[0.08]"
           >
-            <Star className={cn("size-4", fav ? "fill-lime text-lime" : "text-ink-3")} />
+            <Pop on={fav} id={p.mona_cd}>
+              <Star className={cn("size-4", fav ? "fill-lime text-lime" : "text-ink-3")} />
+            </Pop>
           </button>
         </Row>
       </li>
@@ -227,15 +303,23 @@ function PoliticiansPanel({
           className="min-w-0 flex-1 bg-transparent text-xs placeholder:text-ink-3 focus:outline-none"
         />
       </label>
-      {!data && <p className="mt-3 text-center text-[calc(12px*var(--fs))] text-ink-3">{error ? "의원 목록을 불러오지 못했습니다." : "의원 목록을 불러오는 중…"}</p>}
+      {!data && error && <p className="mt-3 text-center text-[calc(12px*var(--fs))] text-ink-3">의원 목록을 불러오지 못했습니다.</p>}
       {q.trim() && (
         <>
           <SectionLabel>검색 결과 {results.length}명</SectionLabel>
           {results.length ? <ul className="space-y-2">{results.map(item)}</ul> : <Empty>일치하는 정치인이 없습니다.</Empty>}
         </>
       )}
-      <SectionLabel>즐겨찾기 {favs.length}명</SectionLabel>
-      {favs.length ? <ul className="space-y-2">{favs.map(item)}</ul> : <Empty>위에서 검색해 별표를 눌러 추가하세요.</Empty>}
+      <SectionLabel>
+        즐겨찾기 <Bump value={data ? favs.length : favorites.size} />명
+      </SectionLabel>
+      {!data && !error ? (
+        <PeopleSkeleton n={Math.max(1, Math.min(favorites.size, 3))} />
+      ) : favs.length ? (
+        <ul className="space-y-2">{favs.map(item)}</ul>
+      ) : (
+        <Empty>위에서 검색해 별표를 눌러 추가하세요.</Empty>
+      )}
     </>
   );
 }
@@ -250,7 +334,7 @@ const md = (date: string) => {
 function SchedulePanel() {
   const { data, error } = useSchedule();
   const [kind, setKind] = React.useState("전체");
-  if (!data) return <Empty>{error ? "일정을 불러오지 못했습니다." : "일정을 불러오는 중…"}</Empty>;
+  if (!data) return error ? <Empty>일정을 불러오지 못했습니다.</Empty> : <ScheduleSkeleton />;
   if (!data.ready) return <Empty>국회 일정은 자동 수집이 처음 돌고 나면 채워집니다 (하루 1번).</Empty>;
 
   // 많이 나오는 종류 3개까지 거르기 버튼으로
@@ -330,9 +414,32 @@ const STEP_TONE: Record<ApiBillTrack["tone"], { dot: string; line: string; badge
   neutral: { dot: "border-ink-3 bg-ink-3", line: "bg-white/20", badge: "neutral" },
 };
 
-/** 법안 1건 — 단계 스테퍼(발의 → 소관위 → 법사위 → 본회의), 지금 상태, 최근 단계, 본회의 표결 수 */
-function BillCard({ b, on, toggle }: { b: ApiBillTrack; on: boolean; toggle: (id: string) => void }) {
+/** 단계가 한 칸씩 차오르는 간격(초)과 감속 곡선 */
+const STEP_GAP = 0.28;
+const EASE_OUT = [0.22, 1, 0.36, 1] as const;
+
+/**
+ * 법안 1건 — 단계 스테퍼(발의 → 소관위 → 법사위 → 본회의), 지금 상태, 최근 단계, 본회의 표결 수.
+ * 패널을 열고 처음 보이는 카드는 발의부터 한 칸씩 차오른다 (seen: 이미 보여 준 법안은 다시 안 함).
+ */
+function BillCard({
+  b,
+  on,
+  toggle,
+  seen,
+}: {
+  b: ApiBillTrack;
+  on: boolean;
+  toggle: (id: string, name?: string) => void;
+  seen: React.RefObject<Set<string>>;
+}) {
   const t = STEP_TONE[b.tone];
+  const reduce = useReducedMotion();
+  const [play] = React.useState(() => !reduce && !seen.current.has(b.bill_id));
+  React.useEffect(() => {
+    seen.current.add(b.bill_id);
+  }, [b.bill_id, seen]);
+  const metaDelay = b.reached * STEP_GAP + 0.22;
   return (
     <li>
       <Row>
@@ -350,15 +457,19 @@ function BillCard({ b, on, toggle }: { b: ApiBillTrack; on: boolean; toggle: (id
             </p>
           </div>
           <button
-            onClick={() => toggle(b.bill_id)}
+            onClick={() => toggle(b.bill_id, b.title)}
             aria-pressed={on}
             className={cn(
-              "flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[calc(12px*var(--fs))] transition",
+              "shrink-0 rounded-full border px-2 py-0.5 text-[calc(12px*var(--fs))] transition",
               on ? "border-lime/40 bg-lime/10 text-lime" : "border-line text-ink-3 hover:text-ink",
             )}
           >
-            {on ? <BellRing className="size-3" /> : <Bell className="size-3" />}
-            {on ? "추적 중" : "추적"}
+            <Pop on={on} id={b.bill_id} className="gap-1">
+              <Pop on={on} id={b.bill_id} kind="ring">
+                {on ? <BellRing className="size-3" /> : <Bell className="size-3" />}
+              </Pop>
+              {on ? "추적 중" : "추적"}
+            </Pop>
           </button>
         </div>
         {/* 단계 스테퍼 */}
@@ -366,22 +477,47 @@ function BillCard({ b, on, toggle }: { b: ApiBillTrack; on: boolean; toggle: (id
           {BILL_STEPS.map((label, i) => {
             const done = i <= b.reached;
             const current = i === b.reached;
+            const at = i * STEP_GAP;
             return (
               <li key={label} className="relative flex flex-col items-center gap-1">
-                {i > 0 && <span className={cn("absolute right-1/2 top-[5px] h-0.5 w-full", done ? t.line : "bg-white/[0.08]")} />}
-                <span
-                  className={cn(
-                    "relative size-3 rounded-full border-2",
-                    current ? t.dot : done ? "border-white/40 bg-canvas" : "border-white/15 bg-canvas",
-                    current && b.tone === "active" && "ring-4 ring-lime/15",
+                {i > 0 && (
+                  <span className="absolute right-1/2 top-[5px] h-0.5 w-full overflow-hidden bg-white/[0.08]">
+                    {done && (
+                      <motion.span
+                        className={cn("absolute inset-0 origin-left", t.line)}
+                        initial={play ? { scaleX: 0 } : false}
+                        animate={{ scaleX: 1 }}
+                        transition={{ delay: Math.max(0, at - 0.23), duration: 0.26, ease: EASE_OUT }}
+                      />
+                    )}
+                  </span>
+                )}
+                <span className="relative size-3">
+                  <span className="absolute inset-0 rounded-full border-2 border-white/15 bg-canvas" />
+                  {done && (
+                    <motion.span
+                      className={cn(
+                        "absolute inset-0 rounded-full border-2",
+                        current ? t.dot : "border-white/40 bg-canvas",
+                        current && b.tone === "active" && "ring-4 ring-lime/15",
+                      )}
+                      initial={play ? { scale: 0, opacity: 0 } : false}
+                      animate={{ scale: 1, opacity: 1 }}
+                      transition={{ delay: at, type: "spring", stiffness: 520, damping: 14 }}
+                    />
                   )}
-                />
+                </span>
                 <span className={cn("text-[calc(11px*var(--fs))]", current ? "font-semibold text-ink" : "text-ink-3")}>{label}</span>
               </li>
             );
           })}
         </ol>
-        <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1">
+        <motion.div
+          className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1"
+          initial={play ? { opacity: 0, y: 6 } : false}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: metaDelay, duration: 0.3, ease: EASE_OUT }}
+        >
           <Badge tone={t.badge} className="px-1.5 py-0 text-[calc(11px*var(--fs))]">
             {b.status}
           </Badge>
@@ -390,12 +526,17 @@ function BillCard({ b, on, toggle }: { b: ApiBillTrack; on: boolean; toggle: (id
               {md(b.latest.date)} {b.latest.text}
             </span>
           )}
-        </div>
+        </motion.div>
         {b.votes && (
-          <p className="mt-1.5 text-[calc(12px*var(--fs))] text-ink-3 tabular">
+          <motion.p
+            className="mt-1.5 text-[calc(12px*var(--fs))] text-ink-3 tabular"
+            initial={play ? { opacity: 0, y: 6 } : false}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: metaDelay + 0.08, duration: 0.3, ease: EASE_OUT }}
+          >
             본회의 표결 · 찬성 <b className="text-ink-2">{b.votes.yes}</b> · 반대 <b className="text-ink-2">{b.votes.no}</b> · 기권{" "}
             <b className="text-ink-2">{b.votes.abstain}</b>
-          </p>
+          </motion.p>
         )}
       </Row>
     </li>
@@ -413,7 +554,9 @@ function useDebounced<T>(value: T, ms = 300) {
 }
 
 /** 법안 추적 — 22대 의원 발의법률안의 처리 단계 (열린국회정보, 하루 1번 수집). 추적 목록은 이 브라우저에 보관 */
-function BillsPanel({ followed, toggle }: { followed: Set<string>; toggle: (id: string) => void }) {
+function BillsPanel({ followed, toggle }: { followed: Set<string>; toggle: (id: string, name?: string) => void }) {
+  // 이 패널을 연 뒤 단계 애니메이션을 이미 보여 준 법안 (추적으로 목록을 옮겨도 다시 차오르지 않게)
+  const seen = React.useRef(new Set<string>());
   const [q, setQ] = React.useState("");
   const [view, setView] = React.useState<"active" | "done">("active");
   const query = useDebounced(q.trim());
@@ -442,13 +585,17 @@ function BillsPanel({ followed, toggle }: { followed: Set<string>; toggle: (id: 
         </div>
       ) : (
         <>
-          <SectionLabel>추적 중 {followed.size}건</SectionLabel>
+          <SectionLabel>
+            추적 중 <Bump value={followed.size} />건
+          </SectionLabel>
           {followed.size === 0 ? (
             <Empty>아래 법안의 추적을 누르면 여기에 모입니다.</Empty>
+          ) : !mine.data && !mine.error ? (
+            <BillsSkeleton n={Math.min(followed.size, 2)} />
           ) : (
             <ul className="space-y-2">
               {mineRows.map((b) => (
-                <BillCard key={b.bill_id} b={b} on toggle={toggle} />
+                <BillCard key={b.bill_id} b={b} on toggle={toggle} seen={seen} />
               ))}
             </ul>
           )}
@@ -468,11 +615,11 @@ function BillsPanel({ followed, toggle }: { followed: Set<string>; toggle: (id: 
             </div>
           )}
           {!list.data ? (
-            <Empty>{list.error ? "법안을 불러오지 못했습니다." : "법안을 불러오는 중…"}</Empty>
+            list.error ? <Empty>법안을 불러오지 못했습니다.</Empty> : <BillsSkeleton />
           ) : rest.length ? (
             <ul className="space-y-2">
               {rest.map((b) => (
-                <BillCard key={b.bill_id} b={b} on={false} toggle={toggle} />
+                <BillCard key={b.bill_id} b={b} on={false} toggle={toggle} seen={seen} />
               ))}
             </ul>
           ) : (
@@ -548,7 +695,7 @@ function PledgesPanel({ selectedRegion, onSelectRegion }: { selectedRegion: stri
   );
 }
 
-function NewsPanel({ saved, toggle }: { saved: Set<string>; toggle: (id: string) => void }) {
+function NewsPanel({ saved, toggle }: { saved: Set<string>; toggle: (id: string, name?: string) => void }) {
   const { news: NEWS } = useNews();
   const mine = NEWS.filter((n) => saved.has(n.id));
   const rest = NEWS.filter((n) => !saved.has(n.id));
@@ -569,7 +716,9 @@ function NewsPanel({ saved, toggle }: { saved: Set<string>; toggle: (id: string)
             aria-pressed={on}
             className="grid size-7 shrink-0 place-items-center rounded-full hover:bg-white/[0.08]"
           >
-            {on ? <BookmarkCheck className="size-4 text-lime" /> : <Bookmark className="size-4 text-ink-3" />}
+            <Pop on={on} id={n.id}>
+              {on ? <BookmarkCheck className="size-4 text-lime" /> : <Bookmark className="size-4 text-ink-3" />}
+            </Pop>
           </button>
         </Row>
       </li>
@@ -577,7 +726,9 @@ function NewsPanel({ saved, toggle }: { saved: Set<string>; toggle: (id: string)
   };
   return (
     <>
-      <SectionLabel>저장됨 {mine.length}건</SectionLabel>
+      <SectionLabel>
+        저장됨 <Bump value={mine.length} />건
+      </SectionLabel>
       {mine.length ? <ul className="space-y-2">{mine.map(item)}</ul> : <Empty>아래 기사의 책갈피를 눌러 저장하세요.</Empty>}
       <SectionLabel>오늘의 기사</SectionLabel>
       <ul className="space-y-2">{rest.map(item)}</ul>
@@ -767,11 +918,33 @@ export function SideRail({
   const [followed, toggleFollow] = useSyncedSet("pm-tracked-bills", [], "bill");
   const [saved, toggleSaved] = useSyncedSet("pm-saved-news", [], "news");
 
+  // 누르면 화면 아래에 알림(토스트) + 되돌리기. 되돌리기는 그때의 최신 toggle 을 부르도록 ref 로 들고 있음
+  const toggles = React.useRef({ toggleInterest, toggleFavorite, toggleFollow, toggleSaved });
+  toggles.current = { toggleInterest, toggleFavorite, toggleFollow, toggleSaved };
+  const flip = (key: keyof typeof toggles.current, id: string) => {
+    markToggled(id);
+    void toggles.current[key](id);
+  };
+  const withToast = (key: keyof typeof toggles.current, id: string, title: string | undefined, message: string) => {
+    flip(key, id);
+    toast({ title, message, undo: () => flip(key, id) });
+  };
+  const onInterest = (id: string, name?: string) =>
+    withToast("toggleInterest", id, name && `${name}${eulReul(name)}`, interests.has(id) ? "관심 지역에서 뺐어요" : "관심 지역에 추가했어요");
+  const onFavorite = (id: string, name?: string) =>
+    withToast("toggleFavorite", id, name && `${name} 의원을`, favorites.has(id) ? "즐겨찾기에서 뺐어요" : "즐겨찾기에 추가했어요");
+  const onFollow = (id: string, name?: string) =>
+    withToast("toggleFollow", id, name?.replace(/ 일부개정법률안$/, " 개정안"), followed.has(id) ? "추적을 그만뒀어요" : "추적을 시작했어요");
+  const onSave = (id: string) => withToast("toggleSaved", id, undefined, saved.has(id) ? "저장한 기사에서 뺐어요" : "기사를 저장했어요");
+
   // 바깥 클릭 · Esc 로 닫기
   React.useEffect(() => {
     if (!open) return;
     const onDown = (e: PointerEvent) => {
-      if (!rootRef.current?.contains(e.target as Node)) setOpen(null);
+      const el = e.target as Element;
+      // 알림의 "되돌리기"를 눌러도 패널은 열어 둠
+      if (el.closest?.("[data-toast]")) return;
+      if (!rootRef.current?.contains(el)) setOpen(null);
     };
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(null);
     document.addEventListener("pointerdown", onDown);
@@ -848,11 +1021,11 @@ export function SideRail({
               </button>
             </header>
             <div className="scroll-thin min-h-0 flex-1 overflow-y-auto p-4">
-              {open === "regions" && <RegionsPanel interests={interests} toggle={toggleInterest} onSelectRegion={goRegion} />}
+              {open === "regions" && <RegionsPanel interests={interests} toggle={onInterest} onSelectRegion={goRegion} />}
               {open === "politicians" && (
                 <PoliticiansPanel
                   favorites={favorites}
-                  toggle={toggleFavorite}
+                  toggle={onFavorite}
                   onOpenPolitician={(id) => {
                     onOpenPolitician(id);
                     setOpen(null);
@@ -860,9 +1033,9 @@ export function SideRail({
                 />
               )}
               {open === "schedule" && <SchedulePanel />}
-              {open === "bills" && <BillsPanel followed={followed} toggle={toggleFollow} />}
+              {open === "bills" && <BillsPanel followed={followed} toggle={onFollow} />}
               {open === "pledges" && <PledgesPanel selectedRegion={selectedRegion} onSelectRegion={goRegion} />}
-              {open === "news" && <NewsPanel saved={saved} toggle={toggleSaved} />}
+              {open === "news" && <NewsPanel saved={saved} toggle={onSave} />}
               {open === "settings" && <SettingsPanel />}
               {open === "help" && <HelpPanel onOpen={setOpen} />}
             </div>

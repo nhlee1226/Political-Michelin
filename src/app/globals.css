@@ -79,6 +79,9 @@ html[data-font-size="xl"] { --fs: 1.25; }
   --glass-border: rgb(255 255 255 / 0.1);
   --glass-highlight: rgb(255 255 255 / 0.08);
   --glass-shadow: rgb(0 0 0 / 0.55);
+
+  --skel: rgb(255 255 255 / 0.06);
+  --skel-shine: rgb(255 255 255 / 0.08);
 }
 
 /* ── 라이트 모드: 같은 토큰 이름에 밝은 값을 넣어 컴포넌트 수정 없이 전환 ──
@@ -124,6 +127,23 @@ html[data-theme="light"] {
   --glass-border: rgb(255 255 255 / 0.75);
   --glass-highlight: rgb(255 255 255 / 0.9);
   --glass-shadow: rgb(30 41 59 / 0.18);
+
+  --skel: rgb(30 38 51 / 0.07);
+  --skel-shine: rgb(255 255 255 / 0.7);
+}
+
+/* 스켈레톤 로딩: 데이터를 기다리는 동안 화면 모양대로 회색 뼈대 (primitives.tsx 의 Skeleton) */
+.pm-skel { position: relative; overflow: hidden; background: var(--skel); }
+.pm-skel::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, var(--skel-shine), transparent);
+  animation: pm-shimmer 1.4s ease-in-out infinite;
+}
+@keyframes pm-shimmer {
+  to { transform: translateX(100%); }
 }
 
 @keyframes flip {
@@ -249,4 +269,5 @@ body {
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
   .pm-ghost { display: none; }
   .pm-wiggle, .pm-caret { animation: none; }
+  .pm-skel::after { animation: none; }
 }
