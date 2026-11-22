@@ -91,8 +91,12 @@ export interface ApiStats {
   news_updated_at: string | null;
   bills_total: number;
   bills_passed: number;
-  /** 편향 분석을 마친 기사 수 (news_analysis) */
+  /** 현재 분석 버전 (예: claude-sonnet-5-5/v3). 편향 집계는 모두 이 버전 결과만 셈. 분석 전이면 null */
+  analysis_version: string | null;
+  /** 현재 버전으로 편향 분석을 마친 기사 수 (news_analysis) */
   analyzed: number;
+  /** 예전 버전으로만 분석돼 있어 집계에서 뺀 기사 수 (다시 분석되면 들어감) */
+  analyzed_old: number;
   /** 평균 치우침 0~100 (= |lean| 평균, 판단 불가 제외) */
   avg_bias: number | null;
   /** 편향 근거 문장 수 (news_evidence) */
@@ -221,6 +225,36 @@ export const useRegion = (code: string | null) =>
 export const useNews = (region?: string | null, limit = 20, analyzed = false) =>
   useSWR<ApiNews[]>(
     region === null ? null : `/news?limit=${limit}${region ? `&region=${region}` : ""}${analyzed ? "&analyzed=1" : ""}`,
+    fetcher,
+    live,
+  );
+
+/** right: 보수 쪽 치우침 · left: 진보 쪽 치우침 · neutral: 균형 · range: lean 범위 지정 */
+export type NewsFilter = "all" | "analyzed" | "right" | "left" | "neutral" | "range";
+
+export interface ApiNewsPage {
+  items: ApiNews[];
+  /** 지금 필터에 맞는 기사 수 */
+  total: number;
+  page: number;
+  pages: number;
+  pageSize: number;
+  /** 필터와 상관없이 그 지역 전체 기준 건수 (range 만 지금 범위 기준) */
+  counts: { total: number; analyzed: number; right: number; left: number; neutral: number; range: number };
+}
+
+/** 뉴스 리포트 페이지 단위 목록. region: 시도 코드, undefined = 전국. lean: filter=range 일 때 [최소, 최대] */
+export const useNewsPage = (
+  region: string | undefined,
+  filter: NewsFilter,
+  page: number,
+  pageSize = 20,
+  lean?: [number, number],
+) =>
+  useSWR<ApiNewsPage>(
+    `/news?page=${page}&pageSize=${pageSize}&filter=${filter}${region ? `&region=${region}` : ""}${
+      filter === "range" && lean ? `&leanMin=${lean[0]}&leanMax=${lean[1]}` : ""
+    }`,
     fetcher,
     live,
   );

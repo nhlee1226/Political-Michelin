@@ -284,15 +284,18 @@ export async function apiRegionDetail(code: string) {
  * 뉴스 목록. analyzed = true 면 편향 분석이 끝난 기사만.
  * evidence: 편향 근거 (방향 있는 근거 → 강한 근거 순). 분석 전이면 null
  */
+const NEWS_COLUMNS = sql`
+    a.id, a.url, a.source, a.title as headline, a.summary, to_json(a.published_at)#>>'{}' as published_at, a.region_code,
+    (x.news_id is not null) as analyzed,
+    x.bias::int as bias, x.lean::int as lean, x.confidence, x.bias_signals, x.objective_headline, x.objective_summary,
+    (select json_agg(json_build_object('type', e.type, 'direction', e.direction, 'strength', e.strength,
+                                       'excerpt', e.excerpt, 'explanation', e.explanation, 'source_url', e.source_url)
+                     order by (e.direction = 'neutral'), e.strength desc, e.id)
+       from news_evidence e where e.news_id = a.id) as evidence`;
+
 export function apiNews(region: string | null, limit: number, analyzed = false) {
   return rows(sql`
-    select a.id, a.url, a.source, a.title as headline, a.summary, to_json(a.published_at)#>>'{}' as published_at, a.region_code,
-           (x.news_id is not null) as analyzed,
-           x.bias::int as bias, x.lean::int as lean, x.confidence, x.bias_signals, x.objective_headline, x.objective_summary,
-           (select json_agg(json_build_object('type', e.type, 'direction', e.direction, 'strength', e.strength,
-                                              'excerpt', e.excerpt, 'explanation', e.explanation, 'source_url', e.source_url)
-                            order by (e.direction = 'neutral'), e.strength desc, e.id)
-              from news_evidence e where e.news_id = a.id) as evidence
+    select ${NEWS_COLUMNS}
     from news_articles a left join news_analysis x on x.news_id = a.id
     where (${region}::text is null or a.region_code = ${region})
       and (not ${analyzed} or x.news_id is not null)
@@ -300,13 +303,69 @@ export function apiNews(region: string | null, limit: number, analyzed = false) 
     limit ${limit}`);
 }
 
+/**
+ * 뉴스 리포트 필터. lean 은 -100(진보 시각) ~ +100(보수 시각). 기준은 화면(news-panel)과 같음
+ *  - all: 수집한 기사 전부 · analyzed: 편향 분석을 마친 기사
+ *  - right: 보수 쪽 치우침(lean ≥ 40) · left: 진보 쪽 치우침(lean ≤ -40) · neutral: 균형(|lean| < 15)
+ *  - range: lean 이 [leanMin, leanMax] 안에 드는 기사
+ */
+export type NewsFilter = "all" | "analyzed" | "right" | "left" | "neutral" | "range";
+export const NEWS_FILTERS: NewsFilter[] = ["all", "analyzed", "right", "left", "neutral", "range"];
+const NEWS_BALANCED = 15;
+const NEWS_LEANING = 40;
+
+/**
+ * 뉴스 리포트 페이지 단위 목록 — 조건에 맞는 기사를 pageSize 씩 잘라 page 번째(1부터)를 줌.
+ * counts 는 필터와 상관없이 그 지역 전체 기준 (부제·필터 건수용). range 만 지금 범위 기준
+ */
+export async function apiNewsPage(
+  region: string | null,
+  filter: NewsFilter,
+  page: number,
+  pageSize: number,
+  leanMin = -100,
+  leanMax = 100,
+) {
+  const inRegion = sql`(${region}::text is null or a.region_code = ${region})`;
+  const [counts] = await rows<Record<Exclude<NewsFilter, "all">, number> & { total: number }>(sql`
+    select count(*)::int as total,
+           count(x.news_id)::int as analyzed,
+           (count(*) filter (where x.lean >= ${NEWS_LEANING}::int))::int as right,
+           (count(*) filter (where x.lean <= -${NEWS_LEANING}::int))::int as left,
+           (count(*) filter (where abs(x.lean) < ${NEWS_BALANCED}::int))::int as neutral,
+           (count(*) filter (where x.lean between ${leanMin}::int and ${leanMax}::int))::int as range
+    from news_articles a left join news_analysis x on x.news_id = a.id
+    where ${inRegion}`);
+  const total = filter === "all" ? counts.total : counts[filter];
+  const pages = Math.max(1, Math.ceil(total / pageSize));
+  const current = Math.min(Math.max(1, page), pages);
+  const items = await rows(sql`
+    select ${NEWS_COLUMNS}
+    from news_articles a left join news_analysis x on x.news_id = a.id
+    where ${inRegion}
+      and (${filter}::text = 'all' or x.news_id is not null)
+      and (${filter}::text <> 'right' or x.lean >= ${NEWS_LEANING}::int)
+      and (${filter}::text <> 'left' or x.lean <= -${NEWS_LEANING}::int)
+      and (${filter}::text <> 'neutral' or abs(x.lean) < ${NEWS_BALANCED}::int)
+      and (${filter}::text <> 'range' or x.lean between ${leanMin}::int and ${leanMax}::int)
+    order by a.published_at desc, a.id
+    limit ${pageSize} offset ${(current - 1) * pageSize}`);
+  return { items, total, page: current, pages, pageSize, counts };
+}
+
 export function apiParties() {
   return rows(sql`select id, name, short, color, is_active from parties where is_active order by id`);
 }
 
-/** 위쪽 숫자 카드 + 의정 활동 평균 + 날짜별 수집 기사 수. 아직 데이터가 없는 값(AI 분석 전의 편향 지수 등)은 null → 화면에 "—" */
+/**
+ * 위쪽 숫자 카드 + 의정 활동 평균 + 날짜별 수집 기사 수. 아직 데이터가 없는 값(AI 분석 전의 편향 지수 등)은 null → 화면에 "—"
+ * 편향 집계(analyzed·evidence_total·avg_bias·bias_judged·bias_dist)는 현재 분석 버전(가장 최근에 쓴 model_version)만 센다.
+ * 예전 버전(모델·프롬프트가 다른) 결과는 다시 분석되기 전까지 analyzed_old 로만 알려 준다 — 서로 다른 기준의 점수를 평균에 섞지 않기 위해.
+ */
 export async function apiStats() {
   const [s] = await rows(sql`
+    with cur as (select model_version as v from news_analysis order by analyzed_at desc limit 1),
+         na as (select * from news_analysis where model_version = (select v from cur))
     select
       (select count(*)::int from members)                                                                  as members,
       (select count(*)::int from news_articles where published_at > now() - interval '24 hours')           as news_24h,
@@ -319,15 +378,17 @@ export async function apiStats() {
       (select count(*)::int from news_articles
         where (published_at at time zone 'Asia/Seoul')::date
               between (now() at time zone 'Asia/Seoul')::date - 27 and (now() at time zone 'Asia/Seoul')::date - 14) as news_prev_14d,
-      (select count(*)::int from news_analysis)                                                            as analyzed,
-      (select round(avg(bias))::int from news_analysis)                                                    as avg_bias,
+      (select v from cur)                                                                                  as analysis_version,
+      (select count(*)::int from na)                                                                       as analyzed,
+      (select count(*)::int from news_analysis where model_version <> (select v from cur))                 as analyzed_old,
+      (select round(avg(bias))::int from na)                                                               as avg_bias,
       -- 편향 리포트 카드: 근거 문장 수, 치우침을 판단한 기사 수(판단 불가 = bias null 제외),
       -- 치우침 크기(bias = |lean|, 방향 없음) 10점 구간 분포 [0~9, 10~19, …, 90~100]
-      (select count(*)::int from news_evidence)                                                            as evidence_total,
-      (select count(bias)::int from news_analysis)                                                         as bias_judged,
+      (select count(*)::int from news_evidence e join na on na.news_id = e.news_id)                        as evidence_total,
+      (select count(bias)::int from na)                                                                    as bias_judged,
       (select json_agg(coalesce(x.n, 0) order by b) from generate_series(0, 9) b
          left join (select least(bias / 10, 9)::int as bin, count(*)::int as n
-                    from news_analysis where bias is not null group by 1) x on x.bin = b)               as bias_dist`);
+                    from na where bias is not null group by 1) x on x.bin = b)                          as bias_dist`);
   // 최근 14일(오늘 포함, 한국 시간) 날짜별 수집 기사 수 — 기사가 없는 날은 0
   const news_daily = await rows<{ day: string; n: number }>(sql`
     select to_char(d, 'YYYY-MM-DD') as day, coalesce(a.n, 0)::int as n

@@ -59,7 +59,7 @@ export function BiasReportCard({ className }: { className?: string }) {
       <CardHeader
         icon={<ScanSearch className="size-4" />}
         title="AI 편향성 객관화 리포트"
-        subtitle="편향 분석을 마친 기사 전체 · 진보·보수 방향 없이 치우친 정도만"
+        subtitle="현재 분석 버전으로 마친 기사 전체 · 진보·보수 방향 없이 치우친 정도만"
       />
       {!s ? (
         <p className="px-5 py-10 text-center text-xs text-ink-3">{error ? "편향 분석 집계를 불러오지 못했습니다." : "불러오는 중…"}</p>
@@ -104,8 +104,13 @@ export function BiasReportCard({ className }: { className?: string }) {
             </p>
             <p className="leading-relaxed">
               치우침은 진보↔보수 점수(−100~+100)의 크기만 0~100으로 본 값입니다. 점수는 AI가 기사 원문에서 뽑은 근거 문장(인용 균형·표현·제목과
-              본문 차이·사실 검증)으로만 계산합니다. 막대는 구간별 기사 수이고, 판단 불가 기사는 빠집니다.
+              본문 차이)으로만 계산합니다. 막대는 구간별 기사 수이고, 판단 불가 기사는 빠집니다.
             </p>
+            {(s.analyzed_old ?? 0) > 0 && (
+              <p className="leading-relaxed">
+                이전 분석 버전(다른 모델·프롬프트) 결과 {s.analyzed_old}건은 기준이 달라 집계에서 뺐습니다. 다시 분석되면 포함됩니다.
+              </p>
+            )}
           </div>
         </>
       )}
