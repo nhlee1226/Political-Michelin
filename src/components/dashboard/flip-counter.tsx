@@ -49,13 +49,13 @@ export function FlipCounter({
   const chars = text.split("");
   return (
     <div className="min-w-0">
-      <p className="mb-1.5 text-[11px] font-medium text-ink-3">{label}</p>
+      <p className="mb-1.5 text-[calc(11px*var(--fs))] font-medium text-ink-3">{label}</p>
       <div className="flex items-stretch gap-[3px]" aria-label={`${label} ${text}`}>
         {chars.map((c, i) => (
           <FlipTile key={`${chars.length}-${i}`} ch={c} accent={accent} />
         ))}
       </div>
-      {caption && <p className="mt-1.5 text-[11px] text-ink-3">{caption}</p>}
+      {caption && <p className="mt-1.5 text-[calc(11px*var(--fs))] text-ink-3">{caption}</p>}
     </div>
   );
 }

@@ -31,7 +31,7 @@ export const districtLabel = (p: Pick<ApiPoliticianDetail, "elect_type" | "distr
 function Metric({ k, v, muted, title }: { k: string; v: React.ReactNode; muted?: boolean; title?: string }) {
   return (
     <div className="rounded-lg border border-line bg-white/[0.02] p-2.5" title={title}>
-      <p className="text-[10px] text-ink-3">{k}</p>
+      <p className="text-[calc(10px*var(--fs))] text-ink-3">{k}</p>
       <p className={cn("mt-0.5 font-semibold tabular", muted ? "text-xs text-ink-3" : "text-sm")}>{v}</p>
     </div>
   );
@@ -50,7 +50,7 @@ function VoteBreakdown({ p }: { p: ApiPoliticianDetail }) {
       <div className="mt-2 grid grid-cols-4 gap-2">
         {VOTE_KINDS.map((k) => (
           <div key={k.key} className="rounded-lg border border-line bg-white/[0.02] p-2">
-            <p className="flex items-center gap-1 text-[10px] text-ink-3">
+            <p className="flex items-center gap-1 text-[calc(10px*var(--fs))] text-ink-3">
               <span className="size-1.5 rounded-full" style={{ background: k.color }} />
               {k.label}
             </p>
@@ -58,7 +58,7 @@ function VoteBreakdown({ p }: { p: ApiPoliticianDetail }) {
           </div>
         ))}
       </div>
-      <p className="mt-2 text-[10px] leading-relaxed text-ink-3">
+      <p className="mt-2 text-[calc(10px*var(--fs))] leading-relaxed text-ink-3">
         표결 대상 {p.total_votes.toLocaleString()}건 · 22대 국회에서 가결·부결된 법안의 본회의 표결 · 표결 참여율 = {VOTE_HINT}
       </p>
     </>
@@ -83,8 +83,8 @@ function Body({ p }: { p: ApiPoliticianDetail }) {
             <p className="truncate text-lg font-semibold">{p.name}</p>
             <MichelinStars count={p.stars} />
           </div>
-          <div className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[11px] text-ink-3">
-            <PartyTag color={color} name={party.name} className="text-[11px]" />
+          <div className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[calc(11px*var(--fs))] text-ink-3">
+            <PartyTag color={color} name={party.name} className="text-[calc(11px*var(--fs))]" />
             <span>·</span>
             <span>{districtLabel(p)}</span>
             <span>·</span>
@@ -93,8 +93,8 @@ function Body({ p }: { p: ApiPoliticianDetail }) {
         </div>
       </div>
 
-      <p className="mt-4 text-[11px] text-ink-3">소속 위원회</p>
-      <p className="mt-0.5 text-[13px] text-ink-2">{p.committee || "—"}</p>
+      <p className="mt-4 text-[calc(11px*var(--fs))] text-ink-3">소속 위원회</p>
+      <p className="mt-0.5 text-[calc(13px*var(--fs))] text-ink-2">{p.committee || "—"}</p>
 
       <div className="mt-4 grid grid-cols-2 gap-2">
         <Metric k="대표발의 법안" v={`${p.bills_proposed.toLocaleString()}건`} />
@@ -114,17 +114,17 @@ function Body({ p }: { p: ApiPoliticianDetail }) {
         <Metric k="공약 이행률" v="공식 데이터 없음" muted />
         <Metric k="출석률" v="공식 데이터 없음" muted />
       </div>
-      <p className="mt-2 text-[10px] leading-relaxed text-ink-3">
-        <Badge className="mr-1.5 px-1.5 py-0 text-[10px]">기준</Badge>
+      <p className="mt-2 text-[calc(10px*var(--fs))] leading-relaxed text-ink-3">
+        <Badge className="mr-1.5 px-1.5 py-0 text-[calc(10px*var(--fs))]">기준</Badge>
         {p.score_rule}
       </p>
 
-      <p className="mb-2 mt-5 flex items-center gap-1.5 text-[13px] font-semibold">
+      <p className="mb-2 mt-5 flex items-center gap-1.5 text-[calc(13px*var(--fs))] font-semibold">
         <Vote className="size-3.5 text-ink-3" /> 본회의 표결
       </p>
       <VoteBreakdown p={p} />
 
-      <p className="mb-2 mt-5 flex items-center gap-1.5 text-[13px] font-semibold">
+      <p className="mb-2 mt-5 flex items-center gap-1.5 text-[calc(13px*var(--fs))] font-semibold">
         <FileText className="size-3.5 text-ink-3" /> 최근 대표발의 법안
       </p>
       {p.recent_bills.length === 0 ? (
@@ -134,11 +134,11 @@ function Body({ p }: { p: ApiPoliticianDetail }) {
           {p.recent_bills.map((b) => {
             const inner = (
               <>
-                <p className="text-[13px] leading-snug text-ink">{b.title}</p>
-                <div className="mt-1 flex items-center justify-between gap-2 text-[10px] text-ink-3">
+                <p className="text-[calc(13px*var(--fs))] leading-snug text-ink">{b.title}</p>
+                <div className="mt-1 flex items-center justify-between gap-2 text-[calc(10px*var(--fs))] text-ink-3">
                   <span className="tabular">{b.propose_dt ? b.propose_dt.slice(0, 10) : "발의일 —"}</span>
                   <span className="flex items-center gap-1.5">
-                    <Badge className="px-1.5 py-0 text-[10px]">{b.proc_result || "처리 결과 —"}</Badge>
+                    <Badge className="px-1.5 py-0 text-[calc(10px*var(--fs))]">{b.proc_result || "처리 결과 —"}</Badge>
                     {b.detail_url && <ExternalLink className="size-3" />}
                   </span>
                 </div>
@@ -159,7 +159,7 @@ function Body({ p }: { p: ApiPoliticianDetail }) {
           })}
         </ul>
       )}
-      <p className="mt-4 text-[10px] text-ink-3">출처: 국회 열린국회정보 · 법안을 누르면 의안정보시스템이 새 탭에서 열립니다.</p>
+      <p className="mt-4 text-[calc(10px*var(--fs))] text-ink-3">출처: 국회 열린국회정보 · 법안을 누르면 의안정보시스템이 새 탭에서 열립니다.</p>
     </>
   );
 }
@@ -202,7 +202,7 @@ export function PoliticianDetailSheet({ monaCd, onClose }: { monaCd: string | nu
             transition={{ duration: 0.3, ease: [0.65, 0, 0.35, 1] }}
           >
             <div className="flex items-center justify-between border-b border-line px-5 py-4">
-              <p className="text-[15px] font-semibold">정치인 상세</p>
+              <p className="text-[calc(15px*var(--fs))] font-semibold">정치인 상세</p>
               <IconButton aria-label="닫기" onClick={onClose}>
                 <X className="size-4" />
               </IconButton>

@@ -76,7 +76,7 @@ function SupportDonut({ region }: { region: Region }) {
       <div className="absolute inset-0 grid place-items-center text-center">
         <div>
           <p className="text-lg font-semibold leading-none tabular">{region.support[lead]}%</p>
-          <p className="mt-1 text-[10px] text-ink-3">{PARTIES[lead].name} 1위</p>
+          <p className="mt-1 text-[calc(10px*var(--fs))] text-ink-3">{PARTIES[lead].name} 1위</p>
         </div>
       </div>
     </div>
@@ -89,7 +89,7 @@ function SupportPanel({ region }: { region: Region }) {
     <div className="glass-strong pm-example w-full rounded-2xl p-4 @min-[1040px]:w-[256px] @min-[1240px]:w-[290px]">
       <ExampleRibbon className="-mx-4 -mt-4 mb-3 rounded-t-[14px]" />
       <div className="mb-3 flex items-center justify-between">
-        <p className="text-[13px] font-semibold">실시간 정당 지지도</p>
+        <p className="text-[calc(13px*var(--fs))] font-semibold">실시간 정당 지지도</p>
         <Badge tone="neutral" className="tabular">±3.1%p</Badge>
       </div>
       <div className="flex items-center gap-4">
@@ -103,7 +103,7 @@ function SupportPanel({ region }: { region: Region }) {
                   <PartyTag color={PARTIES[id].color} name={PARTIES[id].name} />
                   <span className="flex items-center gap-1.5 tabular">
                     <span className="font-semibold text-ink">{region.support[id]}%</span>
-                    <span className={cn("text-[10px]", delta > 0 ? "text-good" : delta < 0 ? "text-bad" : "text-ink-3")}>
+                    <span className={cn("text-[calc(10px*var(--fs))]", delta > 0 ? "text-good" : delta < 0 ? "text-bad" : "text-ink-3")}>
                       {delta > 0 ? "▲" : delta < 0 ? "▼" : "–"}
                       {Math.abs(delta).toFixed(1)}
                     </span>
@@ -123,7 +123,7 @@ function SupportPanel({ region }: { region: Region }) {
           })}
         </ul>
       </div>
-      <p className="mt-3 text-[10px] leading-relaxed text-ink-3">
+      <p className="mt-3 text-[calc(10px*var(--fs))] leading-relaxed text-ink-3">
         가상 데이터 · 표본 1,004명 · 기타는 무소속 포함. 정당명은 익명 처리했으며, 오차범위 내 차이는 순위로 해석하지 않습니다.
       </p>
     </div>
@@ -203,10 +203,10 @@ function PoliticianPanel({ region, onOpen }: { region: Region; onOpen?: (monaCd:
   if (n === 0) {
     return (
       <div className={panelClass}>
-        <p className="flex items-center gap-1.5 text-[13px] font-semibold">
+        <p className="flex items-center gap-1.5 text-[calc(13px*var(--fs))] font-semibold">
           <Users className="size-3.5 text-ink-3" /> 정치인 프로필
         </p>
-        <p className="mt-3 text-[11px] text-ink-3">불러오는 중…</p>
+        <p className="mt-3 text-[calc(11px*var(--fs))] text-ink-3">불러오는 중…</p>
       </div>
     );
   }
@@ -218,11 +218,11 @@ function PoliticianPanel({ region, onOpen }: { region: Region; onOpen?: (monaCd:
     <div className={cn(panelClass, isMock && "pm-example")}>
       {isMock && <ExampleRibbon className="-mx-4 -mt-4 mb-3 rounded-t-[14px]" />}
       <div className="mb-3 flex items-center justify-between">
-        <p className="flex items-center gap-1.5 text-[13px] font-semibold">
+        <p className="flex items-center gap-1.5 text-[calc(13px*var(--fs))] font-semibold">
           <Users className="size-3.5 text-ink-3" /> 정치인 프로필
         </p>
         <div className="flex items-center gap-1">
-          <span className="mr-1 text-[11px] text-ink-3 tabular">
+          <span className="mr-1 text-[calc(11px*var(--fs))] text-ink-3 tabular">
             {Math.min(idx, n - 1) + 1}/{n}
           </span>
           <IconButton className="size-6" aria-label="이전" onClick={() => setIdx((i) => (i - 1 + n) % n)} disabled={n < 2}>
@@ -270,8 +270,8 @@ function PoliticianPanel({ region, onOpen }: { region: Region; onOpen?: (monaCd:
                 <p className="truncate text-base font-semibold">{pol.name}</p>
                 {pol.michelin == null ? <span className="text-xs text-ink-3">—</span> : <MichelinStars count={pol.michelin} />}
               </div>
-              <div className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[11px] text-ink-3">
-                <PartyTag color={shown.color} name={shown.name} className="text-[11px]" />
+              <div className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[calc(11px*var(--fs))] text-ink-3">
+                <PartyTag color={shown.color} name={shown.name} className="text-[calc(11px*var(--fs))]" />
                 <span>·</span>
                 <span>{pol.district ?? "—"}</span>
               </div>
@@ -283,13 +283,13 @@ function PoliticianPanel({ region, onOpen }: { region: Region; onOpen?: (monaCd:
             <div className="mt-4 grid grid-cols-3 gap-2 border-t border-line pt-3">
               {pol.metrics.map((m) => (
                 <div key={m.k}>
-                  <p className="text-[10px] text-ink-3">{m.k}</p>
+                  <p className="text-[calc(10px*var(--fs))] text-ink-3">{m.k}</p>
                   <p className="mt-0.5 text-sm font-semibold tabular">{m.v}</p>
                 </div>
               ))}
             </div>
           ) : (
-            <p className="mt-4 border-t border-line pt-3 text-[11px] leading-relaxed text-ink-3">
+            <p className="mt-4 border-t border-line pt-3 text-[calc(11px*var(--fs))] leading-relaxed text-ink-3">
               의정 활동 이력이 없어 평가 지표 대신 공개된 공약 목록을 제공합니다.
             </p>
           )}
@@ -319,7 +319,7 @@ function IssuePopup({ region, onClose }: { region: Region; onClose: () => void }
       className="glass-strong w-full rounded-2xl p-4 @min-[1040px]:w-[250px] @min-[1240px]:w-[270px]"
     >
       <div className="mb-2 flex items-center justify-between">
-        <p className="flex items-center gap-1.5 text-[13px] font-semibold">
+        <p className="flex items-center gap-1.5 text-[calc(13px*var(--fs))] font-semibold">
           <Flame className="size-3.5 text-lime" /> {region.short} 최근 이슈
         </p>
         <IconButton className="size-6" aria-label="닫기" onClick={onClose}>
@@ -331,8 +331,8 @@ function IssuePopup({ region, onClose }: { region: Region; onClose: () => void }
           <ul className={cn(listClass, "p-2.5")}>
             {region.issues.map((iss, i) => (
               <li key={iss.title} className="flex items-start gap-2">
-                <span className="mt-0.5 text-[11px] font-semibold text-ink-3 tabular">0{i + 1}</span>
-                <p className="min-w-0 flex-1 text-[13px] leading-snug text-ink">{iss.title}</p>
+                <span className="mt-0.5 text-[calc(11px*var(--fs))] font-semibold text-ink-3 tabular">0{i + 1}</span>
+                <p className="min-w-0 flex-1 text-[calc(13px*var(--fs))] leading-snug text-ink">{iss.title}</p>
               </li>
             ))}
           </ul>
@@ -347,12 +347,12 @@ function IssuePopup({ region, onClose }: { region: Region; onClose: () => void }
                 rel="noopener noreferrer"
                 className="group flex items-start gap-2 rounded-lg"
               >
-                <span className="mt-0.5 text-[11px] font-semibold text-ink-3 tabular">0{i + 1}</span>
+                <span className="mt-0.5 text-[calc(11px*var(--fs))] font-semibold text-ink-3 tabular">0{i + 1}</span>
                 <span className="min-w-0 flex-1">
-                  <span className="line-clamp-2 text-[13px] leading-snug text-ink group-hover:text-lime">
+                  <span className="line-clamp-2 text-[calc(13px*var(--fs))] leading-snug text-ink group-hover:text-lime">
                     {plainText(n.headline)}
                   </span>
-                  <span className="mt-1 flex items-center gap-1 text-[10px] text-ink-3">
+                  <span className="mt-1 flex items-center gap-1 text-[calc(10px*var(--fs))] text-ink-3">
                     {n.source ?? "언론사"} · {timeAgo(n.published_at)}
                     <ExternalLink className="size-2.5 opacity-0 transition group-hover:opacity-100" aria-hidden />
                   </span>
@@ -362,9 +362,9 @@ function IssuePopup({ region, onClose }: { region: Region; onClose: () => void }
           ))}
         </ul>
       ) : (
-        <p className="py-2 text-[11px] text-ink-3">{isLoading ? "불러오는 중…" : "최근 수집된 지역 기사가 없습니다."}</p>
+        <p className="py-2 text-[calc(11px*var(--fs))] text-ink-3">{isLoading ? "불러오는 중…" : "최근 수집된 지역 기사가 없습니다."}</p>
       )}
-      <div className="mt-3 grid grid-cols-2 gap-2 border-t border-line pt-3 text-[11px] @min-[620px]:grid-cols-4 @min-[1040px]:grid-cols-2">
+      <div className="mt-3 grid grid-cols-2 gap-2 border-t border-line pt-3 text-[calc(11px*var(--fs))] @min-[620px]:grid-cols-4 @min-[1040px]:grid-cols-2">
         <div>
           <p className="text-ink-3">직전 투표율</p>
           <p className="font-semibold tabular">{region.turnout}%</p>
@@ -698,7 +698,7 @@ export function KoreaMapCard({
       {/* 헤더 */}
       <div className="relative flex flex-wrap items-start justify-between gap-3 px-5 pt-5">
         <div>
-          <h2 className="flex items-center gap-2 text-[15px] font-semibold">
+          <h2 className="flex items-center gap-2 text-[calc(15px*var(--fs))] font-semibold">
             <MapPin className="size-4 text-lime" /> 대한민국 정치 지도
           </h2>
           <p className="mt-0.5 text-xs text-ink-3">
@@ -797,7 +797,7 @@ export function KoreaMapCard({
 
           {/* 범례 + 힌트 */}
           <div data-map-obstacle className="flex flex-wrap items-center justify-between gap-2 @min-[620px]:col-span-2 @min-[1040px]:absolute @min-[1040px]:bottom-5 @min-[1040px]:right-5 @min-[1040px]:flex-col @min-[1040px]:items-end">
-            <p className="flex items-center gap-1.5 text-[11px] text-ink-3">
+            <p className="flex items-center gap-1.5 text-[calc(11px*var(--fs))] text-ink-3">
               <MousePointerClick className="size-3.5" /> 마우스로 기울이기 · 지역 클릭
               <button
                 onClick={() => {
@@ -810,7 +810,7 @@ export function KoreaMapCard({
                 <RotateCcw className="size-3" /> 초기화
               </button>
             </p>
-            <div className="glass-strong flex items-center gap-3 rounded-full px-3 py-1.5 text-[11px] text-ink-2">
+            <div className="glass-strong flex items-center gap-3 rounded-full px-3 py-1.5 text-[calc(11px*var(--fs))] text-ink-2">
               <span className="flex items-center gap-1">
                 <span className="size-2 rounded-sm bg-[#d3e2a4]" /> 선택 지역
               </span>
@@ -830,7 +830,7 @@ export function KoreaMapCard({
             onClick={() => select(r.code)}
             data-burst-keep
             className={cn(
-              "flex shrink-0 items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] transition",
+              "flex shrink-0 items-center gap-1 rounded-full border px-2.5 py-1 text-[calc(11px*var(--fs))] transition",
               r.code === selected ? "border-lime/40 bg-lime/10 text-lime" : "border-line text-ink-3 hover:text-ink-2",
             )}
           >

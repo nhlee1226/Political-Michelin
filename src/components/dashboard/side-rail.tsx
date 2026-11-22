@@ -45,6 +45,7 @@ import {
 } from "@/lib/api";
 import { BILL_STEPS } from "@/lib/bill-stage";
 import { timeAgo } from "./news-panel";
+import { FONT_SIZES, useFontSize } from "@/lib/font-size";
 import { useTheme } from "@/lib/theme";
 import { useSyncedSet } from "@/lib/user-items";
 import { cn } from "@/lib/utils";
@@ -52,16 +53,17 @@ import { Badge, MichelinStars, Segmented } from "@/components/ui/primitives";
 
 type PanelKey = "regions" | "politicians" | "schedule" | "bills" | "pledges" | "news" | "settings" | "help";
 
-const MENU: { key: PanelKey; icon: LucideIcon; label: string; desc: string }[] = [
-  { key: "regions", icon: Plus, label: "관심 지역", desc: "자주 보는 시·도를 모아 이슈 활성도와 최근 기사 수를 바로 확인합니다." },
-  { key: "politicians", icon: Star, label: "즐겨찾는 정치인", desc: "별표한 국회의원의 별점과 의정 지표(반영률·표결 참여율)를 모아 봅니다." },
-  { key: "schedule", icon: CalendarDays, label: "국회 일정", desc: "다가오는 본회의·위원회 회의 일정을 날짜순으로 보여줍니다." },
-  { key: "bills", icon: Gavel, label: "법안 추적", desc: "법안이 발의 → 소관위 → 법사위 → 본회의 중 어디까지 왔는지 보여주고, 관심 법안을 추적합니다." },
-  { key: "pledges", icon: FileText, label: "공약 문서", desc: "선택한 시·도의 지방선거 당선인 공약 제목을 보여줍니다 (선관위). 이행률은 공식 데이터가 없습니다." },
-  { key: "news", icon: Bookmark, label: "저장한 뉴스", desc: "나중에 다시 읽을 기사를 저장합니다." },
+/** width: 패널 넓이(px, 보통 글자 기준). 글자 크기 설정에 비례해 함께 넓어짐 — 내용이 많은 일정·법안은 넓게 */
+const MENU: { key: PanelKey; icon: LucideIcon; label: string; desc: string; width: number }[] = [
+  { key: "regions", icon: Plus, label: "관심 지역", desc: "자주 보는 시·도를 모아 이슈 활성도와 최근 기사 수를 바로 확인합니다.", width: 360 },
+  { key: "politicians", icon: Star, label: "즐겨찾는 정치인", desc: "별표한 국회의원의 별점과 의정 지표(반영률·표결 참여율)를 모아 봅니다.", width: 380 },
+  { key: "schedule", icon: CalendarDays, label: "국회 일정", desc: "다가오는 본회의·위원회 회의 일정을 날짜순으로 보여줍니다.", width: 500 },
+  { key: "bills", icon: Gavel, label: "법안 추적", desc: "법안이 발의 → 소관위 → 법사위 → 본회의 중 어디까지 왔는지 보여주고, 관심 법안을 추적합니다.", width: 460 },
+  { key: "pledges", icon: FileText, label: "공약 문서", desc: "선택한 시·도의 지방선거 당선인 공약 제목을 보여줍니다 (선관위). 이행률은 공식 데이터가 없습니다.", width: 420 },
+  { key: "news", icon: Bookmark, label: "저장한 뉴스", desc: "나중에 다시 읽을 기사를 저장합니다.", width: 420 },
 ];
-const SETTINGS = { key: "settings" as const, icon: Settings, label: "설정", desc: "화면 테마를 설정합니다." };
-const HELP = { key: "help" as const, icon: HelpCircle, label: "도움말", desc: "빠른 메뉴의 각 아이콘이 하는 일을 안내합니다." };
+const SETTINGS = { key: "settings" as const, icon: Settings, label: "설정", desc: "화면 테마와 글자 크기를 설정합니다.", width: 380 };
+const HELP = { key: "help" as const, icon: HelpCircle, label: "도움말", desc: "빠른 메뉴의 각 아이콘이 하는 일을 안내합니다.", width: 380 };
 const ALL_PANELS = [...MENU, SETTINGS, HELP];
 
 const stripTerms = (s: string) => s.replace(/\[\[(.+?)\]\]/g, "$1");
@@ -80,7 +82,7 @@ function Row({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
   return <div className={cn("rounded-xl border border-line bg-white/[0.03] p-3", className)} {...props} />;
 }
 function SectionLabel({ children }: { children: React.ReactNode }) {
-  return <p className="mb-2 mt-4 text-[11px] font-medium text-ink-3 first:mt-0">{children}</p>;
+  return <p className="mb-2 mt-4 text-[calc(12px*var(--fs))] font-medium text-ink-3 first:mt-0">{children}</p>;
 }
 function Empty({ children }: { children: React.ReactNode }) {
   return <p className="rounded-xl border border-dashed border-line px-3 py-4 text-center text-xs text-ink-3">{children}</p>;
@@ -112,11 +114,11 @@ function RegionsPanel({
               <Row className="flex items-center gap-3 p-2.5">
                 <button onClick={() => onSelectRegion(r.code)} className="min-w-0 flex-1 text-left">
                   <div className="flex items-center justify-between gap-2">
-                    <p className="flex items-center gap-1.5 text-[13px] font-semibold">
+                    <p className="flex items-center gap-1.5 text-[calc(14px*var(--fs))] font-semibold">
                       <MapPin className="size-3.5 text-lime" />
                       {r.name}
                     </p>
-                    <span className="text-[11px] text-ink-3 tabular">
+                    <span className="text-[calc(12px*var(--fs))] text-ink-3 tabular">
                       활성도 <b className="text-ink">{r.heat}</b>
                     </span>
                   </div>
@@ -124,7 +126,7 @@ function RegionsPanel({
                     <div className="h-full rounded-full bg-lime/80" style={{ width: `${r.heat}%` }} />
                   </div>
                   {news24h.has(r.code) && (
-                    <p className="mt-1.5 truncate text-[11px] text-ink-2">최근 24시간 지역 기사 {news24h.get(r.code)}건</p>
+                    <p className="mt-1.5 truncate text-[calc(12px*var(--fs))] text-ink-2">최근 24시간 지역 기사 {news24h.get(r.code)}건</p>
                   )}
                 </button>
                 <button
@@ -145,7 +147,7 @@ function RegionsPanel({
           <button
             key={r.code}
             onClick={() => toggle(r.code)}
-            className="flex items-center gap-1 rounded-full border border-line px-2.5 py-1 text-[11px] text-ink-2 transition hover:border-lime/40 hover:text-lime"
+            className="flex items-center gap-1 rounded-full border border-line px-2.5 py-1 text-[calc(12px*var(--fs))] text-ink-2 transition hover:border-lime/40 hover:text-lime"
           >
             <Plus className="size-3" />
             {r.short}
@@ -183,20 +185,20 @@ function PoliticiansPanel({
         <Row className="flex items-center gap-2.5 p-2.5">
           <button onClick={() => onOpenPolitician(p.mona_cd)} className="flex min-w-0 flex-1 items-center gap-2.5 text-left">
             <span
-              className="grid size-8 shrink-0 place-items-center rounded-full border-2 text-[11px] font-semibold"
+              className="grid size-8 shrink-0 place-items-center rounded-full border-2 text-[calc(12px*var(--fs))] font-semibold"
               style={{ borderColor: party.color, background: `${party.color}22` }}
             >
               {p.name.slice(-2)}
             </span>
             <span className="min-w-0">
               <span className="flex items-center gap-1.5">
-                <span className="truncate text-[13px] font-semibold">{p.name}</span>
+                <span className="truncate text-[calc(14px*var(--fs))] font-semibold">{p.name}</span>
                 {p.stars && <MichelinStars count={p.stars} />}
               </span>
-              <span className="block truncate text-[11px] text-ink-3">
+              <span className="block truncate text-[calc(12px*var(--fs))] text-ink-3">
                 {party.name} · {p.elect_type === "비례대표" ? "비례대표" : (p.district ?? "—")}
               </span>
-              <span className="block truncate text-[11px] text-ink-3 tabular">
+              <span className="block truncate text-[calc(12px*var(--fs))] text-ink-3 tabular">
                 반영률 {p.reflect_rate == null ? "—" : `${p.reflect_rate}%`} · 표결 참여 {p.vote_participation == null ? "—" : `${p.vote_participation}%`}
               </span>
             </span>
@@ -225,7 +227,7 @@ function PoliticiansPanel({
           className="min-w-0 flex-1 bg-transparent text-xs placeholder:text-ink-3 focus:outline-none"
         />
       </label>
-      {!data && <p className="mt-3 text-center text-[11px] text-ink-3">{error ? "의원 목록을 불러오지 못했습니다." : "의원 목록을 불러오는 중…"}</p>}
+      {!data && <p className="mt-3 text-center text-[calc(12px*var(--fs))] text-ink-3">{error ? "의원 목록을 불러오지 못했습니다." : "의원 목록을 불러오는 중…"}</p>}
       {q.trim() && (
         <>
           <SectionLabel>검색 결과 {results.length}명</SectionLabel>
@@ -289,24 +291,24 @@ function SchedulePanel() {
                     soon ? "border-lime/40 bg-lime/10" : "border-line bg-canvas-2",
                   )}
                 >
-                  <p className="text-[10px] text-ink-3">{Number(m)}월</p>
+                  <p className="text-[calc(11px*var(--fs))] text-ink-3">{Number(m)}월</p>
                   <p className="text-base font-semibold leading-none tabular">{Number(day)}</p>
-                  <p className={cn("mt-1 text-[10px] font-semibold tabular", soon ? "text-lime" : "text-ink-3")}>{d.label}</p>
+                  <p className={cn("mt-1 text-[calc(11px*var(--fs))] font-semibold tabular", soon ? "text-lime" : "text-ink-3")}>{d.label}</p>
                 </div>
                 <ul className="min-w-0 flex-1 space-y-1.5">
                   {g.items.map((s, i) => (
                     <li key={i} className="rounded-lg border border-line bg-white/[0.03] px-2.5 py-2">
                       <div className="flex items-center gap-1.5">
                         {s.kind && (
-                          <Badge tone={/본회의/.test(s.kind) ? "cyan" : "neutral"} className="px-1.5 py-0 text-[10px]">
+                          <Badge tone={/본회의/.test(s.kind) ? "cyan" : "neutral"} className="px-1.5 py-0 text-[calc(11px*var(--fs))]">
                             {s.kind}
                           </Badge>
                         )}
-                        {s.time && <span className="text-[11px] text-ink-3 tabular">{s.time}</span>}
+                        {s.time && <span className="text-[calc(12px*var(--fs))] text-ink-3 tabular">{s.time}</span>}
                       </div>
-                      <p className="mt-1 text-[13px] leading-snug">{s.title}</p>
+                      <p className="mt-1 text-[calc(14px*var(--fs))] leading-snug">{s.title}</p>
                       {(s.committee || s.place) && (
-                        <p className="mt-0.5 truncate text-[11px] text-ink-3">{[s.committee, s.place].filter(Boolean).join(" · ")}</p>
+                        <p className="mt-0.5 truncate text-[calc(12px*var(--fs))] text-ink-3">{[s.committee, s.place].filter(Boolean).join(" · ")}</p>
                       )}
                     </li>
                   ))}
@@ -316,7 +318,7 @@ function SchedulePanel() {
           })}
         </ol>
       )}
-      <p className="mt-3 text-[10px] text-ink-3">출처 열린국회정보 · 하루 1번 자동 갱신{data.updated_at ? ` · 마지막 갱신 ${timeAgo(data.updated_at)}` : ""}</p>
+      <p className="mt-3 text-[calc(11px*var(--fs))] text-ink-3">출처 열린국회정보 · 하루 1번 자동 갱신{data.updated_at ? ` · 마지막 갱신 ${timeAgo(data.updated_at)}` : ""}</p>
     </>
   );
 }
@@ -337,13 +339,13 @@ function BillCard({ b, on, toggle }: { b: ApiBillTrack; on: boolean; toggle: (id
         <div className="flex items-start gap-2">
           <div className="min-w-0 flex-1">
             {b.detail_url ? (
-              <a href={b.detail_url} target="_blank" rel="noreferrer" className="text-[13px] font-semibold leading-snug hover:underline">
+              <a href={b.detail_url} target="_blank" rel="noreferrer" className="text-[calc(14px*var(--fs))] font-semibold leading-snug hover:underline">
                 {b.title}
               </a>
             ) : (
-              <p className="text-[13px] font-semibold leading-snug">{b.title}</p>
+              <p className="text-[calc(14px*var(--fs))] font-semibold leading-snug">{b.title}</p>
             )}
-            <p className="mt-0.5 truncate text-[11px] text-ink-3">
+            <p className="mt-0.5 truncate text-[calc(12px*var(--fs))] text-ink-3">
               {[b.proposer && `${b.proposer} 의원 대표발의`, b.committee].filter(Boolean).join(" · ") || "—"}
             </p>
           </div>
@@ -351,7 +353,7 @@ function BillCard({ b, on, toggle }: { b: ApiBillTrack; on: boolean; toggle: (id
             onClick={() => toggle(b.bill_id)}
             aria-pressed={on}
             className={cn(
-              "flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] transition",
+              "flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[calc(12px*var(--fs))] transition",
               on ? "border-lime/40 bg-lime/10 text-lime" : "border-line text-ink-3 hover:text-ink",
             )}
           >
@@ -374,23 +376,23 @@ function BillCard({ b, on, toggle }: { b: ApiBillTrack; on: boolean; toggle: (id
                     current && b.tone === "active" && "ring-4 ring-lime/15",
                   )}
                 />
-                <span className={cn("text-[10px]", current ? "font-semibold text-ink" : "text-ink-3")}>{label}</span>
+                <span className={cn("text-[calc(11px*var(--fs))]", current ? "font-semibold text-ink" : "text-ink-3")}>{label}</span>
               </li>
             );
           })}
         </ol>
         <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1">
-          <Badge tone={t.badge} className="px-1.5 py-0 text-[10px]">
+          <Badge tone={t.badge} className="px-1.5 py-0 text-[calc(11px*var(--fs))]">
             {b.status}
           </Badge>
           {b.latest && (
-            <span className="text-[11px] text-ink-3">
+            <span className="text-[calc(12px*var(--fs))] text-ink-3">
               {md(b.latest.date)} {b.latest.text}
             </span>
           )}
         </div>
         {b.votes && (
-          <p className="mt-1.5 text-[11px] text-ink-3 tabular">
+          <p className="mt-1.5 text-[calc(12px*var(--fs))] text-ink-3 tabular">
             본회의 표결 · 찬성 <b className="text-ink-2">{b.votes.yes}</b> · 반대 <b className="text-ink-2">{b.votes.no}</b> · 기권{" "}
             <b className="text-ink-2">{b.votes.abstain}</b>
           </p>
@@ -454,7 +456,7 @@ function BillsPanel({ followed, toggle }: { followed: Set<string>; toggle: (id: 
             <SectionLabel>검색 결과 {list.data ? `${rest.length}건` : "…"}</SectionLabel>
           ) : (
             <div className="mb-2 mt-4 flex items-center justify-between gap-2">
-              <p className="text-[11px] font-medium text-ink-3">{view === "active" ? "최근 움직인 법안" : "최근 처리된 법안"}</p>
+              <p className="text-[calc(12px*var(--fs))] font-medium text-ink-3">{view === "active" ? "최근 움직인 법안" : "최근 처리된 법안"}</p>
               <Segmented
                 value={view}
                 onChange={setView}
@@ -476,7 +478,7 @@ function BillsPanel({ followed, toggle }: { followed: Set<string>; toggle: (id: 
           ) : (
             <Empty>{searching ? "일치하는 법안이 없습니다." : "표시할 법안이 없습니다."}</Empty>
           )}
-          <p className="mt-3 text-[10px] leading-relaxed text-ink-3">
+          <p className="mt-3 text-[calc(11px*var(--fs))] leading-relaxed text-ink-3">
             출처 열린국회정보 의안 정보 · 하루 1번 자동 갱신. 실시간 표결 진행과 공포일은 공개 데이터에 없어 본회의 의결까지 보여 줍니다.
           </p>
         </>
@@ -506,7 +508,7 @@ function PledgesPanel({ selectedRegion, onSelectRegion }: { selectedRegion: stri
           { value: "mayors", label: "구·시·군의 장" },
         ]}
       />
-      <p className="mt-2 text-[11px] text-ink-3">
+      <p className="mt-2 text-[calc(12px*var(--fs))] text-ink-3">
         {detail ? `${detail.name} · ${local?.election.name ?? "지방선거"} 당선인` : error ? "공약을 불러오지 못했습니다." : "불러오는 중…"}
       </p>
       <ul className="mt-2 space-y-2">
@@ -520,8 +522,8 @@ function PledgesPanel({ selectedRegion, onSelectRegion }: { selectedRegion: stri
                     <FileText className="size-4" />
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p className="text-[13px] font-semibold leading-snug">{w.name}</p>
-                    <p className="mt-0.5 text-[11px] text-ink-3">
+                    <p className="text-[calc(14px*var(--fs))] font-semibold leading-snug">{w.name}</p>
+                    <p className="mt-0.5 text-[calc(12px*var(--fs))] text-ink-3">
                       {w.office} · {w.sgg_name} · 공약 {w.pledges.length}개
                     </p>
                   </div>
@@ -529,7 +531,7 @@ function PledgesPanel({ selectedRegion, onSelectRegion }: { selectedRegion: stri
                 {w.pledges.length > 0 && (
                   <ol className="mt-2 space-y-1 border-t border-line pt-2">
                     {w.pledges.map((pl) => (
-                      <li key={pl.no} className="flex gap-1.5 text-[11px] leading-snug text-ink-2">
+                      <li key={pl.no} className="flex gap-1.5 text-[calc(12px*var(--fs))] leading-snug text-ink-2">
                         <span className="shrink-0 text-ink-3 tabular">{pl.no}</span>
                         <span>{pl.title ?? "(제목 없음)"}</span>
                       </li>
@@ -541,7 +543,7 @@ function PledgesPanel({ selectedRegion, onSelectRegion }: { selectedRegion: stri
           </li>
         ))}
       </ul>
-      <p className="px-1 pt-3 text-[11px] leading-relaxed text-ink-3">이행률은 공식 데이터가 없어 표시하지 않습니다. 누르면 지도에서 공약 원문을 볼 수 있습니다.</p>
+      <p className="px-1 pt-3 text-[calc(12px*var(--fs))] leading-relaxed text-ink-3">이행률은 공식 데이터가 없어 표시하지 않습니다. 누르면 지도에서 공약 원문을 볼 수 있습니다.</p>
     </>
   );
 }
@@ -556,10 +558,10 @@ function NewsPanel({ saved, toggle }: { saved: Set<string>; toggle: (id: string)
       <li key={n.id}>
         <Row className="flex items-start gap-2.5 p-2.5">
           <div className="min-w-0 flex-1">
-            <p className="text-[11px] text-ink-3">
+            <p className="text-[calc(12px*var(--fs))] text-ink-3">
               {n.source} · {n.time} · {n.category}
             </p>
-            <p className="mt-0.5 text-[13px] leading-snug">{stripTerms(n.objectiveHeadline ?? n.headline)}</p>
+            <p className="mt-0.5 text-[calc(14px*var(--fs))] leading-snug">{stripTerms(n.objectiveHeadline ?? n.headline)}</p>
           </div>
           <button
             onClick={() => toggle(n.id)}
@@ -585,12 +587,47 @@ function NewsPanel({ saved, toggle }: { saved: Set<string>; toggle: (id: string)
 
 function SettingsPanel() {
   const [theme, setTheme] = useTheme();
+  const [fontSize, setFontSize] = useFontSize();
   return (
     <div className="space-y-2">
+      <Row>
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-[calc(14px*var(--fs))] font-semibold">글자 크기</p>
+            <p className="mt-0.5 text-[calc(12px*var(--fs))] text-ink-3">사이트 안의 글자만 키우거나 줄여요 (이 브라우저에 저장).</p>
+          </div>
+          <span className="shrink-0 text-[calc(12px*var(--fs))] font-semibold text-lime tabular">
+            {Math.round((FONT_SIZES.find((f) => f.value === fontSize)?.scale ?? 1) * 100)}%
+          </span>
+        </div>
+        <div role="radiogroup" aria-label="글자 크기" className="mt-3 grid grid-cols-4 gap-1.5">
+          {FONT_SIZES.map((f) => {
+            const on = f.value === fontSize;
+            return (
+              <button
+                key={f.value}
+                role="radio"
+                aria-checked={on}
+                onClick={() => setFontSize(f.value)}
+                className={cn(
+                  "flex flex-col items-center gap-1 rounded-xl border px-1 py-2 transition",
+                  on ? "border-lime/50 bg-lime/10 text-ink" : "border-line text-ink-3 hover:text-ink",
+                )}
+              >
+                {/* 미리보기 '가' 는 배율과 상관없이 고정 크기 (버튼끼리 비교되게) */}
+                <span className="font-semibold leading-none" style={{ fontSize: 14 * f.scale + 2 }}>
+                  가
+                </span>
+                <span className="text-[calc(11px*var(--fs))] whitespace-nowrap">{f.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </Row>
       <Row className="flex items-center justify-between gap-3">
         <div>
-          <p className="text-[13px] font-semibold">화면 테마</p>
-          <p className="mt-0.5 text-[11px] text-ink-3">왼쪽 메뉴의 스위치로도 바꿀 수 있어요.</p>
+          <p className="text-[calc(14px*var(--fs))] font-semibold">화면 테마</p>
+          <p className="mt-0.5 text-[calc(12px*var(--fs))] text-ink-3">왼쪽 메뉴의 스위치로도 바꿀 수 있어요.</p>
         </div>
         <Segmented
           value={theme}
@@ -601,7 +638,7 @@ function SettingsPanel() {
           ]}
         />
       </Row>
-      <p className="px-1 pt-1 text-[11px] leading-relaxed text-ink-3">
+      <p className="px-1 pt-1 text-[calc(12px*var(--fs))] leading-relaxed text-ink-3">
         관심 지역·즐겨찾는 정치인·저장한 뉴스는 로그인 시 계정에 저장되고, 비로그인 시에는 이 브라우저에만 저장됩니다.
       </p>
     </div>
@@ -618,8 +655,8 @@ function HelpPanel({ onOpen }: { onOpen: (k: PanelKey) => void }) {
               <Icon className="size-4" />
             </span>
             <span>
-              <span className="block text-[13px] font-semibold">{label}</span>
-              <span className="mt-0.5 block text-[11px] leading-relaxed text-ink-3">{desc}</span>
+              <span className="block text-[calc(14px*var(--fs))] font-semibold">{label}</span>
+              <span className="mt-0.5 block text-[calc(12px*var(--fs))] leading-relaxed text-ink-3">{desc}</span>
             </span>
           </button>
         </li>
@@ -629,8 +666,8 @@ function HelpPanel({ onOpen }: { onOpen: (k: PanelKey) => void }) {
           <Sun className="size-4" />
         </span>
         <span>
-          <span className="block text-[13px] font-semibold">라이트/다크 스위치</span>
-          <span className="mt-0.5 block text-[11px] leading-relaxed text-ink-3">해·달 스위치를 눌러 화면 밝기를 전환합니다.</span>
+          <span className="block text-[calc(14px*var(--fs))] font-semibold">라이트/다크 스위치</span>
+          <span className="mt-0.5 block text-[calc(12px*var(--fs))] leading-relaxed text-ink-3">해·달 스위치를 눌러 화면 밝기를 전환합니다.</span>
         </span>
       </li>
     </ul>
@@ -665,7 +702,7 @@ function ThemeSwitch() {
 
 function Tooltip({ children }: { children: React.ReactNode }) {
   return (
-    <span className="glass-strong pointer-events-none absolute left-[calc(100%+10px)] top-1/2 z-50 -translate-y-1/2 whitespace-nowrap rounded-lg px-2 py-1 text-[11px] text-ink opacity-0 transition group-hover:opacity-100 group-focus-visible:opacity-100">
+    <span className="glass-strong pointer-events-none absolute left-[calc(100%+10px)] top-1/2 z-50 -translate-y-1/2 whitespace-nowrap rounded-lg px-2 py-1 text-[calc(12px*var(--fs))] text-ink opacity-0 transition group-hover:opacity-100 group-focus-visible:opacity-100">
       {children}
     </span>
   );
@@ -698,7 +735,7 @@ function RailButton({
       {!!count && (
         <span
           className={cn(
-            "absolute -right-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-full px-1 text-[9px] font-bold tabular",
+            "absolute -right-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-full px-1 text-[calc(9px*var(--fs))] font-bold tabular",
             active ? "bg-canvas text-lime" : "bg-cyan text-canvas",
           )}
         >
@@ -791,15 +828,16 @@ export function SideRail({
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -8 }}
             transition={{ duration: 0.18 }}
-            className="glass-overlay absolute left-[calc(100%+12px)] top-0 flex max-h-[calc(100dvh-110px)] w-[340px] flex-col rounded-2xl"
+            className="glass-overlay absolute left-[calc(100%+12px)] top-0 flex max-h-[calc(100dvh-110px)] max-w-[calc(100vw-96px)] flex-col rounded-2xl"
+            style={{ width: `calc(${panel.width}px * var(--fs, 1))` }}
           >
             <header className="flex items-start gap-3 border-b border-line p-4">
               <span className="grid size-8 shrink-0 place-items-center rounded-full bg-lime text-canvas">
                 <panel.icon className="size-4" />
               </span>
               <div className="min-w-0 flex-1">
-                <h2 className="text-[15px] font-semibold">{panel.label}</h2>
-                <p className="mt-0.5 text-[11px] leading-relaxed text-ink-3">{panel.desc}</p>
+                <h2 className="text-[calc(16px*var(--fs))] font-semibold">{panel.label}</h2>
+                <p className="mt-0.5 text-[calc(12px*var(--fs))] leading-relaxed text-ink-3">{panel.desc}</p>
               </div>
               <button
                 onClick={() => setOpen(null)}

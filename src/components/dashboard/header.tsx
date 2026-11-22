@@ -28,13 +28,13 @@ function Logo() {
     <a href="#" className="flex shrink-0 items-center gap-2.5" aria-label="정치 미슐랭 홈">
       <span className="relative grid size-9 place-items-center rounded-xl bg-lime text-canvas shadow-[0_0_24px_-4px_rgb(201_228_107/0.6)]">
         <Star className="size-[18px] fill-canvas" strokeWidth={0} />
-        <span className="absolute -bottom-1 -right-1 grid size-4 place-items-center rounded-full border-2 border-canvas bg-cyan text-[8px] font-bold text-canvas">
+        <span className="absolute -bottom-1 -right-1 grid size-4 place-items-center rounded-full border-2 border-canvas bg-cyan text-[calc(8px*var(--fs))] font-bold text-canvas">
           AI
         </span>
       </span>
       <span className="leading-tight">
-        <span className="block text-[15px] font-bold tracking-tight">정치 미슐랭</span>
-        <span className="block text-[10px] font-medium tracking-[0.12em] text-ink-3">POLITICAL MICHELIN</span>
+        <span className="block text-[calc(15px*var(--fs))] font-bold tracking-tight">정치 미슐랭</span>
+        <span className="block text-[calc(10px*var(--fs))] font-medium tracking-[0.12em] text-ink-3">POLITICAL MICHELIN</span>
       </span>
     </a>
   );

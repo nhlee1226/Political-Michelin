@@ -94,7 +94,7 @@ export function PledgeCard({ className }: { className?: string }) {
             {hover === null ? rate : Math.round((segs[hover].v / total) * 1000) / 10}
             <span className="text-base text-ink-3">%</span>
           </p>
-          <p className="text-[11px] text-ink-3">{hover === null ? "이행 완료" : segs[hover].k}</p>
+          <p className="text-[calc(11px*var(--fs))] text-ink-3">{hover === null ? "이행 완료" : segs[hover].k}</p>
         </div>
       </div>
       <ul className="mt-auto grid grid-cols-3 gap-2 px-5 pb-5 pt-4">
@@ -105,7 +105,7 @@ export function PledgeCard({ className }: { className?: string }) {
             onMouseLeave={() => setHover(null)}
             className={cn("rounded-lg border border-line p-2 transition", hover === i && "border-white/20 bg-white/[0.04]")}
           >
-            <p className="flex items-center gap-1.5 text-[10px] text-ink-3">
+            <p className="flex items-center gap-1.5 text-[calc(10px*var(--fs))] text-ink-3">
               <span className="size-1.5 rounded-full" style={{ background: s.color }} />
               {s.k}
             </p>
@@ -142,7 +142,7 @@ function ActivityBar({ m }: { m: ActivityRow }) {
         <span className="text-xs text-ink-2">{m.metric}</span>
         <span className="text-sm font-semibold tabular">
           {m.value ?? "—"}
-          {m.value != null && <span className="text-[11px] text-ink-3">{m.unit}</span>}
+          {m.value != null && <span className="text-[calc(11px*var(--fs))] text-ink-3">{m.unit}</span>}
         </span>
       </div>
       {/* 영상의 진행 바 + 끝점 마커 스타일 */}
@@ -200,10 +200,10 @@ export function ActivityCard({ className, onOpen, totals = false }: { className?
               { k: "가결 법안", v: stats?.bills_passed },
             ].map((t) => (
               <div key={t.k} className="rounded-xl border border-line bg-white/[0.03] px-3 py-2.5">
-                <p className="text-[10px] text-ink-3">{t.k}</p>
+                <p className="text-[calc(10px*var(--fs))] text-ink-3">{t.k}</p>
                 <p className="mt-0.5 text-lg font-semibold tabular">
                   {t.v == null ? "—" : t.v.toLocaleString()}
-                  <span className="ml-0.5 text-[11px] font-normal text-ink-3">건</span>
+                  <span className="ml-0.5 text-[calc(11px*var(--fs))] font-normal text-ink-3">건</span>
                 </p>
               </div>
             ))}
@@ -234,7 +234,7 @@ function TrendTooltip({ active, payload, label }: any) {
   const sorted = [...payload].sort((a: any, b: any) => b.value - a.value);
   return (
     <TooltipShell>
-      <p className="mb-1.5 text-[11px] text-ink-3">{label} 주차</p>
+      <p className="mb-1.5 text-[calc(11px*var(--fs))] text-ink-3">{label} 주차</p>
       {sorted.map((p: any) => (
         <div key={p.dataKey} className="flex items-center justify-between gap-4 py-0.5">
           <PartyTag color={p.color} name={PARTIES[p.dataKey as "A"].name} />
@@ -324,13 +324,13 @@ function TimelineTooltip({ active, payload, label, live }: any) {
   const d = payload[0].payload as TimelinePoint;
   return (
     <TooltipShell>
-      <p className="text-[11px] text-ink-3">{label}</p>
+      <p className="text-[calc(11px*var(--fs))] text-ink-3">{label}</p>
       <p className="mt-0.5 text-sm font-semibold tabular">
         {live ? `${d.volume.toLocaleString()}건` : `${d.volume}천 건`}{" "}
-        <span className="text-[11px] font-normal text-ink-3">{live ? "수집" : "언급"}</span>
+        <span className="text-[calc(11px*var(--fs))] font-normal text-ink-3">{live ? "수집" : "언급"}</span>
       </p>
       {d.event && (
-        <p className="mt-1.5 flex items-center gap-1 border-t border-line pt-1.5 text-[11px] text-lime">
+        <p className="mt-1.5 flex items-center gap-1 border-t border-line pt-1.5 text-[calc(11px*var(--fs))] text-lime">
           <Milestone className="size-3" /> {d.event}
         </p>
       )}
@@ -366,9 +366,9 @@ export function IssueTimelineCard({ className, onOpen }: { className?: string; o
         <p className="text-2xl font-semibold tracking-tight tabular">
           {isLive ? `${total.toLocaleString()}건` : isMock ? `${(total / 10).toFixed(1)}만 건` : "—"}
         </p>
-        {isMock && <span className="rounded-full bg-lime/10 px-2 py-0.5 text-[11px] font-medium text-lime">+38% vs 이전 14일</span>}
+        {isMock && <span className="rounded-full bg-lime/10 px-2 py-0.5 text-[calc(11px*var(--fs))] font-medium text-lime">+38% vs 이전 14일</span>}
         {change != null && (
-          <span className="rounded-full bg-lime/10 px-2 py-0.5 text-[11px] font-medium text-lime">
+          <span className="rounded-full bg-lime/10 px-2 py-0.5 text-[calc(11px*var(--fs))] font-medium text-lime">
             {change >= 0 ? "+" : ""}
             {change}% vs 이전 14일
           </span>
@@ -403,14 +403,14 @@ export function IssueTimelineCard({ className, onOpen }: { className?: string; o
       {events.length > 0 ? (
         <ul className="flex gap-2 overflow-x-auto px-5 pb-5 pt-2 scroll-thin">
           {events.map((e) => (
-            <li key={e.day} className="shrink-0 rounded-lg border border-line px-2.5 py-1.5 text-[11px]">
+            <li key={e.day} className="shrink-0 rounded-lg border border-line px-2.5 py-1.5 text-[calc(11px*var(--fs))]">
               <span className="mr-1.5 inline-block size-1.5 rounded-full bg-cyan align-middle" />
               <span className="text-ink-3 tabular">{e.day}</span> <span className="text-ink-2">{e.event}</span>
             </li>
           ))}
         </ul>
       ) : (
-        <p className="px-5 pb-5 pt-2 text-[11px] text-ink-3">
+        <p className="px-5 pb-5 pt-2 text-[calc(11px*var(--fs))] text-ink-3">
           {isLive ? `14일 중 수집된 기사가 있는 날은 ${collectedDays}일입니다. 나머지 날은 0건으로 보입니다.` : "불러오는 중…"}
         </p>
       )}

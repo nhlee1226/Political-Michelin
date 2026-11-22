@@ -103,7 +103,7 @@ export function SlidingTabs<T extends string>({
             aria-selected={active}
             onClick={() => onChange(it.value)}
             className={cn(
-              "relative z-10 flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[13px] font-medium transition-colors duration-300",
+              "relative z-10 flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[calc(13px*var(--fs))] font-medium transition-colors duration-300",
               active ? "text-ink" : "text-ink-3 hover:text-ink-2",
             )}
           >
