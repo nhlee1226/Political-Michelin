@@ -66,7 +66,7 @@ function LeanBar({ lean }: { lean: number }) {
           transition={{ duration: 0.6, ease: [0.65, 0, 0.35, 1] }}
         />
       </div>
-      <div className="mt-1 flex justify-between text-[10px] text-ink-3">
+      <div className="mt-1 flex justify-between text-[calc(10px*var(--fs))] text-ink-3">
         <span>진보</span>
         <span>중립</span>
         <span>보수</span>
@@ -92,19 +92,19 @@ function EvidenceList({ items }: { items: ApiEvidence[] }) {
     <ul className="space-y-2">
       {items.map((e, i) => (
         <li key={i} className="rounded-lg border border-line bg-white/[0.02] p-2.5">
-          <div className="flex flex-wrap items-center gap-1.5 text-[10px]">
-            <Badge className="px-1.5 py-0 text-[10px]">{TYPE_LABEL[e.type]}</Badge>
+          <div className="flex flex-wrap items-center gap-1.5 text-[calc(10px*var(--fs))]">
+            <Badge className="px-1.5 py-0 text-[calc(10px*var(--fs))]">{TYPE_LABEL[e.type]}</Badge>
             <span className={cn("font-semibold", e.direction === "neutral" ? "text-good" : "text-ink-2")}>
               {DIRECTION_LABEL[e.direction]}
             </span>
             <StrengthDots value={e.strength} />
           </div>
-          <blockquote className="mt-1.5 border-l-2 border-white/15 pl-2 text-[12px] leading-relaxed text-ink-2">
+          <blockquote className="mt-1.5 border-l-2 border-white/15 pl-2 text-[calc(12px*var(--fs))] leading-relaxed text-ink-2">
             {e.excerpt}
           </blockquote>
-          <p className="mt-1.5 text-[12px] leading-relaxed text-ink-3">{e.explanation}</p>
+          <p className="mt-1.5 text-[calc(12px*var(--fs))] leading-relaxed text-ink-3">{e.explanation}</p>
           {e.source_url && (
-            <a href={e.source_url} target="_blank" rel="noopener noreferrer" className="mt-1 inline-flex items-center gap-0.5 text-[11px] text-cyan hover:underline">
+            <a href={e.source_url} target="_blank" rel="noopener noreferrer" className="mt-1 inline-flex items-center gap-0.5 text-[calc(11px*var(--fs))] text-cyan hover:underline">
               확인한 자료 <ArrowUpRight className="size-3" />
             </a>
           )}
@@ -157,16 +157,16 @@ function NewsCard({ item, aiMode }: { item: NewsItem; aiMode: boolean }) {
 
   return (
     <article className="group rounded-xl border border-line bg-white/[0.02] p-3.5 transition hover:border-white/15 hover:bg-white/[0.04]">
-      <div className="flex items-center justify-between gap-2 text-[11px] text-ink-3">
+      <div className="flex items-center justify-between gap-2 text-[calc(11px*var(--fs))] text-ink-3">
         <span className="flex min-w-0 items-center gap-1.5">
           <span className="font-medium text-ink-2">{item.source}</span>·<span>{item.time}</span>·
           <span>{item.category}</span>
-          {item.region && <Badge className="px-1.5 py-0 text-[10px]">{REGION_BY_CODE[item.region]?.short}</Badge>}
+          {item.region && <Badge className="px-1.5 py-0 text-[calc(10px*var(--fs))]">{REGION_BY_CODE[item.region]?.short}</Badge>}
         </span>
         <Badge tone={objective ? "lime" : t.tone}>{objective ? "AI 객관화" : t.label}</Badge>
       </div>
 
-      <h4 className="mt-2 text-[14px] font-semibold leading-snug text-ink">
+      <h4 className="mt-2 text-[calc(14px*var(--fs))] font-semibold leading-snug text-ink">
         <GlossaryText text={objective ? (item.objectiveHeadline ?? item.headline) : item.headline} />
       </h4>
 
@@ -178,7 +178,7 @@ function NewsCard({ item, aiMode }: { item: NewsItem; aiMode: boolean }) {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -4 }}
             transition={{ duration: 0.2 }}
-            className={cn("text-[13px] leading-relaxed", objective ? "text-ink-2" : "text-ink-3")}
+            className={cn("text-[calc(13px*var(--fs))] leading-relaxed", objective ? "text-ink-2" : "text-ink-3")}
           >
             <GlossaryText text={objective ? (item.objective ?? item.original) : item.original} />
           </motion.p>
@@ -198,7 +198,7 @@ function NewsCard({ item, aiMode }: { item: NewsItem; aiMode: boolean }) {
       {!objective && item.biasSignals.length > 0 && (
         <div className="mt-2 flex flex-wrap gap-1">
           {item.biasSignals.map((s) => (
-            <span key={s} className="rounded-md bg-white/[0.04] px-1.5 py-0.5 text-[10px] text-ink-3">
+            <span key={s} className="rounded-md bg-white/[0.04] px-1.5 py-0.5 text-[calc(10px*var(--fs))] text-ink-3">
               {s}
             </span>
           ))}
@@ -207,14 +207,14 @@ function NewsCard({ item, aiMode }: { item: NewsItem; aiMode: boolean }) {
 
       <div className="mt-3 flex items-center justify-between gap-2 border-t border-line pt-3">
         <div className="flex items-center gap-2">
-          <span className="whitespace-nowrap text-[11px] text-ink-3">편향</span>
+          <span className="whitespace-nowrap text-[calc(11px*var(--fs))] text-ink-3">편향</span>
           <BiasMeter value={bias} />
         </div>
         <button
           onClick={convert}
           disabled={scanning}
           className={cn(
-            "flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-semibold transition",
+            "flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full px-2.5 py-1 text-[calc(11px*var(--fs))] font-semibold transition",
             objective
               ? "border border-line text-ink-2 hover:text-ink"
               : "bg-lime text-canvas hover:bg-lime-2 disabled:opacity-60",
@@ -285,17 +285,17 @@ function LiveNewsCard({ item }: { item: ApiNews }) {
 
   return (
     <article className="group rounded-xl border border-line bg-white/[0.02] p-3.5 transition hover:border-white/15 hover:bg-white/[0.04]">
-      <div className="flex items-center justify-between gap-2 text-[11px] text-ink-3">
+      <div className="flex items-center justify-between gap-2 text-[calc(11px*var(--fs))] text-ink-3">
         <span className="flex min-w-0 items-center gap-1.5">
           <span className="font-medium text-ink-2">{item.source ?? "출처 미상"}</span>·<span>{timeAgo(item.published_at)}</span>
-          {item.region_code && <Badge className="px-1.5 py-0 text-[10px]">{REGION_BY_CODE[item.region_code]?.short}</Badge>}
+          {item.region_code && <Badge className="px-1.5 py-0 text-[calc(10px*var(--fs))]">{REGION_BY_CODE[item.region_code]?.short}</Badge>}
         </span>
         <Badge tone={t?.tone}>{badge}</Badge>
       </div>
 
-      <h4 className="mt-2 text-[14px] font-semibold leading-snug text-ink">{item.headline}</h4>
+      <h4 className="mt-2 text-[calc(14px*var(--fs))] font-semibold leading-snug text-ink">{item.headline}</h4>
 
-      {summary && <p className="mt-2 text-[13px] leading-relaxed text-ink-3">{summary}</p>}
+      {summary && <p className="mt-2 text-[calc(13px*var(--fs))] leading-relaxed text-ink-3">{summary}</p>}
 
       <div className="mt-3 border-t border-line pt-3">
         {lean != null ? (
@@ -306,11 +306,11 @@ function LiveNewsCard({ item }: { item: ApiNews }) {
                 {lean > 0 ? "+" : ""}
                 {lean}
               </div>
-              {item.confidence && <div className="text-[10px] text-ink-3">{CONFIDENCE_LABEL[item.confidence]}</div>}
+              {item.confidence && <div className="text-[calc(10px*var(--fs))] text-ink-3">{CONFIDENCE_LABEL[item.confidence]}</div>}
             </div>
           </div>
         ) : (
-          <p className="text-[11px] text-ink-3">
+          <p className="text-[calc(11px*var(--fs))] text-ink-3">
             {item.analyzed ? "판단 불가 — 한국 정치 기사가 아니거나 진영 간 쟁점이 없는 기사입니다." : "아직 편향 분석 전입니다."}
           </p>
         )}
@@ -320,7 +320,7 @@ function LiveNewsCard({ item }: { item: ApiNews }) {
             <button
               onClick={() => setOpen((o) => !o)}
               aria-expanded={open}
-              className="flex items-center gap-1 text-[11px] font-semibold text-ink-2 transition hover:text-ink"
+              className="flex items-center gap-1 text-[calc(11px*var(--fs))] font-semibold text-ink-2 transition hover:text-ink"
             >
               근거 {evidence.length}개 {open ? "접기" : "보기"}
               <ChevronDown className={cn("size-3 transition-transform", open && "rotate-180")} />
@@ -332,7 +332,7 @@ function LiveNewsCard({ item }: { item: ApiNews }) {
             href={item.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full border border-line px-2.5 py-1 text-[11px] font-semibold text-ink-2 transition hover:text-ink"
+            className="flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full border border-line px-2.5 py-1 text-[calc(11px*var(--fs))] font-semibold text-ink-2 transition hover:text-ink"
           >
             <ArrowUpRight className="size-3" /> 원문 보기
           </a>
@@ -349,7 +349,7 @@ function LiveNewsCard({ item }: { item: ApiNews }) {
             >
               <div className="pt-2.5">
                 <EvidenceList items={evidence} />
-                <p className="mt-2 text-[10px] leading-relaxed text-ink-3">
+                <p className="mt-2 text-[calc(10px*var(--fs))] leading-relaxed text-ink-3">
                   AI가 기사 문장에서 찾은 근거입니다. 점수는 이 근거의 방향과 강도로만 계산합니다. 언론사 이름은 판단에 쓰지 않습니다.
                 </p>
               </div>
@@ -647,7 +647,7 @@ export function NewsPanel({
             { value: "analyzed", label: "분석됨", soon: noAnalysis },
           ]}
         />
-        <span className="text-[10px] text-ink-3">용어에 마우스를 올려보세요</span>
+        <span className="text-[calc(10px*var(--fs))] text-ink-3">용어에 마우스를 올려보세요</span>
       </div>
       {mode === "analyzed" && (
         <div className="space-y-2 px-5 pt-2">

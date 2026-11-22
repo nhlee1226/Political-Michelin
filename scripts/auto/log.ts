@@ -1,21 +1,15 @@
 /** 자동 수집 기록(collect_log) 읽기·쓰기 — scripts/auto/run.ts 가 씀 */
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
-import { and, eq, lt, sql } from "drizzle-orm";
+import { and, eq, lt } from "drizzle-orm";
 import type { Db } from "../../src/db/client";
 import { collectLog } from "../../src/db/schema";
 import type { AgencyId } from "../../src/lib/collect-schedule";
+import { applySqlFile } from "../collectors/sql-file";
 
 export { loadCollectState as loadState } from "../../src/db/collect-log";
 
-const SQL_FILE = resolve(process.cwd(), "scripts/sql/add-collect-log.sql");
-
 /** 표가 없으면 만듦 (scripts/sql/add-collect-log.sql 을 그대로 실행, 여러 번 실행해도 안전) */
 export async function ensureCollectLog(db: Db) {
-  const text = readFileSync(SQL_FILE, "utf8").replace(/^--.*$/gm, "");
-  for (const stmt of text.split(/;\s*$/m).map((s) => s.trim()).filter(Boolean)) {
-    await db.execute(sql.raw(stmt));
-  }
+  await applySqlFile(db, "add-collect-log.sql");
 }
 
 /** 시간 초과 등으로 끝을 못 맺은 줄은 실패로 정리 (그래야 다음 회차에 다시 시도) */

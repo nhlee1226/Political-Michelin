@@ -86,7 +86,7 @@ export function RegionMembersCard({
             >
               <div className="min-w-0 flex-1">
                 <p className="font-semibold text-ink">{p.name}</p>
-                <p className="truncate text-[10px] text-ink-3">
+                <p className="truncate text-[calc(10px*var(--fs))] text-ink-3">
                   {p.district ?? "—"} · {p.term == null ? "—" : `${p.term}선`}
                 </p>
               </div>

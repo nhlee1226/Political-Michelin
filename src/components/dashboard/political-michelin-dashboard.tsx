@@ -17,6 +17,7 @@ import { useComments, useRegion, useRegions, useStats, type ApiComment, type Api
 import { SHOW_EXAMPLE_CARDS } from "@/lib/flags";
 import { DashboardHeader, type TabKey } from "./header";
 import { SideRail } from "./side-rail";
+import { Toaster } from "@/components/ui/toaster";
 import { FlipCounter } from "./flip-counter";
 import { KoreaMapCard } from "./korea-map-card";
 import { NewsPanel, timeAgo } from "./news-panel";
@@ -200,7 +201,7 @@ export default function PoliticalMichelinDashboard() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -8 }}
                   transition={{ duration: 0.25 }}
-                  className="mt-1.5 text-3xl font-semibold leading-[1.1] tracking-tight sm:text-[40px]"
+                  className="mt-1.5 text-3xl font-semibold leading-[1.1] tracking-tight sm:text-[calc(40px*var(--fs))]"
                 >
                   {head.title[0]}
                   <br className="hidden sm:block" /> <span className="text-ink-2">{head.title[1]}</span>
@@ -312,7 +313,7 @@ export default function PoliticalMichelinDashboard() {
             </motion.div>
           </AnimatePresence>
 
-          <footer className="mt-8 flex flex-col gap-2 border-t border-line pt-5 text-[11px] text-ink-3 sm:flex-row sm:justify-between sm:gap-8">
+          <footer className="mt-8 flex flex-col gap-2 border-t border-line pt-5 text-[calc(11px*var(--fs))] text-ink-3 sm:flex-row sm:justify-between sm:gap-8">
             <p className="max-w-3xl">
               의원·법안·표결(국회), 선거 결과·공약(선관위), 지역 지표(통계청), 정치 뉴스를 팀이 만든 수집기로 모아 정리했습니다. 의원 별점에는
               정당·이념 변수를 넣지 않습니다. 점선 테두리와 &quot;예시 데이터&quot; 띠는 데이터를 불러오지 못했을 때 대신 보이는 가상 데이터입니다.
@@ -323,6 +324,7 @@ export default function PoliticalMichelinDashboard() {
       </div>
 
       <PoliticianDetailSheet monaCd={detailId} onClose={() => setDetailId(null)} />
+      <Toaster />
     </div>
   );
 }
