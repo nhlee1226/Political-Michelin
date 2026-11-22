@@ -393,10 +393,10 @@ function Pager({
   onChange: (p: number) => void;
 }) {
   const btn =
-    "grid h-7 min-w-7 place-items-center rounded-md px-1.5 text-[11px] font-semibold tabular-nums transition disabled:pointer-events-none disabled:opacity-30";
+    "grid h-7 min-w-7 place-items-center rounded-md px-1.5 text-[calc(11px*var(--fs))] font-semibold tabular-nums transition disabled:pointer-events-none disabled:opacity-30";
   return (
     <nav aria-label="뉴스 페이지" className="flex flex-wrap items-center justify-between gap-2 border-t border-line px-5 py-2.5">
-      <span className="text-[10px] tabular-nums text-ink-3">
+      <span className="text-[calc(10px*var(--fs))] tabular-nums text-ink-3">
         {total.toLocaleString("ko-KR")}건 중 {from.toLocaleString("ko-KR")}–{to.toLocaleString("ko-KR")}
       </span>
       <div className="flex items-center gap-0.5">
@@ -411,7 +411,7 @@ function Pager({
         </button>
         {pageList(page, pages).map((p, i) =>
           p === "…" ? (
-            <span key={`gap${i}`} className="px-1 text-[11px] text-ink-3">
+            <span key={`gap${i}`} className="px-1 text-[calc(11px*var(--fs))] text-ink-3">
               …
             </span>
           ) : (
@@ -475,7 +475,7 @@ function SubChips({
           title={o.title}
           onClick={() => onChange(o.value)}
           className={cn(
-            "rounded-full border px-2.5 py-1 text-[11px] font-medium transition",
+            "rounded-full border px-2.5 py-1 text-[calc(11px*var(--fs))] font-medium transition",
             value === o.value
               ? "border-white/20 bg-white/[0.12] text-ink"
               : "border-line text-ink-3 hover:text-ink-2",
@@ -513,7 +513,7 @@ function LeanRange({
     "[&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:size-3 [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-canvas [&::-moz-range-thumb]:bg-ink";
   return (
     <div className="rounded-lg border border-line px-3 py-2.5">
-      <div className="flex items-baseline justify-between text-[11px]">
+      <div className="flex items-baseline justify-between text-[calc(11px*var(--fs))]">
         <span className="font-semibold tabular-nums text-ink">
           {leanText(draft[0])} ~ {leanText(draft[1])}
         </span>
@@ -547,7 +547,7 @@ function LeanRange({
           className={thumb}
         />
       </div>
-      <div className="mt-1 flex justify-between text-[10px] text-ink-3">
+      <div className="mt-1 flex justify-between text-[calc(10px*var(--fs))] text-ink-3">
         <span>← 진보 시각 100</span>
         <span>0</span>
         <span>보수 시각 100 →</span>
