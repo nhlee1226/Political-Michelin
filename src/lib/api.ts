@@ -7,6 +7,7 @@
 import { useMemo } from "react";
 import useSWR from "swr";
 import { REGIONS, type Region } from "./mock-data";
+import type { BillStage } from "./bill-stage";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "/api"; // 같은 Next.js 안의 API 라우트
 
@@ -302,6 +303,57 @@ export interface ApiCollectStatus {
 /** 이 API 가 아직 없는 배포(자동 수집 PR 머지 전)에서는 404 → 한 번만 묻고 재시도하지 않음 */
 export const useCollectStatus = () =>
   useSWR<ApiCollectStatus>("/collect-status", fetcher, { ...live, shouldRetryOnError: false });
+
+/* ── 법안 추적·국회 일정 (/api/bills, /api/schedule — src/db/assembly-api.ts) ── */
+
+export interface ApiBillTrack extends BillStage {
+  bill_id: string;
+  bill_no: string | null;
+  title: string;
+  committee: string | null;
+  /** 대표발의 의원 이름 */
+  proposer: string | null;
+  detail_url: string | null;
+  /** 본회의 찬성·반대·기권 수 (표결을 수집한 법안만) */
+  votes: { yes: number; no: number; abstain: number } | null;
+}
+
+export interface ApiBillList {
+  /** 단계 날짜를 한 번이라도 수집했는지. false 면 화면은 "첫 수집 뒤에 채워짐" */
+  ready: boolean;
+  rows: ApiBillTrack[];
+}
+
+export interface ApiScheduleItem {
+  date: string; // YYYY-MM-DD
+  time: string | null;
+  /** 일정 종류 (원천 표기, 예: 본회의·위원회) */
+  kind: string | null;
+  title: string;
+  committee: string | null;
+  place: string | null;
+  host: string | null;
+}
+
+export interface ApiSchedule {
+  ready: boolean;
+  updated_at: string | null;
+  rows: ApiScheduleItem[];
+}
+
+/** 하루 1번 바뀌는 데이터라 10분마다만 다시 읽음. 이 API 가 아직 없는 배포에서는 404 → 재시도 안 함 */
+const daily = { ...live, refreshInterval: 10 * 60_000, shouldRetryOnError: false };
+
+/** ids: 추적 중인 법안 / q: 제목 검색 / view: active(진행 중) · done(처리 끝남). null 이면 요청 안 함 */
+export function useBills(opts: { ids?: string[]; q?: string; view?: "active" | "done" } | null) {
+  let key: string | null = null;
+  if (opts?.ids) key = opts.ids.length ? `/bills?ids=${opts.ids.map(encodeURIComponent).join(",")}` : null;
+  else if (opts?.q) key = `/bills?q=${encodeURIComponent(opts.q)}`;
+  else if (opts) key = `/bills?view=${opts.view ?? "active"}`;
+  return useSWR<ApiBillList>(key, fetcher, daily);
+}
+
+export const useSchedule = () => useSWR<ApiSchedule>("/schedule", fetcher, daily);
 
 /* ── 인증 ─────────────────────────────────────────────── */
 export interface ApiUser {
