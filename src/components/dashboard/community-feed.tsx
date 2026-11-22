@@ -60,7 +60,7 @@ function TagBadge({ c }: { c: ApiComment }) {
 function Avatar({ name, blinded }: { name: string; blinded?: boolean }) {
   return (
     <span
-      className="grid size-7 shrink-0 place-items-center rounded-full text-[11px] font-semibold text-canvas"
+      className="grid size-7 shrink-0 place-items-center rounded-full text-[calc(11px*var(--fs))] font-semibold text-canvas"
       style={{ background: `hsl(${hueOf(name)} 70% 70%)` }}
     >
       {blinded ? "?" : name.slice(0, 1)}
@@ -119,7 +119,7 @@ function CommentItem({
           <Avatar name={c.author} blinded={blinded} />
           <div className="min-w-0">
             <p className="truncate text-xs font-semibold">{blinded ? "비공개 사용자" : c.author}</p>
-            <p className="text-[10px] text-ink-3">{timeAgo(c.createdAt)}</p>
+            <p className="text-[calc(10px*var(--fs))] text-ink-3">{timeAgo(c.createdAt)}</p>
           </div>
         </div>
         <div className="flex items-center gap-1.5">
@@ -143,13 +143,13 @@ function CommentItem({
           <span>[AI 블라인드 처리됨] 커뮤니티 가이드라인에 따라 게시글이 숨겨졌습니다.</span>
         </div>
       ) : (
-        <p className="mt-2 text-[13px] leading-relaxed text-ink-2">
+        <p className="mt-2 text-[calc(13px*var(--fs))] leading-relaxed text-ink-2">
           <GlossaryText text={c.body} />
         </p>
       )}
 
       {!blinded && !isReply && (
-        <div className="mt-2 flex items-center gap-3 text-[11px] text-ink-3">
+        <div className="mt-2 flex items-center gap-3 text-[calc(11px*var(--fs))] text-ink-3">
           <button
             onClick={() => onReply(c.id)}
             className="flex items-center gap-1 transition hover:text-ink"
@@ -192,10 +192,10 @@ function CommentForm({
   if (!user) {
     return (
       <div className="flex items-center justify-between rounded-full border border-line bg-white/[0.02] py-1.5 pl-4 pr-2">
-        <span className="text-[12px] text-ink-3">로그인 후 작성할 수 있습니다</span>
+        <span className="text-[calc(12px*var(--fs))] text-ink-3">로그인 후 작성할 수 있습니다</span>
         <Link
           href="/login"
-          className="rounded-full bg-ink px-3 py-1 text-[11px] font-semibold text-canvas transition hover:bg-white"
+          className="rounded-full bg-ink px-3 py-1 text-[calc(11px*var(--fs))] font-semibold text-canvas transition hover:bg-white"
         >
           로그인
         </Link>
@@ -236,7 +236,7 @@ function CommentForm({
           placeholder={placeholder}
           maxLength={500}
           rows={2}
-          className="min-h-[40px] flex-1 resize-none bg-transparent px-2 py-1 text-[13px] text-ink placeholder:text-ink-3 focus:outline-none"
+          className="min-h-[40px] flex-1 resize-none bg-transparent px-2 py-1 text-[calc(13px*var(--fs))] text-ink placeholder:text-ink-3 focus:outline-none"
           onKeyDown={(e) => {
             if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) submit(e);
           }}
@@ -252,11 +252,11 @@ function CommentForm({
       </div>
       <div className="flex items-center justify-between px-1">
         {error ? (
-          <span className="text-[11px] text-bad">{error}</span>
+          <span className="text-[calc(11px*var(--fs))] text-bad">{error}</span>
         ) : (
-          <span className="text-[10px] text-ink-3">Ctrl+Enter 로 게시 · AI 모더레이션 적용</span>
+          <span className="text-[calc(10px*var(--fs))] text-ink-3">Ctrl+Enter 로 게시 · AI 모더레이션 적용</span>
         )}
-        <span className="text-[10px] text-ink-3 tabular">{text.length}/500</span>
+        <span className="text-[calc(10px*var(--fs))] text-ink-3 tabular">{text.length}/500</span>
       </div>
     </form>
   );
@@ -298,7 +298,7 @@ export function CommunityFeed({ className, showStats = true }: { className?: str
             { k: "클린", v: clean, c: "text-good" },
           ].map((s) => (
             <div key={s.k} className="rounded-lg border border-line bg-white/[0.02] px-2.5 py-2">
-              <p className="text-[10px] text-ink-3">{s.k}</p>
+              <p className="text-[calc(10px*var(--fs))] text-ink-3">{s.k}</p>
               <p className={cn("text-sm font-semibold tabular", s.c)}>{s.v.toLocaleString()}</p>
             </div>
           ))}
@@ -384,13 +384,13 @@ export function CommunityStatsCard() {
         ].map((s) => (
           <div key={s.k} className="rounded-lg border border-line bg-white/[0.02] px-2.5 py-2 text-center">
             <p className={cn("text-base font-semibold tabular", s.c)}>{s.v}</p>
-            <p className="mt-0.5 text-[10px] text-ink-3">{s.k}</p>
+            <p className="mt-0.5 text-[calc(10px*var(--fs))] text-ink-3">{s.k}</p>
           </div>
         ))}
       </div>
       {/* 클린 비율 바 */}
       <div className="px-5 pb-5">
-        <div className="mb-1 flex items-center justify-between text-[10px] text-ink-3">
+        <div className="mb-1 flex items-center justify-between text-[calc(10px*var(--fs))] text-ink-3">
           <span>클린 지수</span>
           <span className="tabular">{all.length ? `${Math.round((clean / total) * 100)}%` : "—"}</span>
         </div>
@@ -425,14 +425,14 @@ export function CommunityGuideCard() {
               {r.icon}
             </span>
             <div>
-              <p className="text-[13px] font-semibold">{r.title}</p>
-              <p className="mt-0.5 text-[11px] leading-relaxed text-ink-3">{r.desc}</p>
+              <p className="text-[calc(13px*var(--fs))] font-semibold">{r.title}</p>
+              <p className="mt-0.5 text-[calc(11px*var(--fs))] leading-relaxed text-ink-3">{r.desc}</p>
             </div>
           </li>
         ))}
       </ul>
       <div className="mt-auto border-t border-line px-5 py-3">
-        <p className="text-[10px] leading-relaxed text-ink-3">
+        <p className="text-[calc(10px*var(--fs))] leading-relaxed text-ink-3">
           AI 모더레이션은 현재 키워드 필터로 동작합니다. 추후 팩트체크 AI 연동 시 사실 검증이 자동화됩니다.
         </p>
       </div>

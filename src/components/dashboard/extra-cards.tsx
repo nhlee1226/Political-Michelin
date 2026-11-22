@@ -36,12 +36,12 @@ function DistTooltip({ active, payload }: any) {
 function StatTile({ label, value, unit, note, accent }: { label: string; value: React.ReactNode; unit?: string; note?: string; accent?: boolean }) {
   return (
     <div className={cn("rounded-lg border p-2.5", accent ? "border-lime/20 bg-lime/[0.05]" : "border-line")}>
-      <p className="text-[10px] text-ink-3">{label}</p>
+      <p className="text-[calc(10px*var(--fs))] text-ink-3">{label}</p>
       <p className={cn("text-lg font-semibold tabular", accent && "text-lime")}>
         {value}
-        {unit && <span className="ml-0.5 text-[11px] font-normal text-ink-3">{unit}</span>}
+        {unit && <span className="ml-0.5 text-[calc(11px*var(--fs))] font-normal text-ink-3">{unit}</span>}
       </p>
-      {note && <p className="text-[10px] text-ink-3">{note}</p>}
+      {note && <p className="text-[calc(10px*var(--fs))] text-ink-3">{note}</p>}
     </div>
   );
 }
@@ -96,7 +96,7 @@ export function BiasReportCard({ className }: { className?: string }) {
               <p className="grid h-full place-items-center text-xs text-ink-3">치우침을 판단할 수 있었던 기사가 아직 없습니다.</p>
             )}
           </div>
-          <div className="mt-auto space-y-1.5 border-t border-line px-5 py-4 text-[11px] text-ink-3">
+          <div className="mt-auto space-y-1.5 border-t border-line px-5 py-4 text-[calc(11px*var(--fs))] text-ink-3">
             <p className="flex items-center justify-between">
               <span>0 (균형)</span>
               <span className="h-1.5 w-24 rounded-full bg-gradient-to-r from-lime/20 to-lime/90" />
@@ -253,7 +253,7 @@ export function PoliticianTable({
       </div>
       <div className="mt-3 flex-1 overflow-auto px-2 pb-4 scroll-thin">
         <table className="w-full min-w-[620px] text-left text-xs">
-          <thead className="text-[10px] text-ink-3">
+          <thead className="text-[calc(10px*var(--fs))] text-ink-3">
             <tr className="[&>th]:px-3 [&>th]:py-2 [&>th]:font-medium">
               <th>#</th>
               <th>의원</th>
@@ -283,10 +283,10 @@ export function PoliticianTable({
                 <td className="text-ink-3 tabular">{i + 1}</td>
                 <td>
                   <p className="font-semibold text-ink">{p.name}</p>
-                  <p className="text-[10px] text-ink-3">
+                  <p className="text-[calc(10px*var(--fs))] text-ink-3">
                     {p.district ?? "—"} · {dash(p.term, "선")}
                   </p>
-                  {p.committee && <p className="max-w-[220px] truncate text-[10px] text-ink-3">{p.committee}</p>}
+                  {p.committee && <p className="max-w-[220px] truncate text-[calc(10px*var(--fs))] text-ink-3">{p.committee}</p>}
                 </td>
                 <td>
                   <PartyTag color={p.partyColor} name={p.partyName} />
@@ -299,7 +299,7 @@ export function PoliticianTable({
                   {/* 실제 의원인데 값이 없으면 표결 기록 없음(—), 표결 수집 자체가 안 됐으면 "수집 예정" */}
                   {p.vote == null ? (noVotes || !isLive ? "수집 예정" : "—") : `${p.vote}%`}
                   {p.votes && (
-                    <p className="text-[10px] text-ink-3">
+                    <p className="text-[calc(10px*var(--fs))] text-ink-3">
                       찬성 {p.votes.yes} · 반대 {p.votes.no} · 기권 {p.votes.abstain} · 불참 {p.votes.absent}
                     </p>
                   )}
@@ -313,8 +313,8 @@ export function PoliticianTable({
           <p className="py-6 text-center text-xs text-ink-3">{!isLive && isLoading ? "의원 목록을 불러오는 중…" : "검색 결과가 없습니다."}</p>
         )}
       </div>
-      <p className="border-t border-line px-5 py-3 text-[10px] leading-relaxed text-ink-3">
-        <Badge className="mr-1.5 px-1.5 py-0 text-[10px]">기준</Badge>
+      <p className="border-t border-line px-5 py-3 text-[calc(10px*var(--fs))] leading-relaxed text-ink-3">
+        <Badge className="mr-1.5 px-1.5 py-0 text-[calc(10px*var(--fs))]">기준</Badge>
         {isLive ? (apiList?.scoreRule ?? "—") : isMock ? MOCK_RULE : "—"}
         {isLive && !noVotes && <> · 표결 참여율 = {VOTE_HINT}</>}
       </p>

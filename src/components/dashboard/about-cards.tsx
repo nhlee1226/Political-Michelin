@@ -81,18 +81,18 @@ export function BuildStoryCard({ className }: { className?: string }) {
         {steps.map((st, i) => (
           <li key={st.label} className="relative flex flex-col rounded-xl border border-line bg-white/[0.03] p-4">
             <div className="flex items-center gap-2">
-              <span className="grid size-7 shrink-0 place-items-center rounded-full bg-lime text-[12px] font-bold text-canvas tabular">
+              <span className="grid size-7 shrink-0 place-items-center rounded-full bg-lime text-[calc(12px*var(--fs))] font-bold text-canvas tabular">
                 {i + 1}
               </span>
-              <span className="text-[12px] font-medium text-ink-3">{st.label}</span>
+              <span className="text-[calc(12px*var(--fs))] font-medium text-ink-3">{st.label}</span>
               <st.icon className="ml-auto size-4 text-ink-3" aria-hidden />
             </div>
-            <p className="mt-3 text-[15px] font-semibold tracking-tight">{st.headline}</p>
-            <p className="mt-1.5 flex-1 text-[12px] leading-relaxed text-ink-3">{st.desc}</p>
+            <p className="mt-3 text-[calc(15px*var(--fs))] font-semibold tracking-tight">{st.headline}</p>
+            <p className="mt-1.5 flex-1 text-[calc(12px*var(--fs))] leading-relaxed text-ink-3">{st.desc}</p>
             <dl className="mt-3 grid grid-cols-2 gap-2 border-t border-line pt-3">
               {st.facts.map((f) => (
                 <div key={f.k}>
-                  <dt className="text-[10px] text-ink-3">{f.k}</dt>
+                  <dt className="text-[calc(10px*var(--fs))] text-ink-3">{f.k}</dt>
                   <dd className="mt-0.5 text-sm font-semibold tabular">{f.v}</dd>
                 </div>
               ))}
@@ -122,12 +122,12 @@ export function StarRuleCard({ className }: { className?: string }) {
       <ol className="space-y-3 px-5 pt-4">
         {rules.map((r) => (
           <li key={r.n} className="flex gap-3">
-            <span className="grid size-6 shrink-0 place-items-center rounded-full border border-line text-[11px] font-semibold text-ink-2 tabular">
+            <span className="grid size-6 shrink-0 place-items-center rounded-full border border-line text-[calc(11px*var(--fs))] font-semibold text-ink-2 tabular">
               {r.n}
             </span>
             <div className="min-w-0">
-              <p className="text-[13px] font-semibold">{r.title}</p>
-              <p className="mt-0.5 text-[11px] leading-relaxed text-ink-3">{r.desc}</p>
+              <p className="text-[calc(13px*var(--fs))] font-semibold">{r.title}</p>
+              <p className="mt-0.5 text-[calc(11px*var(--fs))] leading-relaxed text-ink-3">{r.desc}</p>
             </div>
           </li>
         ))}
@@ -142,11 +142,11 @@ export function StarRuleCard({ className }: { className?: string }) {
         ).map((t) => (
           <div key={t.stars}>
             <MichelinStars count={t.stars} className="justify-center" />
-            <p className="mt-1 text-[11px] text-ink-3">{t.k}</p>
+            <p className="mt-1 text-[calc(11px*var(--fs))] text-ink-3">{t.k}</p>
           </div>
         ))}
       </div>
-      <p className="-mt-2 px-5 pb-5 text-[11px] text-ink-3">
+      <p className="-mt-2 px-5 pb-5 text-[calc(11px*var(--fs))] text-ink-3">
         지금 ★★★ 의원 <b className="text-ink tabular">{num(s?.three_star)}</b>명 · 전체 <span className="tabular">{num(s?.members)}</span>명
       </p>
     </Card>
@@ -180,14 +180,14 @@ function AgencyColumn({ a, logReady, now }: { a: ApiCollectAgency; logReady: boo
   return (
     <li className="flex flex-col rounded-xl border border-line bg-white/[0.03] p-4">
       <div className="flex items-start justify-between gap-2">
-        <p className="text-[14px] font-semibold leading-snug">{a.name}</p>
+        <p className="text-[calc(14px*var(--fs))] font-semibold leading-snug">{a.name}</p>
         {a.blockedToday && <Badge tone="warn">오늘 한도 초과</Badge>}
       </div>
-      <p className="mt-1 text-[11px] leading-relaxed text-ink-3">{a.character}</p>
+      <p className="mt-1 text-[calc(11px*var(--fs))] leading-relaxed text-ink-3">{a.character}</p>
 
       {/* 오늘 쓴 호출 / 자동 수집 몫 (하루 한도의 일부를 손으로 하는 확인·재시도 몫으로 남김) */}
       <div className="mt-3" title={a.limitNote}>
-        <div className="flex items-center justify-between text-[10px] text-ink-3">
+        <div className="flex items-center justify-between text-[calc(10px*var(--fs))] text-ink-3">
           <span>오늘 호출</span>
           <span className="tabular">
             <b className="text-ink">{logReady ? a.usedToday.toLocaleString() : "—"}</b> / {a.usable.toLocaleString()}회 · 하루 한도{" "}
@@ -206,10 +206,10 @@ function AgencyColumn({ a, logReady, now }: { a: ApiCollectAgency; logReady: boo
             <li key={j.id} title={j.why}>
               <div className="flex items-center gap-2">
                 <span className={cn("size-1.5 shrink-0 rounded-full", st.dot)} aria-label={st.label} />
-                <span className="min-w-0 flex-1 truncate text-[12px] font-medium">{j.name}</span>
-                <Badge className="px-1.5 py-0 text-[10px]">{j.every}마다</Badge>
+                <span className="min-w-0 flex-1 truncate text-[calc(12px*var(--fs))] font-medium">{j.name}</span>
+                <Badge className="px-1.5 py-0 text-[calc(10px*var(--fs))]">{j.every}마다</Badge>
               </div>
-              <p className="mt-0.5 pl-3.5 text-[10px] text-ink-3">
+              <p className="mt-0.5 pl-3.5 text-[calc(10px*var(--fs))] text-ink-3">
                 {j.lastOkAt ? (
                   <>
                     마지막 성공 {timeAgo(j.lastOkAt)} · 다음 {until(j.nextAt, now)}
@@ -230,12 +230,12 @@ function AgencyColumn({ a, logReady, now }: { a: ApiCollectAgency; logReady: boo
 function RecentRuns({ runs }: { runs: ApiCollectRun[] }) {
   return (
     <div className="border-t border-line px-5 py-4">
-      <p className="mb-2 text-[11px] font-medium text-ink-3">최근 실행</p>
+      <p className="mb-2 text-[calc(11px*var(--fs))] font-medium text-ink-3">최근 실행</p>
       <ul className="space-y-1.5">
         {runs.map((r, i) => {
           const st = RUN_STATUS[r.status] ?? NO_RUN;
           return (
-            <li key={`${r.job}-${r.startedAt}-${i}`} className="flex items-center gap-3 text-[11px]">
+            <li key={`${r.job}-${r.startedAt}-${i}`} className="flex items-center gap-3 text-[calc(11px*var(--fs))]">
               <span className="w-16 shrink-0 text-ink-3 tabular">{r.startedAt ? timeAgo(r.startedAt) : "—"}</span>
               <span className={cn("size-1.5 shrink-0 rounded-full", st.dot)} aria-hidden />
               <span className="min-w-0 flex-1 truncate">{r.jobName}</span>

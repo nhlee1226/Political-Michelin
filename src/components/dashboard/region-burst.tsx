@@ -46,6 +46,22 @@ import {
 import { cn } from "@/lib/utils";
 
 export const WIRE = "#4d90fe"; // 와이어프레임 파랑
+
+/**
+ * 의원 카드 이름표(MP · N선) 색 — 같은 파랑 계열에서 선수가 많을수록 진하게 (정당과 무관).
+ * 초선은 가장 옅고 5선 이상은 가장 진함. 선수를 모르면 회색.
+ */
+export const TERM_TAG: { min: number; label: string; bg: string; fg: string }[] = [
+  { min: 5, label: "5선+", bg: "#1e3a8a", fg: "#ffffff" },
+  { min: 4, label: "4선", bg: "#1d4ed8", fg: "#ffffff" },
+  { min: 3, label: "3선", bg: "#3b7cf0", fg: "#ffffff" },
+  { min: 2, label: "2선", bg: "#86aef9", fg: "#0b1f4d" },
+  { min: 1, label: "초선", bg: "#c7d9fd", fg: "#0b1f4d" },
+];
+export function termTagColor(term: number | null | undefined): { bg: string; fg: string } {
+  if (term == null || term < 1) return { bg: "#94a3b8", fg: "#ffffff" };
+  return TERM_TAG.find((c) => term >= c.min)!;
+}
 /** 커서 6색 (나오는 순서대로) — /api/parties 의 정당 색(청록·보라·파랑·겨자·장미·회색)과 색상환에서 떨어진 색 */
 const CURSOR_COLORS = ["#ff6b4a", "#e3f04a", "#7ee25a", "#3fe0d9", "#c77dff", "#ff4fd8"];
 
@@ -57,7 +73,7 @@ const CHIP_GAP = 10; // 마지막 카드와 칩 사이
 const MAX_CARDS = 6;
 const GAP = 8;
 const BAR_W = 400; // 진행 바 자리 (배치 계산용, 실제 폭 ≈ 390px)
-const BAR_H = 32;
+const BAR_H = 58; // 진행 바 + 아래 선수 색 범례 한 줄
 
 /* ── 시간표 (ms, 1x) ── */
 const T0 = 300; // 0단계
@@ -458,6 +474,7 @@ function DraftFrame({
   label,
   rulers,
   tag,
+  tagColor,
   link,
   onClick,
   ariaLabel,
@@ -473,6 +490,8 @@ function DraftFrame({
   label: string;
   rulers: { top: number; left: number };
   tag?: string;
+  /** 이름표 배경·글자색 (없으면 와이어프레임 파랑) */
+  tagColor?: { bg: string; fg: string };
   link?: boolean;
   onClick: () => void;
   ariaLabel: string;
@@ -563,8 +582,17 @@ function DraftFrame({
       ))}
       {tag && (
         <motion.span
-          className="absolute left-0 top-0 px-1 font-mono text-[9px] leading-[14px] text-white"
-          style={{ x: rect.x - 0.5, y: rect.y - 15, opacity: tagOpacity, scale: tagScale, originX: 0, originY: 1, background: WIRE }}
+          className="absolute left-0 top-0 px-1 font-mono text-[calc(9px*var(--fs))] font-semibold leading-[14px]"
+          style={{
+            x: rect.x - 0.5,
+            y: rect.y - 15,
+            opacity: tagOpacity,
+            scale: tagScale,
+            originX: 0,
+            originY: 1,
+            background: tagColor?.bg ?? WIRE,
+            color: tagColor?.fg ?? "#ffffff",
+          }}
         >
           {tag}
         </motion.span>
@@ -585,7 +613,7 @@ function DraftFrame({
 
       {/* 크기 배지 */}
       <motion.div className="absolute left-0 top-0" style={{ x: badgeX, y: badgeY, opacity: badgeOpacity }}>
-        <span className="block -translate-x-1/2 whitespace-nowrap px-1 font-mono text-[9px] leading-[14px] text-white tabular" style={{ background: WIRE }}>
+        <span className="block -translate-x-1/2 whitespace-nowrap px-1 font-mono text-[calc(9px*var(--fs))] leading-[14px] text-white tabular" style={{ background: WIRE }}>
           {bw} × {bh}
         </span>
       </motion.div>
@@ -598,7 +626,7 @@ function DraftFrame({
         <div className="pm-wiggle relative">
           <Cursor color={color} />
           <span
-            className="absolute left-[12px] top-[13px] whitespace-nowrap rounded-[3px] px-1 font-mono text-[8.5px] font-semibold leading-[13px] text-[#0d0f12]"
+            className="absolute left-[12px] top-[13px] whitespace-nowrap rounded-[3px] px-1 font-mono text-[calc(8.5px*var(--fs))] font-semibold leading-[13px] text-[#0d0f12]"
             style={{ background: color }}
           >
             {label}
@@ -662,10 +690,10 @@ function CardContent({ t, S, m }: { t: MotionValue<number>; S: number; m: Member
     <span className="block px-2 py-1.5" style={{ width: CARD_W, height: CARD_H }}>
       <span className="relative flex h-[17px] items-center gap-1.5">
         <Skeleton className="top-[5px] h-[7px] w-[44px]" opacity={nameBar} />
-        <span className="text-[12px] font-semibold text-ink">
+        <span className="text-[calc(12px*var(--fs))] font-semibold text-ink">
           <Typed text={m.name} count={chars} caret={!!caret} />
         </span>
-        <span className="relative flex min-w-0 items-center text-[10px] text-ink-2">
+        <span className="relative flex min-w-0 items-center text-[calc(10px*var(--fs))] text-ink-2">
           <Skeleton className="top-[2px] h-[6px] w-[48px]" opacity={partyBar} />
           <motion.span className="flex min-w-0 items-center gap-1" style={{ opacity: party }}>
             <span className="size-1.5 shrink-0 rounded-full" style={{ background: m.color }} />
@@ -675,13 +703,13 @@ function CardContent({ t, S, m }: { t: MotionValue<number>; S: number; m: Member
       </span>
       <span className="relative block h-[14px]">
         <Skeleton className="top-[4px] h-[6px] w-[96px]" opacity={distBar} />
-        <motion.span className="block truncate text-[10px] text-ink-3" style={{ opacity: dist }}>
+        <motion.span className="block truncate text-[calc(10px*var(--fs))] text-ink-3" style={{ opacity: dist }}>
           {m.district ?? "—"}
         </motion.span>
       </span>
       <span className="relative block h-[14px]">
         <Skeleton className="top-[4px] h-[6px] w-[118px]" opacity={numBar} />
-        <motion.span className="block truncate text-[10px] text-ink-2 tabular" style={{ opacity: num }}>
+        <motion.span className="block truncate text-[calc(10px*var(--fs))] text-ink-2 tabular" style={{ opacity: num }}>
           발의 {bills}건 ·{" "}
           {m.stars ? (
             [0, 1, 2].slice(0, m.stars).map((k) => (
@@ -706,7 +734,7 @@ function ChipContent({ t, S, text }: { t: MotionValue<number>; S: number; text: 
     return [s < K.name ? 0 : Math.min(len, Math.floor((s - K.name) / K.perChar) + 1), s >= K.name && s < K.name + len * K.perChar + 200 ? 1 : 0];
   });
   return (
-    <span className="grid size-full place-items-center font-mono text-[11px] text-ink-2">
+    <span className="grid size-full place-items-center font-mono text-[calc(11px*var(--fs))] text-ink-2">
       <Typed text={text} count={chars} caret={!!caret} />
     </span>
   );
@@ -741,7 +769,7 @@ function ProgressBar({
     <motion.div data-burst-keep className="pointer-events-auto absolute left-0 top-0" style={{ x: at.x, y: at.y, opacity }}>
       <div
         className={cn(
-          "glass-strong flex h-8 -translate-x-1/2 items-center gap-2 whitespace-nowrap rounded-full py-1 pl-2 pr-1 text-[11px] text-ink-2 transition-opacity duration-300",
+          "glass-strong flex h-8 -translate-x-1/2 items-center gap-2 whitespace-nowrap rounded-full py-1 pl-2 pr-1 text-[calc(11px*var(--fs))] text-ink-2 transition-opacity duration-300",
           finished && "opacity-60 hover:opacity-100 focus-within:opacity-100",
         )}
       >
@@ -766,7 +794,7 @@ function ProgressBar({
               type="button"
               onClick={() => onSpeed(sp)}
               aria-pressed={speed === sp}
-              className={cn("rounded-full px-1.5 font-mono text-[10px] transition", speed === sp ? "bg-white/[0.12] text-ink" : "text-ink-3 hover:text-ink-2")}
+              className={cn("rounded-full px-1.5 font-mono text-[calc(10px*var(--fs))] transition", speed === sp ? "bg-white/[0.12] text-ink" : "text-ink-3 hover:text-ink-2")}
             >
               {sp}x
             </button>
@@ -775,6 +803,15 @@ function ProgressBar({
         <button type="button" onClick={onClose} aria-label="의원 카드 닫기" className="grid size-6 place-items-center rounded-full transition hover:bg-white/[0.08] hover:text-ink">
           <X className="size-3.5" />
         </button>
+      </div>
+      {/* 이름표(MP · N선) 색 범례 — 진할수록 선수가 많음 */}
+      <div className="mt-1.5 flex -translate-x-1/2 items-center justify-center gap-1.5 whitespace-nowrap text-[calc(10px*var(--fs))] text-ink-3">
+        <span>이름표 색 = 선수</span>
+        {[...TERM_TAG].reverse().map((c) => (
+          <span key={c.label} className="px-1 font-mono font-semibold leading-[14px]" style={{ background: c.bg, color: c.fg }}>
+            {c.label}
+          </span>
+        ))}
       </div>
     </motion.div>
   );
@@ -914,7 +951,8 @@ export function RegionBurst({
             color={CURSOR_COLORS[i % CURSOR_COLORS.length]}
             label={`MP-${String(i + 1).padStart(2, "0")}`}
             rulers={layout.rulers}
-            tag={`MP · ${m.term == null ? "—" : `${m.term}선`}`}
+            tag={`MP · ${m.term == null ? "—" : m.term === 1 ? "초선" : `${m.term}선`}`}
+            tagColor={termTagColor(m.term)}
             link
             onClick={() => onOpenPolitician?.(m.monaCd)}
             ariaLabel={`${m.name} 상세 보기`}
@@ -960,7 +998,7 @@ export function RegionBurst({
               key={m.monaCd}
               type="button"
               onClick={() => onOpenPolitician?.(m.monaCd)}
-              className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-[11px] transition hover:bg-white/[0.05]"
+              className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-[calc(11px*var(--fs))] transition hover:bg-white/[0.05]"
             >
               <span className="size-1.5 shrink-0 rounded-full" style={{ background: m.color }} />
               <span className="font-semibold text-ink">{m.name}</span>

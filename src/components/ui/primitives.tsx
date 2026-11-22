@@ -63,7 +63,7 @@ export function CardHeader({
           </span>
         )}
         <div className="min-w-0">
-          <h3 className="truncate text-[15px] font-semibold tracking-tight text-ink">{title}</h3>
+          <h3 className="truncate text-[calc(15px*var(--fs))] font-semibold tracking-tight text-ink">{title}</h3>
           {subtitle && <p className="mt-0.5 text-xs text-ink-3">{subtitle}</p>}
         </div>
       </div>
@@ -107,7 +107,7 @@ export function Badge({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 whitespace-nowrap rounded-full border px-2 py-0.5 text-[11px] font-medium",
+        "inline-flex items-center gap-1 whitespace-nowrap rounded-full border px-2 py-0.5 text-[calc(11px*var(--fs))] font-medium",
         toneClass[tone],
         className,
       )}
@@ -188,7 +188,7 @@ export function Segmented<T extends string>({
             onClick={() => onChange(o.value)}
             disabled={o.soon}
             className={cn(
-              "rounded-full px-2.5 py-1 text-[11px] font-medium transition",
+              "rounded-full px-2.5 py-1 text-[calc(11px*var(--fs))] font-medium transition",
               value === o.value ? "bg-white/[0.12] text-ink" : "text-ink-3 hover:text-ink-2",
             )}
           >
