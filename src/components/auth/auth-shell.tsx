@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Star } from "lucide-react";
+import { OneEye } from "@/components/ui/one-eye";
 import { cn } from "@/lib/utils";
 
 /**
@@ -24,10 +24,7 @@ export function AuthShell({
         {/* 로고 */}
         <div className="mb-6 flex flex-col items-center gap-3 text-center">
           <span className="relative grid size-11 place-items-center rounded-xl bg-lime text-canvas shadow-[0_0_24px_-4px_rgb(201_228_107/0.6)]">
-            <Star className="size-5 fill-canvas" strokeWidth={0} />
-            <span className="absolute -bottom-1 -right-1 grid size-4 place-items-center rounded-full border-2 border-canvas bg-cyan text-[calc(8px*var(--fs))] font-bold text-canvas">
-              AI
-            </span>
+            <OneEye className="size-6" />
           </span>
           <span className="leading-tight">
             <span className="block text-base font-bold tracking-tight">정치 미슐랭</span>

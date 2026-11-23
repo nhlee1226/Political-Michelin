@@ -7,8 +7,9 @@
  *  (AI 객관화 모드·알림은 아직 동작하지 않아 발표 전 11/20 에 뺌)
  */
 import * as React from "react";
-import { LayoutDashboard, Map, MessagesSquare, Newspaper, Search, Star, Users } from "lucide-react";
+import { LayoutDashboard, Map, MessagesSquare, Newspaper, Search, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { OneEye } from "@/components/ui/one-eye";
 import { IconButton } from "@/components/ui/primitives";
 import { SlidingTabs, type TabItem } from "./sliding-tabs";
 import { UserMenu } from "@/components/auth/user-menu";
@@ -27,10 +28,7 @@ function Logo() {
   return (
     <a href="#" className="flex shrink-0 items-center gap-2.5" aria-label="정치 미슐랭 홈">
       <span className="relative grid size-9 place-items-center rounded-xl bg-lime text-canvas shadow-[0_0_24px_-4px_rgb(201_228_107/0.6)]">
-        <Star className="size-[18px] fill-canvas" strokeWidth={0} />
-        <span className="absolute -bottom-1 -right-1 grid size-4 place-items-center rounded-full border-2 border-canvas bg-cyan text-[calc(8px*var(--fs))] font-bold text-canvas">
-          AI
-        </span>
+        <OneEye className="size-[22px]" />
       </span>
       <span className="leading-tight">
         <span className="block text-[calc(15px*var(--fs))] font-bold tracking-tight">정치 미슐랭</span>
