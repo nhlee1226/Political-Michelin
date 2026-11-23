@@ -9,7 +9,8 @@
  * | 후보·득표수·득표율           | 선관위           | elections, election_candidates, election_districts, election_turnout | 연동      |
  * | 선거공약(지방선거 당선인)     | 선관위           | election_pledges                                          | 연동      |
  * | 시도 인구·고령화율·재정자립도 | KOSIS            | region_indicators                                         | 연동      |
- * | 법안·표결                   | 열린국회정보     | bills, bill_votes                                         | 연동 예정 |
+ * | 법안·처리 단계·표결          | 열린국회정보     | bills, bill_votes                                         | 연동      |
+ * | 국회 일정                   | 열린국회정보     | assembly_schedule                                         | 연동      |
  * | 이슈·언급량·최신 동향        | 네이버 뉴스      | news_articles, news_mentions, news_analysis               | 연동      |
  *
  * 원칙
@@ -242,6 +243,17 @@ export const bills = pgTable(
     committee: text("committee"),
     procResult: text("proc_result"), // 원안가결·폐기·계류 등 원천 표기
     detailUrl: text("detail_url"),
+    // 처리 단계 날짜 — 같은 '의원 발의법률안' 응답에 들어 있음 (열 추가: scripts/sql/add-bill-stages.sql, 법안 수집기가 시작할 때 자동 실행)
+    // 발의 → 소관위 회부 → 소관위 상정 → 소관위 처리 → 법사위 회부 → 법사위 상정 → 법사위 처리 → 본회의 의결
+    committeeDate: date("committee_date"), // COMMITTEE_DT 소관위 회부일
+    cmtPresentDate: date("cmt_present_date"), // CMT_PRESENT_DT 소관위 상정일
+    cmtProcDate: date("cmt_proc_date"), // CMT_PROC_DT 소관위 처리일
+    cmtProcResult: text("cmt_proc_result"), // CMT_PROC_RESULT_CD 소관위 처리결과 (원천 표기)
+    lawSubmitDate: date("law_submit_date"), // LAW_SUBMIT_DT 법사위 회부일
+    lawPresentDate: date("law_present_date"), // LAW_PRESENT_DT 법사위 상정일
+    lawProcDate: date("law_proc_date"), // LAW_PROC_DT 법사위 처리일
+    lawProcResult: text("law_proc_result"), // LAW_PROC_RESULT_CD 법사위 처리결과
+    procDate: date("proc_date"), // PROC_DT 본회의 의결일
     updatedAt: updatedAt(),
   },
   (t) => [index("bills_proposer_idx").on(t.proposerMonaCd)],
@@ -265,6 +277,30 @@ export const billVotes = pgTable(
     index("bill_votes_member_idx").on(t.monaCd),
     check("bill_votes_result_check", sql`${t.result} in ('찬성', '반대', '기권', '불참')`),
   ],
+).enableRLS();
+
+/**
+ * 국회 일정 (열린국회정보 '국회 일정 통합' ALLSCHEDULE) — 본회의·위원회 회의·행사.
+ * 수집기(scripts/collectors/schedule.ts)가 날짜별로 받아서 그 날짜 줄을 통째로 바꿈 (취소·변경 반영).
+ * 표 생성: scripts/sql/add-bill-stages.sql (수집기가 시작할 때 자동 실행)
+ */
+export const assemblySchedule = pgTable(
+  "assembly_schedule",
+  {
+    id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+    schDate: date("sch_date").notNull(), // SCH_DT
+    schTime: text("sch_time"), // SCH_TM (원천 표기, 예: 10:00)
+    kind: text("kind"), // SCH_KIND 일정 종류 (원천 표기)
+    title: text("title").notNull(), // SCH_CN 일정 내용
+    committee: text("committee"), // CMIT_NM 위원회명
+    confDiv: text("conf_div"), // CONF_DIV 회의 구분
+    session: text("session"), // CONF_SESS 회기
+    degree: text("degree"), // CONF_DGR 차수
+    host: text("host"), // EV_INST_NM 행사 주체
+    place: text("place"), // EV_PLC 장소
+    updatedAt: updatedAt(),
+  },
+  (t) => [index("assembly_schedule_date_idx").on(t.schDate)],
 ).enableRLS();
 
 /* ═══════════════════════════ 네이버 뉴스 (NAVER API HUB) ═══════════════════════════ */
@@ -543,7 +579,7 @@ export const collectLog = pgTable(
   "collect_log",
   {
     id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
-    job: text("job").notNull(), // 'members', 'bills', 'votes', 'nec', 'local', 'pledges', 'kosis'
+    job: text("job").notNull(), // 'members', 'bills', 'votes', 'schedule', 'nec', 'local', 'pledges', 'kosis'
     agency: text("agency").notNull(), // 'assembly', 'data_go_kr', 'kosis'
     trigger: text("trigger").notNull(), // 'schedule'(예약) | 'button'(Run workflow) | 'local'(내 PC)
     status: text("status").notNull(), // 'running' | 'ok' | 'failed' | 'quota'(기관이 하루 한도 초과로 답함)

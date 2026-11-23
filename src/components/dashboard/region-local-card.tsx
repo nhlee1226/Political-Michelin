@@ -30,7 +30,7 @@ const voteText = (w: ApiLocalWinner) =>
       : "득표 정보 없음";
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
-  return <p className="mb-2 text-[11px] font-medium text-ink-3">{children}</p>;
+  return <p className="mb-2 text-[calc(11px*var(--fs))] font-medium text-ink-3">{children}</p>;
 }
 
 function Empty({ children }: { children: React.ReactNode }) {
@@ -41,12 +41,12 @@ function IndicatorTile({ i }: { i: ApiIndicator }) {
   const value = i.unit === "명" ? i.value.toLocaleString("ko-KR") : String(i.value);
   return (
     <div className="rounded-xl border border-line bg-white/[0.02] p-3" title={`출처: KOSIS 통계표 ${i.source_org_id}/${i.source_tbl_id}`}>
-      <p className="text-[10px] text-ink-3">{INDICATOR_LABEL[i.indicator] ?? i.indicator}</p>
+      <p className="text-[calc(10px*var(--fs))] text-ink-3">{INDICATOR_LABEL[i.indicator] ?? i.indicator}</p>
       <p className="mt-0.5 text-lg font-semibold tracking-tight tabular">
         {value}
-        <span className="ml-0.5 text-[11px] font-normal text-ink-3">{i.unit}</span>
+        <span className="ml-0.5 text-[calc(11px*var(--fs))] font-normal text-ink-3">{i.unit}</span>
       </p>
-      <p className="mt-0.5 text-[10px] text-ink-3">{i.year}년</p>
+      <p className="mt-0.5 text-[calc(10px*var(--fs))] text-ink-3">{i.year}년</p>
     </div>
   );
 }
@@ -70,21 +70,21 @@ function PledgeList({ winner }: { winner: ApiLocalWinner }) {
               aria-expanded={open}
               className="flex w-full items-start gap-2 rounded-lg px-2 py-1.5 text-left transition hover:bg-white/[0.04]"
             >
-              <span className="mt-px w-3.5 shrink-0 text-[11px] font-semibold text-ink-3 tabular">{pl.no}</span>
+              <span className="mt-px w-3.5 shrink-0 text-[calc(11px*var(--fs))] font-semibold text-ink-3 tabular">{pl.no}</span>
               <span className="min-w-0 flex-1 text-xs leading-snug text-ink">
                 {pl.title ?? "(제목 없음)"}
-                {pl.realm && <Badge className="ml-1.5 px-1.5 py-0 align-middle text-[10px]">{pl.realm}</Badge>}
+                {pl.realm && <Badge className="ml-1.5 px-1.5 py-0 align-middle text-[calc(10px*var(--fs))]">{pl.realm}</Badge>}
               </span>
               <ChevronDown className={cn("mt-0.5 size-3.5 shrink-0 text-ink-3 transition-transform", open && "rotate-180")} />
             </button>
             {open && (
               <div className="mb-1 ml-[30px] mr-2 rounded-lg border border-line bg-white/[0.02] p-2.5">
                 {detail ? (
-                  <p className="whitespace-pre-wrap break-words text-[11px] leading-relaxed text-ink-2">{content || "내용이 없습니다."}</p>
+                  <p className="whitespace-pre-wrap break-words text-[calc(11px*var(--fs))] leading-relaxed text-ink-2">{content || "내용이 없습니다."}</p>
                 ) : (
-                  <p className="text-[11px] text-ink-3">{error ? "공약 내용을 불러오지 못했습니다." : "불러오는 중…"}</p>
+                  <p className="text-[calc(11px*var(--fs))] text-ink-3">{error ? "공약 내용을 불러오지 못했습니다." : "불러오는 중…"}</p>
                 )}
-                <p className="mt-2 text-[10px] text-ink-3">선관위 선거공약 원문 그대로</p>
+                <p className="mt-2 text-[calc(10px*var(--fs))] text-ink-3">선관위 선거공약 원문 그대로</p>
               </div>
             )}
           </li>
@@ -120,15 +120,15 @@ function HeadBlock({ office, winner }: { office: string; winner: ApiLocalWinner 
             {winner.name.slice(-2)}
           </div>
           <div className="min-w-0">
-            <p className="truncate text-[15px] font-semibold">{winner.name}</p>
-            <div className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[11px] text-ink-3">
-              <PartyTag color={shown.color} name={shown.name} className="text-[11px]" />
+            <p className="truncate text-[calc(15px*var(--fs))] font-semibold">{winner.name}</p>
+            <div className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[calc(11px*var(--fs))] text-ink-3">
+              <PartyTag color={shown.color} name={shown.name} className="text-[calc(11px*var(--fs))]" />
               <span>·</span>
               <span className="tabular">{voteText(winner)}</span>
             </div>
           </div>
         </div>
-        <p className="mb-1 mt-3 border-t border-line pt-2.5 text-[11px] text-ink-3">선거공약 {winner.pledges.length}개 · 누르면 원문</p>
+        <p className="mb-1 mt-3 border-t border-line pt-2.5 text-[calc(11px*var(--fs))] text-ink-3">선거공약 {winner.pledges.length}개 · 누르면 원문</p>
         <PledgeList winner={winner} />
       </div>
     </div>
@@ -150,7 +150,7 @@ function MayorRow({ w }: { w: ApiLocalWinner }) {
           <p className="font-semibold text-ink">
             {w.name} <span className="font-normal text-ink-3">{w.sgg_name}</span>
           </p>
-          <p className="truncate text-[10px] text-ink-3 tabular">{voteText(w)}</p>
+          <p className="truncate text-[calc(10px*var(--fs))] text-ink-3 tabular">{voteText(w)}</p>
         </div>
         <PartyTag color={shown.color} name={shown.name} />
         <span className="w-11 shrink-0 text-right text-ink-3 tabular">공약 {w.pledges.length}</span>

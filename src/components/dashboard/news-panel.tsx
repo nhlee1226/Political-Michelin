@@ -10,9 +10,9 @@
  */
 import * as React from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowUpRight, ChevronDown, Newspaper, ScanSearch, Sparkles, Undo2 } from "lucide-react";
+import { ArrowUpRight, ChevronDown, ChevronLeft, ChevronRight, Newspaper, ScanSearch, Sparkles, Undo2 } from "lucide-react";
 import { NEWS, REGION_BY_CODE, type NewsItem } from "@/lib/mock-data";
-import { useNews, type ApiEvidence, type ApiNews } from "@/lib/api";
+import { useNews, useNewsPage, type ApiEvidence, type ApiNews, type NewsFilter } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { Badge, Card, CardHeader, IconButton, Segmented } from "@/components/ui/primitives";
 import { GlossaryText } from "./glossary-text";
@@ -66,7 +66,7 @@ function LeanBar({ lean }: { lean: number }) {
           transition={{ duration: 0.6, ease: [0.65, 0, 0.35, 1] }}
         />
       </div>
-      <div className="mt-1 flex justify-between text-[10px] text-ink-3">
+      <div className="mt-1 flex justify-between text-[calc(10px*var(--fs))] text-ink-3">
         <span>진보</span>
         <span>중립</span>
         <span>보수</span>
@@ -92,19 +92,19 @@ function EvidenceList({ items }: { items: ApiEvidence[] }) {
     <ul className="space-y-2">
       {items.map((e, i) => (
         <li key={i} className="rounded-lg border border-line bg-white/[0.02] p-2.5">
-          <div className="flex flex-wrap items-center gap-1.5 text-[10px]">
-            <Badge className="px-1.5 py-0 text-[10px]">{TYPE_LABEL[e.type]}</Badge>
+          <div className="flex flex-wrap items-center gap-1.5 text-[calc(10px*var(--fs))]">
+            <Badge className="px-1.5 py-0 text-[calc(10px*var(--fs))]">{TYPE_LABEL[e.type]}</Badge>
             <span className={cn("font-semibold", e.direction === "neutral" ? "text-good" : "text-ink-2")}>
               {DIRECTION_LABEL[e.direction]}
             </span>
             <StrengthDots value={e.strength} />
           </div>
-          <blockquote className="mt-1.5 border-l-2 border-white/15 pl-2 text-[12px] leading-relaxed text-ink-2">
+          <blockquote className="mt-1.5 border-l-2 border-white/15 pl-2 text-[calc(12px*var(--fs))] leading-relaxed text-ink-2">
             {e.excerpt}
           </blockquote>
-          <p className="mt-1.5 text-[12px] leading-relaxed text-ink-3">{e.explanation}</p>
+          <p className="mt-1.5 text-[calc(12px*var(--fs))] leading-relaxed text-ink-3">{e.explanation}</p>
           {e.source_url && (
-            <a href={e.source_url} target="_blank" rel="noopener noreferrer" className="mt-1 inline-flex items-center gap-0.5 text-[11px] text-cyan hover:underline">
+            <a href={e.source_url} target="_blank" rel="noopener noreferrer" className="mt-1 inline-flex items-center gap-0.5 text-[calc(11px*var(--fs))] text-cyan hover:underline">
               확인한 자료 <ArrowUpRight className="size-3" />
             </a>
           )}
@@ -157,16 +157,16 @@ function NewsCard({ item, aiMode }: { item: NewsItem; aiMode: boolean }) {
 
   return (
     <article className="group rounded-xl border border-line bg-white/[0.02] p-3.5 transition hover:border-white/15 hover:bg-white/[0.04]">
-      <div className="flex items-center justify-between gap-2 text-[11px] text-ink-3">
+      <div className="flex items-center justify-between gap-2 text-[calc(11px*var(--fs))] text-ink-3">
         <span className="flex min-w-0 items-center gap-1.5">
           <span className="font-medium text-ink-2">{item.source}</span>·<span>{item.time}</span>·
           <span>{item.category}</span>
-          {item.region && <Badge className="px-1.5 py-0 text-[10px]">{REGION_BY_CODE[item.region]?.short}</Badge>}
+          {item.region && <Badge className="px-1.5 py-0 text-[calc(10px*var(--fs))]">{REGION_BY_CODE[item.region]?.short}</Badge>}
         </span>
         <Badge tone={objective ? "lime" : t.tone}>{objective ? "AI 객관화" : t.label}</Badge>
       </div>
 
-      <h4 className="mt-2 text-[14px] font-semibold leading-snug text-ink">
+      <h4 className="mt-2 text-[calc(14px*var(--fs))] font-semibold leading-snug text-ink">
         <GlossaryText text={objective ? (item.objectiveHeadline ?? item.headline) : item.headline} />
       </h4>
 
@@ -178,7 +178,7 @@ function NewsCard({ item, aiMode }: { item: NewsItem; aiMode: boolean }) {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -4 }}
             transition={{ duration: 0.2 }}
-            className={cn("text-[13px] leading-relaxed", objective ? "text-ink-2" : "text-ink-3")}
+            className={cn("text-[calc(13px*var(--fs))] leading-relaxed", objective ? "text-ink-2" : "text-ink-3")}
           >
             <GlossaryText text={objective ? (item.objective ?? item.original) : item.original} />
           </motion.p>
@@ -198,7 +198,7 @@ function NewsCard({ item, aiMode }: { item: NewsItem; aiMode: boolean }) {
       {!objective && item.biasSignals.length > 0 && (
         <div className="mt-2 flex flex-wrap gap-1">
           {item.biasSignals.map((s) => (
-            <span key={s} className="rounded-md bg-white/[0.04] px-1.5 py-0.5 text-[10px] text-ink-3">
+            <span key={s} className="rounded-md bg-white/[0.04] px-1.5 py-0.5 text-[calc(10px*var(--fs))] text-ink-3">
               {s}
             </span>
           ))}
@@ -207,14 +207,14 @@ function NewsCard({ item, aiMode }: { item: NewsItem; aiMode: boolean }) {
 
       <div className="mt-3 flex items-center justify-between gap-2 border-t border-line pt-3">
         <div className="flex items-center gap-2">
-          <span className="whitespace-nowrap text-[11px] text-ink-3">편향</span>
+          <span className="whitespace-nowrap text-[calc(11px*var(--fs))] text-ink-3">편향</span>
           <BiasMeter value={bias} />
         </div>
         <button
           onClick={convert}
           disabled={scanning}
           className={cn(
-            "flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-semibold transition",
+            "flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full px-2.5 py-1 text-[calc(11px*var(--fs))] font-semibold transition",
             objective
               ? "border border-line text-ink-2 hover:text-ink"
               : "bg-lime text-canvas hover:bg-lime-2 disabled:opacity-60",
@@ -285,17 +285,17 @@ function LiveNewsCard({ item }: { item: ApiNews }) {
 
   return (
     <article className="group rounded-xl border border-line bg-white/[0.02] p-3.5 transition hover:border-white/15 hover:bg-white/[0.04]">
-      <div className="flex items-center justify-between gap-2 text-[11px] text-ink-3">
+      <div className="flex items-center justify-between gap-2 text-[calc(11px*var(--fs))] text-ink-3">
         <span className="flex min-w-0 items-center gap-1.5">
           <span className="font-medium text-ink-2">{item.source ?? "출처 미상"}</span>·<span>{timeAgo(item.published_at)}</span>
-          {item.region_code && <Badge className="px-1.5 py-0 text-[10px]">{REGION_BY_CODE[item.region_code]?.short}</Badge>}
+          {item.region_code && <Badge className="px-1.5 py-0 text-[calc(10px*var(--fs))]">{REGION_BY_CODE[item.region_code]?.short}</Badge>}
         </span>
         <Badge tone={t?.tone}>{badge}</Badge>
       </div>
 
-      <h4 className="mt-2 text-[14px] font-semibold leading-snug text-ink">{item.headline}</h4>
+      <h4 className="mt-2 text-[calc(14px*var(--fs))] font-semibold leading-snug text-ink">{item.headline}</h4>
 
-      {summary && <p className="mt-2 text-[13px] leading-relaxed text-ink-3">{summary}</p>}
+      {summary && <p className="mt-2 text-[calc(13px*var(--fs))] leading-relaxed text-ink-3">{summary}</p>}
 
       <div className="mt-3 border-t border-line pt-3">
         {lean != null ? (
@@ -306,11 +306,11 @@ function LiveNewsCard({ item }: { item: ApiNews }) {
                 {lean > 0 ? "+" : ""}
                 {lean}
               </div>
-              {item.confidence && <div className="text-[10px] text-ink-3">{CONFIDENCE_LABEL[item.confidence]}</div>}
+              {item.confidence && <div className="text-[calc(10px*var(--fs))] text-ink-3">{CONFIDENCE_LABEL[item.confidence]}</div>}
             </div>
           </div>
         ) : (
-          <p className="text-[11px] text-ink-3">
+          <p className="text-[calc(11px*var(--fs))] text-ink-3">
             {item.analyzed ? "판단 불가 — 한국 정치 기사가 아니거나 진영 간 쟁점이 없는 기사입니다." : "아직 편향 분석 전입니다."}
           </p>
         )}
@@ -320,7 +320,7 @@ function LiveNewsCard({ item }: { item: ApiNews }) {
             <button
               onClick={() => setOpen((o) => !o)}
               aria-expanded={open}
-              className="flex items-center gap-1 text-[11px] font-semibold text-ink-2 transition hover:text-ink"
+              className="flex items-center gap-1 text-[calc(11px*var(--fs))] font-semibold text-ink-2 transition hover:text-ink"
             >
               근거 {evidence.length}개 {open ? "접기" : "보기"}
               <ChevronDown className={cn("size-3 transition-transform", open && "rotate-180")} />
@@ -332,7 +332,7 @@ function LiveNewsCard({ item }: { item: ApiNews }) {
             href={item.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full border border-line px-2.5 py-1 text-[11px] font-semibold text-ink-2 transition hover:text-ink"
+            className="flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full border border-line px-2.5 py-1 text-[calc(11px*var(--fs))] font-semibold text-ink-2 transition hover:text-ink"
           >
             <ArrowUpRight className="size-3" /> 원문 보기
           </a>
@@ -349,7 +349,7 @@ function LiveNewsCard({ item }: { item: ApiNews }) {
             >
               <div className="pt-2.5">
                 <EvidenceList items={evidence} />
-                <p className="mt-2 text-[10px] leading-relaxed text-ink-3">
+                <p className="mt-2 text-[calc(10px*var(--fs))] leading-relaxed text-ink-3">
                   AI가 기사 문장에서 찾은 근거입니다. 점수는 이 근거의 방향과 강도로만 계산합니다. 언론사 이름은 판단에 쓰지 않습니다.
                 </p>
               </div>
@@ -361,19 +361,200 @@ function LiveNewsCard({ item }: { item: ApiNews }) {
   );
 }
 
-type Filter = "all" | "analyzed" | "high" | "neutral";
+type Filter = NewsFilter;
 
-/** 실제 기사: 방향(lean) 기준 */
-const liveFilter = (filter: Filter) => (n: ApiNews) =>
-  filter === "high"
-    ? n.lean != null && Math.abs(n.lean) >= LEANING
+/** 1 … 4 5 [6] 7 8 … 1072 처럼 처음·끝과 현재 주변만 */
+function pageList(page: number, pages: number): (number | "…")[] {
+  const out: (number | "…")[] = [];
+  const lo = Math.max(2, page - 2);
+  const hi = Math.min(pages - 1, page + 2);
+  out.push(1);
+  if (lo > 2) out.push("…");
+  for (let p = lo; p <= hi; p++) out.push(p);
+  if (hi < pages - 1) out.push("…");
+  if (pages > 1) out.push(pages);
+  return out;
+}
+
+/** 뉴스 리포트 아래 페이지 넘김 */
+function Pager({
+  page,
+  pages,
+  from,
+  to,
+  total,
+  onChange,
+}: {
+  page: number;
+  pages: number;
+  from: number;
+  to: number;
+  total: number;
+  onChange: (p: number) => void;
+}) {
+  const btn =
+    "grid h-7 min-w-7 place-items-center rounded-md px-1.5 text-[calc(11px*var(--fs))] font-semibold tabular-nums transition disabled:pointer-events-none disabled:opacity-30";
+  return (
+    <nav aria-label="뉴스 페이지" className="flex flex-wrap items-center justify-between gap-2 border-t border-line px-5 py-2.5">
+      <span className="text-[calc(10px*var(--fs))] tabular-nums text-ink-3">
+        {total.toLocaleString("ko-KR")}건 중 {from.toLocaleString("ko-KR")}–{to.toLocaleString("ko-KR")}
+      </span>
+      <div className="flex items-center gap-0.5">
+        <button
+          type="button"
+          aria-label="이전 페이지"
+          className={cn(btn, "text-ink-2 hover:bg-white/[0.06] hover:text-ink")}
+          disabled={page <= 1}
+          onClick={() => onChange(page - 1)}
+        >
+          <ChevronLeft className="size-3.5" />
+        </button>
+        {pageList(page, pages).map((p, i) =>
+          p === "…" ? (
+            <span key={`gap${i}`} className="px-1 text-[calc(11px*var(--fs))] text-ink-3">
+              …
+            </span>
+          ) : (
+            <button
+              key={p}
+              type="button"
+              aria-current={p === page ? "page" : undefined}
+              className={cn(btn, p === page ? "bg-white/[0.12] text-ink" : "text-ink-2 hover:bg-white/[0.06] hover:text-ink")}
+              onClick={() => onChange(p)}
+            >
+              {p.toLocaleString("ko-KR")}
+            </button>
+          ),
+        )}
+        <button
+          type="button"
+          aria-label="다음 페이지"
+          className={cn(btn, "text-ink-2 hover:bg-white/[0.06] hover:text-ink")}
+          disabled={page >= pages}
+          onClick={() => onChange(page + 1)}
+        >
+          <ChevronRight className="size-3.5" />
+        </button>
+      </div>
+    </nav>
+  );
+}
+
+/** 예시 기사: 방향 정보가 없어 편향 지수 크기로만 */
+const mockFilter = (filter: Filter) => (bias: number | null) =>
+  filter === "right" || filter === "left"
+    ? bias != null && bias >= 60
     : filter === "neutral"
-      ? n.lean != null && Math.abs(n.lean) < BALANCED
+      ? bias != null && bias < 30
       : true;
 
-/** 예시 기사: 편향 지수 기준 */
-const mockFilter = (filter: Filter) => (bias: number | null) =>
-  filter === "high" ? bias != null && bias >= 60 : filter === "neutral" ? bias != null && bias < 30 : true;
+/** 분석됨 안의 세부 필터 */
+type SubFilter = Exclude<Filter, "all">;
+
+/** lean → "진보 30" · "0" · "보수 10" */
+const leanText = (v: number) => (v < 0 ? `진보 ${-v}` : v > 0 ? `보수 ${v}` : "0");
+
+/** 세부 필터 칩 (건수 포함). Segmented 와 같은 모양 */
+function SubChips({
+  value,
+  onChange,
+  options,
+}: {
+  value: SubFilter;
+  onChange: (v: SubFilter) => void;
+  options: { value: SubFilter; label: string; count?: number; title?: string }[];
+}) {
+  return (
+    <div role="radiogroup" aria-label="분석 기사 세부 필터" className="flex flex-wrap gap-1">
+      {options.map((o) => (
+        <button
+          key={o.value}
+          type="button"
+          role="radio"
+          aria-checked={value === o.value}
+          title={o.title}
+          onClick={() => onChange(o.value)}
+          className={cn(
+            "rounded-full border px-2.5 py-1 text-[calc(11px*var(--fs))] font-medium transition",
+            value === o.value
+              ? "border-white/20 bg-white/[0.12] text-ink"
+              : "border-line text-ink-3 hover:text-ink-2",
+          )}
+        >
+          {o.label}
+          {o.count != null && <span className="ml-1 tabular-nums text-ink-3">{o.count.toLocaleString("ko-KR")}</span>}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/** 편향 방향 수치(lean) 범위 슬라이더. 손을 떼거나 멈춘 뒤 0.3초 뒤에 반영 */
+function LeanRange({
+  value,
+  onChange,
+  count,
+}: {
+  value: [number, number];
+  onChange: (v: [number, number]) => void;
+  count?: number;
+}) {
+  const [draft, setDraft] = React.useState(value);
+  React.useEffect(() => setDraft(value), [value]);
+  React.useEffect(() => {
+    if (draft[0] === value[0] && draft[1] === value[1]) return;
+    const t = setTimeout(() => onChange(draft), 300);
+    return () => clearTimeout(t);
+  }, [draft, value, onChange]);
+  const pct = (v: number) => ((v + 100) / 200) * 100;
+  const thumb =
+    "pointer-events-none absolute inset-0 h-5 w-full appearance-none bg-transparent " +
+    "[&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:size-3.5 [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-canvas [&::-webkit-slider-thumb]:bg-ink " +
+    "[&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:size-3 [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-canvas [&::-moz-range-thumb]:bg-ink";
+  return (
+    <div className="rounded-lg border border-line px-3 py-2.5">
+      <div className="flex items-baseline justify-between text-[calc(11px*var(--fs))]">
+        <span className="font-semibold tabular-nums text-ink">
+          {leanText(draft[0])} ~ {leanText(draft[1])}
+        </span>
+        {count != null && <span className="tabular-nums text-ink-3">{count.toLocaleString("ko-KR")}건</span>}
+      </div>
+      <div className="relative mt-2 h-5">
+        <div className="absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 rounded-full bg-white/10" />
+        <div className="absolute top-1/2 h-px w-px -translate-y-1/2 bg-ink-3" style={{ left: "50%" }} />
+        <div
+          className="absolute top-1/2 h-1 -translate-y-1/2 rounded-full bg-lime/70"
+          style={{ left: `${pct(draft[0])}%`, right: `${100 - pct(draft[1])}%` }}
+        />
+        <input
+          type="range"
+          aria-label="최소 (진보 쪽)"
+          min={-100}
+          max={100}
+          step={5}
+          value={draft[0]}
+          onChange={(e) => setDraft([Math.min(Number(e.target.value), draft[1]), draft[1]])}
+          className={thumb}
+        />
+        <input
+          type="range"
+          aria-label="최대 (보수 쪽)"
+          min={-100}
+          max={100}
+          step={5}
+          value={draft[1]}
+          onChange={(e) => setDraft([draft[0], Math.max(Number(e.target.value), draft[0])])}
+          className={thumb}
+        />
+      </div>
+      <div className="mt-1 flex justify-between text-[calc(10px*var(--fs))] text-ink-3">
+        <span>← 진보 시각 100</span>
+        <span>0</span>
+        <span>보수 시각 100 →</span>
+      </div>
+    </div>
+  );
+}
 
 export function NewsPanel({
   aiMode,
@@ -390,42 +571,52 @@ export function NewsPanel({
   /** ↗ 누르면 뉴스 화면으로. 뉴스 화면 안에서는 넘기지 않아 아이콘이 사라짐 */
   onOpen?: () => void;
 }) {
-  const [filter, setFilter] = React.useState<Filter>("all");
+  // 위 줄: 전체 | 분석됨. 분석됨 안에서 진보 쪽·보수 쪽·균형·수치 범위로 세분화
+  const [mode, setMode] = React.useState<"all" | "analyzed">("all");
+  const [sub, setSub] = React.useState<SubFilter>("analyzed");
+  const [lean, setLean] = React.useState<[number, number]>([-100, 100]);
+  const filter: Filter = mode === "all" ? "all" : sub;
   // 기사 목록이 그대로여도 "○분 전"이 흘러가도록 1분마다 다시 그림
   const [, tick] = React.useReducer((x: number) => x + 1, 0);
   React.useEffect(() => {
     const t = setInterval(tick, 60_000);
     return () => clearInterval(t);
   }, []);
-  const { data: fetched, isLoading: newsLoading } = useNews(region, limit ?? 20);
-  // 분석된 기사는 최신 기사 목록에 안 들어 있을 수 있어 따로 받음 (분석·치우침·균형 탭과 "분석 전" 판단에 씀)
-  const { data: fetchedAnalyzed } = useNews(region, limit ?? 20, true);
-  // keepPreviousData 로 이전 지역 기사가 남아 있을 수 있어 지역이 맞는 것만
-  const inRegion = (list?: ApiNews[]) => (region ? list?.filter((n) => n.region_code === region) : list);
-  const regionNews = inRegion(fetched);
-  const analyzedNews = inRegion(fetchedAnalyzed);
+  // 전체 기사를 pageSize 씩 서버에서 잘라 받음. 필터·지역이 바뀌면 1페이지로
+  const pageSize = limit ?? 20;
+  const [page, setPage] = React.useState(1);
+  React.useEffect(() => setPage(1), [filter, region, lean]);
+  const listRef = React.useRef<HTMLDivElement>(null);
+  const goPage = (p: number) => {
+    setPage(p);
+    listRef.current?.scrollTo({ top: 0 });
+  };
+  const { data: paged, isLoading: newsLoading } = useNewsPage(region, filter, page, pageSize, lean);
+  // keepPreviousData 로 이전 지역·필터 결과가 잠깐 남을 수 있어, 지역이 맞는 것만
+  const pageItems = region ? paged?.items.filter((n) => n.region_code === region) : paged?.items;
+  const counts = paged?.counts;
   // 지역 기사가 0건일 때, 수집 자체가 안 된 건지(→ 가상 기사를 예시로) 그 지역만 없는 건지 구분용
   const { data: anyNews, isLoading: anyLoading } = useNews(undefined, 1);
-  const hasLive = !!anyNews?.length || !!regionNews?.length;
+  const hasLive = !!anyNews?.length || !!pageItems?.length;
   // 불러오는 동안에는 가상 기사를 잠깐이라도 보이지 않게 비워 둠
   const loading = !hasLive && (newsLoading || anyLoading);
   const isMock = !hasLive && !loading;
 
-  const live = (filter === "all" ? (regionNews ?? []) : (analyzedNews ?? [])).filter(liveFilter(filter));
-  const mock = isMock ? NEWS.filter((n) => mockFilter(filter)(n.bias)).slice(0, limit ?? NEWS.length) : [];
+  const live = pageItems ?? [];
+  const mock = isMock ? NEWS.filter((n) => mockFilter(filter)(n.bias)).slice(0, pageSize) : [];
   const count = hasLive ? live.length : mock.length;
-  const noAnalysis = hasLive && fetchedAnalyzed != null && !analyzedNews?.length;
+  const noAnalysis = hasLive && counts != null && counts.analyzed === 0;
   React.useEffect(() => {
-    if (noAnalysis) setFilter("all");
+    if (noAnalysis) setMode("all");
   }, [noAnalysis]);
 
-  const judged = (analyzedNews ?? []).filter((n) => n.lean != null);
+  const num = (v: number) => v.toLocaleString("ko-KR");
   const mockBias = NEWS.filter((n) => n.bias != null).map((n) => n.bias!);
   const avgMock = mockBias.length ? `${Math.round(mockBias.reduce((a, b) => a + b, 0) / mockBias.length)}%` : "분석 전";
   const subtitle = hasLive
-    ? `${region ? `${REGION_BY_CODE[region]?.short} ` : ""}수집 ${regionNews?.length ?? 0}건 · ${
-        judged.length
-          ? `편향 분석 ${analyzedNews?.length}건 (균형 ${judged.filter((n) => Math.abs(n.lean!) < BALANCED).length}건)`
+    ? `${region ? `${REGION_BY_CODE[region]?.short} ` : ""}수집 ${num(counts?.total ?? 0)}건 · ${
+        counts?.analyzed
+          ? `편향 분석 ${num(counts.analyzed)}건`
           : "편향 분석 전"
       }`
     : loading
@@ -447,25 +638,49 @@ export function NewsPanel({
         }
       />
       <div className="flex items-center justify-between px-5 pt-3">
-        <Segmented<Filter>
-          value={filter}
-          onChange={setFilter}
+        <Segmented<"all" | "analyzed">
+          value={mode}
+          onChange={setMode}
           options={[
             { value: "all", label: "전체" },
             // 분석된 기사가 하나도 없으면 준비 중 (예시 기사에서는 동작)
             { value: "analyzed", label: "분석됨", soon: noAnalysis },
-            { value: "high", label: "치우침", soon: noAnalysis },
-            { value: "neutral", label: "균형", soon: noAnalysis },
           ]}
         />
-        <span className="text-[10px] text-ink-3">용어에 마우스를 올려보세요</span>
+        <span className="text-[calc(10px*var(--fs))] text-ink-3">용어에 마우스를 올려보세요</span>
       </div>
-      <div className="mt-3 flex-1 space-y-2.5 overflow-y-auto px-5 pb-5 scroll-thin">
+      {mode === "analyzed" && (
+        <div className="space-y-2 px-5 pt-2">
+          <SubChips
+            value={sub}
+            onChange={setSub}
+            options={[
+              { value: "analyzed", label: "전체 분석", count: counts?.analyzed },
+              { value: "left", label: "진보 쪽 치우침", count: counts?.left, title: "진보 시각 40 이상" },
+              { value: "right", label: "보수 쪽 치우침", count: counts?.right, title: "보수 시각 40 이상" },
+              { value: "neutral", label: "균형", count: counts?.neutral, title: "어느 쪽으로도 15 미만" },
+              { value: "range", label: "수치 지정", title: "진보 100 ~ 보수 100 사이에서 범위를 고름" },
+            ]}
+          />
+          {sub === "range" && <LeanRange value={lean} onChange={setLean} count={counts?.range} />}
+        </div>
+      )}
+      <div ref={listRef} className="mt-3 min-h-0 flex-1 space-y-2.5 overflow-y-auto px-5 pb-3 scroll-thin">
         {hasLive
           ? live.map((n) => <LiveNewsCard key={n.id} item={n} />)
           : mock.map((n) => <NewsCard key={n.id} item={n} aiMode={aiMode} />)}
         {count === 0 && !loading && <p className="py-8 text-center text-xs text-ink-3">해당 조건의 뉴스가 없습니다.</p>}
       </div>
+      {hasLive && paged && paged.total > 0 && (
+        <Pager
+          page={paged.page}
+          pages={paged.pages}
+          from={(paged.page - 1) * paged.pageSize + 1}
+          to={Math.min(paged.page * paged.pageSize, paged.total)}
+          total={paged.total}
+          onChange={goPage}
+        />
+      )}
     </Card>
   );
 }

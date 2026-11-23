@@ -17,6 +17,7 @@ import { useComments, useRegion, useRegions, useStats, type ApiComment, type Api
 import { SHOW_EXAMPLE_CARDS } from "@/lib/flags";
 import { DashboardHeader, type TabKey } from "./header";
 import { SideRail } from "./side-rail";
+import { Toaster } from "@/components/ui/toaster";
 import { FlipCounter } from "./flip-counter";
 import { KoreaMapCard } from "./korea-map-card";
 import { NewsPanel, timeAgo } from "./news-panel";
@@ -34,8 +35,12 @@ const TODAY = new Intl.DateTimeFormat("ko-KR", { year: "numeric", month: "long",
 
 const NO_AI = "AI 분석 후 표시";
 const NO_DATA = "공식 데이터 없음";
-/** 평균 편향 지수 = 기사별 치우침 크기(|lean|, 0~100) 평균. 진보·보수 방향은 나누지 않음 */
-const BIAS_CAPTION = "/100 · 방향 없이 치우친 정도";
+/**
+ * 평균 편향 지수 = 기사별 치우침 크기(|lean|, 0~100) 평균. 진보·보수 방향은 나누지 않음.
+ * 몇 건의 평균인지(현재 분석 버전으로 판단한 기사 수)를 함께 보여 줘 표본 크기를 알 수 있게 함
+ */
+const biasCaption = (s: ApiStats | null) =>
+  s?.avg_bias == null ? NO_AI : `/100 · 기사 ${s.bias_judged.toLocaleString("ko-KR")}건 평균 · 방향 없이 치우친 정도`;
 
 const isToday = (iso: string) => new Date(iso).toDateString() === new Date().toDateString();
 
@@ -81,9 +86,10 @@ function useHeadline(
         desc: "직접 만든 수집기로 모은 기사의 제목·요약·원문 링크를 보여줍니다. AI 편향 분석을 마친 기사에는 진보↔보수 치우침과 그 근거 문장을 함께 보여줍니다.",
         kpis: [
           { label: "오늘 수집 기사", value: s?.news_24h ?? null, caption: "최근 24시간", accent: true },
-          { label: "뉴스 출처", value: s?.sources_7d ?? null, caption: "최근 7일 · 언론사" },
+          // 기사 주소의 도메인 수를 셈(수집 API 가 언론사명을 주지 않음) → '언론사'가 아니라 '사이트'
+          { label: "뉴스 출처", value: s?.sources_7d ?? null, caption: "최근 7일 · 기사를 낸 사이트" },
           { label: "AI 분석 기사", value: s?.analyzed ?? null, caption: "건 · 근거 문장과 함께" },
-          { label: "평균 편향 지수", value: s?.avg_bias ?? null, caption: s?.avg_bias == null ? NO_AI : BIAS_CAPTION },
+          { label: "평균 편향 지수", value: s?.avg_bias ?? null, caption: biasCaption(s) },
         ],
       };
     case "politicians":
@@ -120,7 +126,7 @@ function useHeadline(
         kpis: [
           { label: "추적 중인 의원", value: s?.members ?? null, caption: "제22대 국회 전원" },
           { label: "오늘 수집 기사", value: s?.news_24h ?? null, caption: "최근 24시간", accent: true },
-          { label: "평균 편향 지수", value: s?.avg_bias ?? null, caption: s?.avg_bias == null ? NO_AI : BIAS_CAPTION },
+          { label: "평균 편향 지수", value: s?.avg_bias ?? null, caption: biasCaption(s) },
         ],
       };
   }
@@ -195,7 +201,7 @@ export default function PoliticalMichelinDashboard() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -8 }}
                   transition={{ duration: 0.25 }}
-                  className="mt-1.5 text-3xl font-semibold leading-[1.1] tracking-tight sm:text-[40px]"
+                  className="mt-1.5 text-3xl font-semibold leading-[1.1] tracking-tight sm:text-[calc(40px*var(--fs))]"
                 >
                   {head.title[0]}
                   <br className="hidden sm:block" /> <span className="text-ink-2">{head.title[1]}</span>
@@ -307,7 +313,7 @@ export default function PoliticalMichelinDashboard() {
             </motion.div>
           </AnimatePresence>
 
-          <footer className="mt-8 flex flex-col gap-2 border-t border-line pt-5 text-[11px] text-ink-3 sm:flex-row sm:justify-between sm:gap-8">
+          <footer className="mt-8 flex flex-col gap-2 border-t border-line pt-5 text-[calc(11px*var(--fs))] text-ink-3 sm:flex-row sm:justify-between sm:gap-8">
             <p className="max-w-3xl">
               의원·법안·표결(국회), 선거 결과·공약(선관위), 지역 지표(통계청), 정치 뉴스를 팀이 만든 수집기로 모아 정리했습니다. 의원 별점에는
               정당·이념 변수를 넣지 않습니다. 점선 테두리와 &quot;예시 데이터&quot; 띠는 데이터를 불러오지 못했을 때 대신 보이는 가상 데이터입니다.
@@ -318,6 +324,7 @@ export default function PoliticalMichelinDashboard() {
       </div>
 
       <PoliticianDetailSheet monaCd={detailId} onClose={() => setDetailId(null)} />
+      <Toaster />
     </div>
   );
 }

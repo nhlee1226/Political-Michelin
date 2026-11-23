@@ -440,43 +440,6 @@ export const HEADLINE_KPIS = {
 
 /* ───────────────────────── Side rail (빠른 메뉴) ───────────────────────── */
 
-export interface ScheduleItem {
-  id: string;
-  date: string; // YYYY-MM-DD
-  title: string;
-  kind: "국회" | "선거" | "정책";
-  place: string;
-}
-
-/** 선거·국회 일정 (가상) */
-export const SCHEDULE: ScheduleItem[] = [
-  { id: "s1", date: "2026-11-04", title: "예산결산특별위원회 종합정책질의", kind: "국회", place: "국회 예결위 회의장" },
-  { id: "s2", date: "2026-11-06", title: "반도체 특별법 본회의 표결", kind: "국회", place: "국회 본회의장" },
-  { id: "s3", date: "2026-11-12", title: "선거구획정위원회 공청회", kind: "선거", place: "중앙선거관리위원회" },
-  { id: "s4", date: "2026-11-20", title: "2차 추경 편성안 발표", kind: "정책", place: "기획재정부" },
-  { id: "s5", date: "2026-12-02", title: "내년도 예산안 법정 처리 시한", kind: "국회", place: "국회 본회의장" },
-  { id: "s6", date: "2026-12-09", title: "정기국회 폐회", kind: "국회", place: "국회" },
-];
-
-export const BILL_STAGES = ["발의", "위원회", "본회의", "공포"] as const;
-
-export interface Bill {
-  id: string;
-  title: string;
-  proposer: string; // 대표 발의 (가상)
-  stage: 0 | 1 | 2 | 3; // BILL_STAGES index
-  updated: string;
-}
-
-/** 법안 추적 (가상) */
-export const BILLS: Bill[] = [
-  { id: "b1", title: "반도체산업 경쟁력 강화 특별법안", proposer: "한도윤 의원 외 12인", stage: 2, updated: "10/28 상임위 통과" },
-  { id: "b2", title: "공공주택 특별법 일부개정법률안", proposer: "서지안 의원 외 10인", stage: 1, updated: "10/30 소위 회부" },
-  { id: "b3", title: "지방소멸 대응 기금법 일부개정안", proposer: "국하린 의원 외 15인", stage: 1, updated: "11/1 공청회" },
-  { id: "b4", title: "광역교통 개선 특별법 일부개정안", proposer: "노지우 의원 외 9인", stage: 3, updated: "10/15 공포" },
-  { id: "b5", title: "해상풍력 계획입지법안", proposer: "고은채 의원 외 11인", stage: 0, updated: "11/2 발의" },
-];
-
 export interface PledgeDoc {
   id: string;
   title: string;

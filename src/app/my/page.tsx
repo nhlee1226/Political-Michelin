@@ -88,17 +88,17 @@ export default async function MyPage() {
                     <li key={p.id}>
                       <div className="flex items-center gap-3 rounded-xl border border-line bg-white/[0.03] p-3">
                         <span
-                          className="grid size-9 shrink-0 place-items-center rounded-full border-2 text-[11px] font-semibold"
+                          className="grid size-9 shrink-0 place-items-center rounded-full border-2 text-[calc(11px*var(--fs))] font-semibold"
                           style={{ borderColor: p.partyColor, background: `${p.partyColor}22` }}
                         >
                           {p.name.slice(-2)}
                         </span>
                         <div className="min-w-0 flex-1">
-                          <p className="flex items-center gap-1.5 text-[13px] font-semibold">
+                          <p className="flex items-center gap-1.5 text-[calc(13px*var(--fs))] font-semibold">
                             {p.name}
                             {/* 별점 데이터는 /api/politicians 에 있어 여기선 생략 */}
                           </p>
-                          <p className="truncate text-[11px] text-ink-3">
+                          <p className="truncate text-[calc(11px*var(--fs))] text-ink-3">
                             {p.partyName ?? "—"} · {p.district ?? "—"}
                           </p>
                         </div>
@@ -134,10 +134,10 @@ export default async function MyPage() {
                         className="group flex items-start gap-3 rounded-xl border border-line bg-white/[0.03] p-3 transition hover:border-white/15"
                       >
                         <div className="min-w-0 flex-1">
-                          <p className="text-[11px] text-ink-3">
+                          <p className="text-[calc(11px*var(--fs))] text-ink-3">
                             {n.source} · {n.time} · {n.category}
                           </p>
-                          <p className="mt-0.5 text-[13px] leading-snug">
+                          <p className="mt-0.5 text-[calc(13px*var(--fs))] leading-snug">
                             {stripTerms(n.objectiveHeadline ?? n.headline)}
                           </p>
                         </div>
@@ -151,7 +151,7 @@ export default async function MyPage() {
           </Card>
         </div>
 
-        <p className="mt-6 text-center text-[11px] text-ink-3">
+        <p className="mt-6 text-center text-[calc(11px*var(--fs))] text-ink-3">
           북마크·관심 지역·즐겨찾기는 계정에 저장되어 어느 기기에서나 같이 보입니다.
         </p>
       </div>
@@ -164,7 +164,7 @@ function EmptyState({ icon, text }: { icon: ReactNode; text: string }) {
     <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-line px-3 py-6 text-center">
       <span className="text-ink-3">{icon}</span>
       <p className="text-xs text-ink-3">{text}</p>
-      <Link href="/" className="text-[11px] font-semibold text-lime hover:underline">
+      <Link href="/" className="text-[calc(11px*var(--fs))] font-semibold text-lime hover:underline">
         대시보드에서 추가하기
       </Link>
     </div>

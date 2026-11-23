@@ -62,10 +62,10 @@ function Term({ term }: { term: string }) {
               animation: "feed-in 0.18s ease-out",
             }}
           >
-            <span className="mb-1 flex items-center gap-1 text-[11px] font-semibold text-cyan">
+            <span className="mb-1 flex items-center gap-1 text-[calc(11px*var(--fs))] font-semibold text-cyan">
               <Sparkles className="size-3" /> AI 정치 용어 해설
             </span>
-            <span className="block text-[13px] font-semibold text-ink">{term}</span>
+            <span className="block text-[calc(13px*var(--fs))] font-semibold text-ink">{term}</span>
             <span className="mt-1 block text-xs font-normal leading-relaxed text-ink-2">{desc}</span>
           </span>,
           document.body,

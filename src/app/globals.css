@@ -32,10 +32,31 @@
   --color-party-c: #5f6874;
   --color-party-etc: #6b7280;
 
+  /* 글자 크기: 설정의 '글자 크기' 배율(--fs)을 곱함. 줄 간격 비율은 Tailwind 기본 그대로 */
+  --text-xs: calc(0.75rem * var(--fs, 1));
+  --text-sm: calc(0.875rem * var(--fs, 1));
+  --text-base: calc(1rem * var(--fs, 1));
+  --text-lg: calc(1.125rem * var(--fs, 1));
+  --text-xl: calc(1.25rem * var(--fs, 1));
+  --text-2xl: calc(1.5rem * var(--fs, 1));
+  --text-3xl: calc(1.875rem * var(--fs, 1));
+  --text-4xl: calc(2.25rem * var(--fs, 1));
+
   --animate-flip: flip 0.5s cubic-bezier(0.3, 0.7, 0.3, 1);
   --animate-pulse-ring: pulse-ring 2.2s ease-out infinite;
   --animate-feed-in: feed-in 0.5s ease-out;
 }
+
+/* ── 글자 크기 설정 (빠른 메뉴 → 설정 → 글자 크기, src/lib/font-size.ts) ──
+   브라우저 확대와 달리 글자만 배율을 곱하고 간격·상자 크기는 그대로 둔다.
+   글자 크기 클래스는 text-xs 같은 이름 있는 크기(위 @theme)와 text-[calc(11px*var(--fs))] 같은 직접 크기 두 가지. */
+:root { --fs: 1; }
+html[data-font-size="sm"] { --fs: 0.92; }
+html[data-font-size="lg"] { --fs: 1.12; }
+html[data-font-size="xl"] { --fs: 1.25; }
+/* 차트 눈금 글자 (Recharts 가 font-size 속성으로 넣음 → CSS 로 같은 크기에 배율만 곱함) */
+.recharts-text[font-size="10"] { font-size: calc(10px * var(--fs, 1)); }
+.recharts-text[font-size="11"] { font-size: calc(11px * var(--fs, 1)); }
 
 /* 차트·SVG 용 테마 변수 (Recharts 속성에 var() 로 전달) */
 :root {
@@ -58,6 +79,9 @@
   --glass-border: rgb(255 255 255 / 0.1);
   --glass-highlight: rgb(255 255 255 / 0.08);
   --glass-shadow: rgb(0 0 0 / 0.55);
+
+  --skel: rgb(255 255 255 / 0.06);
+  --skel-shine: rgb(255 255 255 / 0.08);
 }
 
 /* ── 라이트 모드: 같은 토큰 이름에 밝은 값을 넣어 컴포넌트 수정 없이 전환 ──
@@ -103,6 +127,23 @@ html[data-theme="light"] {
   --glass-border: rgb(255 255 255 / 0.75);
   --glass-highlight: rgb(255 255 255 / 0.9);
   --glass-shadow: rgb(30 41 59 / 0.18);
+
+  --skel: rgb(30 38 51 / 0.07);
+  --skel-shine: rgb(255 255 255 / 0.7);
+}
+
+/* 스켈레톤 로딩: 데이터를 기다리는 동안 화면 모양대로 회색 뼈대 (primitives.tsx 의 Skeleton) */
+.pm-skel { position: relative; overflow: hidden; background: var(--skel); }
+.pm-skel::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, var(--skel-shine), transparent);
+  animation: pm-shimmer 1.4s ease-in-out infinite;
+}
+@keyframes pm-shimmer {
+  to { transform: translateX(100%); }
 }
 
 @keyframes flip {
@@ -141,6 +182,7 @@ html[data-theme="light"] {
 html { color-scheme: dark; }
 body { transition: background-color 0.3s, color 0.3s; }
 body {
+  font-size: calc(1rem * var(--fs, 1));
   background: var(--color-canvas);
   color: var(--color-ink);
   font-family: var(--font-sans);
@@ -206,7 +248,7 @@ body {
   justify-content: center;
   gap: 6px;
   padding: 4px 12px;
-  font-size: 11px;
+  font-size: calc(11px * var(--fs, 1));
   font-weight: 700;
   letter-spacing: 0.02em;
   white-space: nowrap;
@@ -227,4 +269,5 @@ body {
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
   .pm-ghost { display: none; }
   .pm-wiggle, .pm-caret { animation: none; }
+  .pm-skel::after { animation: none; }
 }
