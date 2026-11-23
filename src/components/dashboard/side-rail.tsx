@@ -1,8 +1,12 @@
 "use client";
 
 /**
- * SideRail — 좌측 빠른 메뉴 (lg 이상에서만 표시)
+ * SideRail — 좌측 빠른 메뉴 (모든 화면 폭에서 표시)
  * ------------------------------------------------------------------
+ *  · lg(1024px) 이상: 본문 왼쪽에 붙은 세로 레일 + 오른쪽으로 열리는 패널
+ *  · lg 미만(창을 줄였을 때·배율 높을 때·태블릿·휴대폰): 왼쪽 아래 떠 있는 버튼 하나.
+ *    누르면 그 위로 레일이 펼쳐지고, 메뉴를 고르면 패널이 화면 폭에 맞춰 아래쪽에 열림
+ *  · 화면 높이가 낮으면(600px 이하) 레일이 세로로 스크롤됨 → 아이콘이 잘리지 않음
  * 아이콘을 누르면 오른쪽으로 플라이아웃 패널이 열리고, 패널 머리말에 그 메뉴의 역할을 한 줄로 설명한다.
  *  관심 지역 · 즐겨찾는 정치인 · 국회 일정 · 법안 추적 · 공약 문서 · 저장한 뉴스
  *  (국회 일정·법안 처리 단계는 열린국회정보를 하루 1번 자동 수집한 실제 데이터)
@@ -22,6 +26,7 @@ import {
   Gavel,
   HelpCircle,
   MapPin,
+  Menu,
   Moon,
   Plus,
   Search,
@@ -909,7 +914,13 @@ export function SideRail({
   onOpenPolitician: (monaCd: string) => void;
 }) {
   const [open, setOpen] = React.useState<PanelKey | null>(null);
+  // lg 미만에서 떠 있는 버튼으로 레일을 펼쳤는지 (lg 이상에서는 쓰지 않음 — 레일이 늘 보임)
+  const [railOpen, setRailOpen] = React.useState(false);
   const rootRef = React.useRef<HTMLDivElement>(null);
+  const closeAll = () => {
+    setOpen(null);
+    setRailOpen(false);
+  };
 
   // 로그인 시 DB, 비로그인 시 localStorage (추적 법안은 항상 이 브라우저의 localStorage)
   const [interests, toggleInterest] = useSyncedSet("pm-interest-regions", ["11", "31"], "region");
@@ -937,27 +948,35 @@ export function SideRail({
     withToast("toggleFollow", id, name?.replace(/ 일부개정법률안$/, " 개정안"), followed.has(id) ? "추적을 그만뒀어요" : "추적을 시작했어요");
   const onSave = (id: string) => withToast("toggleSaved", id, undefined, saved.has(id) ? "저장한 기사에서 뺐어요" : "기사를 저장했어요");
 
-  // 바깥 클릭 · Esc 로 닫기
+  // 바깥 클릭 → 패널·펼친 레일 모두 닫기. Esc → 패널이 열려 있으면 패널만, 아니면 펼친 레일 닫기
   React.useEffect(() => {
-    if (!open) return;
+    if (!open && !railOpen) return;
     const onDown = (e: PointerEvent) => {
       const el = e.target as Element;
       // 알림의 "되돌리기"를 눌러도 패널은 열어 둠
       if (el.closest?.("[data-toast]")) return;
-      if (!rootRef.current?.contains(el)) setOpen(null);
+      if (!rootRef.current?.contains(el)) {
+        setOpen(null);
+        setRailOpen(false);
+      }
     };
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(null);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      if (open) setOpen(null);
+      else setRailOpen(false);
+    };
     document.addEventListener("pointerdown", onDown);
     document.addEventListener("keydown", onKey);
     return () => {
       document.removeEventListener("pointerdown", onDown);
       document.removeEventListener("keydown", onKey);
     };
-  }, [open]);
+  }, [open, railOpen]);
 
+  // 지역·정치인으로 이동할 때는 (좁은 화면에서 펼친 레일까지) 모두 닫아 본문이 보이게
   const goRegion = (code: string) => {
     onSelectRegion(code);
-    setOpen(null);
+    closeAll();
   };
   const toggle = (k: PanelKey) => setOpen((o) => (o === k ? null : k));
   const { data: schedule } = useSchedule();
@@ -978,8 +997,38 @@ export function SideRail({
   const panel = ALL_PANELS.find((p) => p.key === open);
 
   return (
-    <div ref={rootRef} className="sticky top-[84px] z-30 hidden h-fit shrink-0 lg:block">
-      <nav aria-label="빠른 메뉴" className="glass flex w-12 flex-col items-center gap-1 rounded-full py-3">
+    <div
+      ref={rootRef}
+      className={cn(
+        "h-fit shrink-0",
+        // lg 이상: 본문 왼쪽에 붙어 스크롤을 따라옴 / lg 미만: 왼쪽 아래에 떠 있음 (본문 폭을 차지하지 않음)
+        "lg:sticky lg:top-[84px] lg:z-30",
+        "max-lg:fixed max-lg:bottom-[calc(16px+env(safe-area-inset-bottom,0px))] max-lg:left-4 max-lg:z-40",
+      )}
+    >
+      {/* lg 미만에서만: 레일을 펼치고 접는 떠 있는 버튼. 패널이 열려 있으면 X 로 모두 닫음 */}
+      <button
+        onClick={() => (open || railOpen ? closeAll() : setRailOpen(true))}
+        aria-label={open || railOpen ? "빠른 메뉴 닫기" : "빠른 메뉴 열기"}
+        aria-expanded={railOpen || !!open}
+        className="grid size-12 place-items-center rounded-full bg-lime text-canvas shadow-[0_8px_24px_-6px_rgb(0_0_0/0.6),0_0_24px_-6px_rgb(201_228_107/0.6)] transition active:scale-95 lg:hidden"
+      >
+        {open || railOpen ? <X className="size-5" /> : <Menu className="size-5" />}
+      </button>
+
+      <nav
+        aria-label="빠른 메뉴"
+        className={cn(
+          "flex w-12 flex-col items-center gap-1 rounded-full py-3 [&>*]:shrink-0",
+          // 떠 있는 버튼으로 펼친 레일(lg 미만)은 본문 위에 겹치므로 불투명 배경으로 — 지도 위에서도 아이콘이 잘 보이게
+          railOpen ? "glass-overlay" : "glass",
+          // 화면 높이가 낮으면 레일 안에서 세로 스크롤 (아이콘이 화면 밖으로 잘리지 않게)
+          "lg:max-h-[calc(100dvh-100px)] scroll-thin [@media(max-height:600px)]:overflow-y-auto [@media(max-height:600px)]:rounded-3xl",
+          // lg 미만: 떠 있는 버튼 바로 위로 펼침. 패널을 보는 동안은 숨겨서 패널이 화면 폭을 다 씀
+          "max-lg:absolute max-lg:bottom-[calc(100%+10px)] max-lg:left-0 max-lg:max-h-[calc(100dvh-100px-env(safe-area-inset-bottom,0px))]",
+          (!railOpen || !!open) && "max-lg:hidden",
+        )}
+      >
         {MENU.map((m) => (
           <RailButton key={m.key} icon={m.icon} label={m.label} active={open === m.key} count={counts[m.key]} onClick={() => toggle(m.key)} />
         ))}
@@ -1001,7 +1050,13 @@ export function SideRail({
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -8 }}
             transition={{ duration: 0.18 }}
-            className="glass-overlay absolute left-[calc(100%+12px)] top-0 flex max-h-[calc(100dvh-110px)] max-w-[calc(100vw-96px)] flex-col rounded-2xl"
+            className={cn(
+              "glass-overlay flex flex-col rounded-2xl",
+              // lg 이상: 레일 오른쪽에 붙어서 열림
+              "lg:absolute lg:left-[calc(100%+12px)] lg:top-0 lg:max-h-[calc(100dvh-110px)] lg:max-w-[calc(100vw-96px)]",
+              // lg 미만: 떠 있는 버튼 위, 좌우 12px 여백으로 화면 폭에 맞춤 (정해진 패널 폭은 무시)
+              "max-lg:fixed max-lg:inset-x-3 max-lg:bottom-[calc(76px+env(safe-area-inset-bottom,0px))] max-lg:max-h-[calc(100dvh-100px-env(safe-area-inset-bottom,0px))] max-lg:w-auto!",
+            )}
             style={{ width: `calc(${panel.width}px * var(--fs, 1))` }}
           >
             <header className="flex items-start gap-3 border-b border-line p-4">
@@ -1028,7 +1083,7 @@ export function SideRail({
                   toggle={onFavorite}
                   onOpenPolitician={(id) => {
                     onOpenPolitician(id);
-                    setOpen(null);
+                    closeAll();
                   }}
                 />
               )}
