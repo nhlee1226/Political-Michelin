@@ -10,12 +10,36 @@
  */
 import * as React from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowUpRight, ChevronDown, ChevronLeft, ChevronRight, Newspaper, ScanSearch, Sparkles, Undo2 } from "lucide-react";
+import {
+  ArrowUpRight,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  MessageCircle,
+  Newspaper,
+  ScanSearch,
+  Sparkles,
+  ThumbsDown,
+  ThumbsUp,
+  Undo2,
+} from "lucide-react";
 import { NEWS, REGION_BY_CODE, type NewsItem } from "@/lib/mock-data";
-import { useNews, useNewsPage, type ApiEvidence, type ApiNews, type NewsFilter } from "@/lib/api";
+import {
+  reactNews,
+  useNews,
+  useNewsPage,
+  useNewsSocial,
+  useUser,
+  type ApiEvidence,
+  type ApiNews,
+  type ApiNewsSocial,
+  type NewsFilter,
+} from "@/lib/api";
+import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { Badge, Card, CardHeader, IconButton, Segmented } from "@/components/ui/primitives";
 import { GlossaryText } from "./glossary-text";
+import { CommentThread } from "./community-feed";
 
 /** 이보다 |lean| 이 작으면 '균형', 이 이상이면 '치우침' */
 const BALANCED = 15;
@@ -274,9 +298,56 @@ export function plainText(html: string | null) {
     .trim();
 }
 
-/** 실제 기사 카드: 제목·출처·시간·요약 + 진보↔보수 막대와 근거. 본문은 싣지 않고 원문 링크로 보냄 */
-function LiveNewsCard({ item }: { item: ApiNews }) {
+/** 좋아요·싫어요 버튼 하나 (누른 쪽은 색이 채워짐) */
+function ReactionButton({
+  kind,
+  count,
+  active,
+  onClick,
+}: {
+  kind: "like" | "dislike";
+  count: number;
+  active: boolean;
+  onClick: () => void;
+}) {
+  const Icon = kind === "like" ? ThumbsUp : ThumbsDown;
+  const label = kind === "like" ? "좋아요" : "싫어요";
+  return (
+    <button
+      onClick={onClick}
+      aria-pressed={active}
+      aria-label={`${label} ${count}개${active ? " (누름)" : ""}`}
+      title={active ? `${label} 취소` : label}
+      className={cn(
+        "flex items-center gap-1 rounded-full border px-2.5 py-1 text-[calc(11px*var(--fs))] font-semibold tabular transition active:scale-95",
+        active
+          ? kind === "like"
+            ? "border-lime/40 bg-lime/15 text-lime"
+            : "border-bad/40 bg-bad/15 text-bad"
+          : "border-line text-ink-3 hover:text-ink",
+      )}
+    >
+      <Icon className={cn("size-3", active && "fill-current")} />
+      {count.toLocaleString("ko-KR")}
+    </button>
+  );
+}
+
+/** 실제 기사 카드: 제목·출처·시간·요약 + 진보↔보수 막대와 근거 + 좋아요/싫어요 + 댓글 탭. 본문은 싣지 않고 원문 링크로 보냄 */
+function LiveNewsCard({
+  item,
+  social,
+  onReact,
+  onCommentsChanged,
+}: {
+  item: ApiNews;
+  /** 댓글 수·좋아요/싫어요 수 (불러오기 전이면 undefined) */
+  social?: ApiNewsSocial;
+  onReact?: (value: 1 | -1) => void;
+  onCommentsChanged?: () => void;
+}) {
   const [open, setOpen] = React.useState(false);
+  const [commentsOpen, setCommentsOpen] = React.useState(false);
   const summary = plainText(item.summary);
   const lean = item.lean;
   const t = lean != null ? leanTone(lean) : null;
@@ -357,6 +428,57 @@ function LiveNewsCard({ item }: { item: ApiNews }) {
           )}
         </AnimatePresence>
       </div>
+
+      {/* 독자 반응: 좋아요·싫어요 + 댓글 탭 (탭 옆 숫자 = 댓글 수, 누르면 아래로 펼침) */}
+      <div className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-line pt-3">
+        {social && social.likes != null && social.dislikes != null && (
+          <>
+            <ReactionButton kind="like" count={social.likes} active={social.mine === 1} onClick={() => onReact?.(1)} />
+            <ReactionButton kind="dislike" count={social.dislikes} active={social.mine === -1} onClick={() => onReact?.(-1)} />
+          </>
+        )}
+        <button
+          onClick={() => setCommentsOpen((o) => !o)}
+          aria-expanded={commentsOpen}
+          className={cn(
+            "ml-auto flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[calc(11px*var(--fs))] font-semibold transition",
+            commentsOpen ? "border-lime/40 bg-lime/10 text-ink" : "border-line text-ink-2 hover:text-ink",
+          )}
+        >
+          <MessageCircle className="size-3" />
+          댓글
+          <span
+            className={cn(
+              "grid h-4 min-w-4 place-items-center rounded-full px-1 text-[calc(10px*var(--fs))] tabular",
+              commentsOpen ? "bg-lime text-canvas" : "bg-white/[0.08] text-ink-2",
+            )}
+          >
+            {social ? social.comments.toLocaleString("ko-KR") : "·"}
+          </span>
+          <ChevronDown className={cn("size-3 transition-transform", commentsOpen && "rotate-180")} />
+        </button>
+      </div>
+
+      <AnimatePresence initial={false}>
+        {commentsOpen && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="overflow-hidden"
+          >
+            <div className="pt-3">
+              <CommentThread
+                targetType="news"
+                targetId={item.id}
+                placeholder="이 기사에 대한 의견을 남겨주세요 (AI 모더레이션 적용)"
+                onChanged={onCommentsChanged}
+              />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </article>
   );
 }
@@ -603,6 +725,33 @@ export function NewsPanel({
   const isMock = !hasLive && !loading;
 
   const live = pageItems ?? [];
+  // 이 페이지 기사들의 댓글 수·좋아요/싫어요 수를 한 번에
+  const { data: social, mutate: mutateSocial } = useNewsSocial(hasLive ? live.map((n) => n.id) : []);
+  const { data: user } = useUser();
+  const react = async (id: string, value: 1 | -1) => {
+    const cur = social?.[id];
+    if (!cur || cur.likes == null || cur.dislikes == null) return;
+    if (!user) {
+      toast({ message: "로그인하면 좋아요·싫어요를 누를 수 있어요" });
+      return;
+    }
+    // 같은 쪽을 다시 누르면 취소, 반대쪽을 누르면 바꿈 — 화면은 먼저 바꾸고 서버 결과로 맞춤
+    const next = cur.mine === value ? 0 : value;
+    const optimistic: ApiNewsSocial = {
+      ...cur,
+      likes: cur.likes - (cur.mine === 1 ? 1 : 0) + (next === 1 ? 1 : 0),
+      dislikes: cur.dislikes - (cur.mine === -1 ? 1 : 0) + (next === -1 ? 1 : 0),
+      mine: next,
+    };
+    await mutateSocial((prev) => (prev ? { ...prev, [id]: optimistic } : prev), { revalidate: false });
+    const res = await reactNews(id, next);
+    if ("error" in res) {
+      toast({ message: res.error });
+      await mutateSocial();
+      return;
+    }
+    await mutateSocial((prev) => (prev ? { ...prev, [id]: res } : prev), { revalidate: false });
+  };
   const mock = isMock ? NEWS.filter((n) => mockFilter(filter)(n.bias)).slice(0, pageSize) : [];
   const count = hasLive ? live.length : mock.length;
   const noAnalysis = hasLive && counts != null && counts.analyzed === 0;
@@ -667,7 +816,15 @@ export function NewsPanel({
       )}
       <div ref={listRef} className="mt-3 min-h-0 flex-1 space-y-2.5 overflow-y-auto px-5 pb-3 scroll-thin">
         {hasLive
-          ? live.map((n) => <LiveNewsCard key={n.id} item={n} />)
+          ? live.map((n) => (
+              <LiveNewsCard
+                key={n.id}
+                item={n}
+                social={social?.[n.id]}
+                onReact={(v) => react(n.id, v)}
+                onCommentsChanged={() => mutateSocial()}
+              />
+            ))
           : mock.map((n) => <NewsCard key={n.id} item={n} aiMode={aiMode} />)}
         {count === 0 && !loading && <p className="py-8 text-center text-xs text-ink-3">해당 조건의 뉴스가 없습니다.</p>}
       </div>

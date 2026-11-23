@@ -463,6 +463,35 @@ export async function deleteComment(id: string): Promise<{ ok: boolean; error?: 
   return { ok: true };
 }
 
+/* ── 뉴스 댓글 수 · 좋아요/싫어요 ─────────────────────── */
+export interface ApiNewsSocial {
+  comments: number;
+  /** 좋아요 표가 아직 없으면 null → 버튼을 숨김 */
+  likes: number | null;
+  dislikes: number | null;
+  /** 1 좋아요 · -1 싫어요 · 0 안 누름 */
+  mine: -1 | 0 | 1;
+}
+
+/** 뉴스 리포트 한 페이지 기사들의 댓글 수·반응 수를 한 번에. ids 가 비면 요청 안 함 */
+export function newsSocialKey(ids: string[]) {
+  return ids.length ? `/news/reactions?ids=${ids.join(",")}` : null;
+}
+export const useNewsSocial = (ids: string[]) =>
+  useSWR<Record<string, ApiNewsSocial>>(newsSocialKey(ids), fetcher, { keepPreviousData: true, revalidateOnFocus: true });
+
+/** 좋아요(1)·싫어요(-1)·취소(0). 성공하면 그 기사의 새 숫자 */
+export async function reactNews(newsId: string, value: -1 | 0 | 1): Promise<ApiNewsSocial | { error: string; status: number }> {
+  const res = await fetch(`${API}/news/reactions`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ newsId, value }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) return { error: (data as { error?: string }).error ?? "실패했습니다.", status: res.status };
+  return data as ApiNewsSocial;
+}
+
 /** 정당이 없거나 정당 표에 없는 이름일 때 쓰는 회색 */
 export const NO_PARTY_COLOR = "#6b7280";
 

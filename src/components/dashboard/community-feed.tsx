@@ -10,7 +10,7 @@ import * as React from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import Link from "next/link";
 import { Activity, BadgeCheck, EyeOff, Heart, Loader2, MessageCircle, Reply, ScrollText, Send, ShieldAlert, ShieldCheck, Trash2 } from "lucide-react";
-import { useComments, useUser, postComment, deleteComment, type ApiComment } from "@/lib/api";
+import { useComments, useUser, postComment, deleteComment, type ApiComment, type CommentTarget } from "@/lib/api";
 import { useSWRConfig } from "swr";
 import { cn } from "@/lib/utils";
 import { Badge, Card, CardHeader } from "@/components/ui/primitives";
@@ -68,16 +68,26 @@ function Avatar({ name, blinded }: { name: string; blinded?: boolean }) {
   );
 }
 
+function commentsKey(targetType: CommentTarget, targetId: string) {
+  return `/comments?target_type=${targetType}&target_id=${encodeURIComponent(targetId)}`;
+}
+
 function CommentItem({
   c,
   isReply,
   onReply,
   currentUserId,
+  listKey = BOARD_KEY,
+  onChanged,
 }: {
   c: ApiComment;
   isReply?: boolean;
   onReply: (parentId: string) => void;
   currentUserId?: string;
+  /** 이 댓글이 들어 있는 목록의 SWR 키 (삭제 후 목록 갱신용). 기본: 자유 게시판 */
+  listKey?: string;
+  /** 삭제가 끝난 뒤 (예: 뉴스 카드의 댓글 수 갱신) */
+  onChanged?: () => void;
 }) {
   const { mutate } = useSWRConfig();
   const [deleting, setDeleting] = React.useState(false);
@@ -89,15 +99,16 @@ function CommentItem({
     setDeleting(true);
     // 낙관적 삭제
     await mutate(
-      BOARD_KEY,
+      listKey,
       (prev?: ApiComment[]) => prev?.filter((x) => x.id !== c.id && x.parentId !== c.id),
       { revalidate: false },
     );
     const res = await deleteComment(c.id);
     if (!res.ok) {
       alert(res.error ?? "삭제 실패");
-      await mutate(BOARD_KEY); // 복구
+      await mutate(listKey); // 복구
     }
+    onChanged?.();
     setDeleting(false);
   };
 
@@ -171,7 +182,7 @@ function CommentForm({
   onDone,
   autoFocus,
 }: {
-  targetType: "post" | "news" | "politician";
+  targetType: CommentTarget;
   targetId: string;
   parentId?: string | null;
   placeholder: string;
@@ -216,11 +227,7 @@ function CommentForm({
       return;
     }
     // 낙관적 추가: 새 댓글을 목록에 붙임
-    await mutate(
-      `/comments?target_type=${targetType}&target_id=${encodeURIComponent(targetId)}`,
-      (prev?: ApiComment[]) => [...(prev ?? []), result],
-      { revalidate: false },
-    );
+    await mutate(commentsKey(targetType, targetId), (prev?: ApiComment[]) => [...(prev ?? []), result], { revalidate: false });
     setText("");
     setSubmitting(false);
     onDone?.();
@@ -259,6 +266,83 @@ function CommentForm({
         <span className="text-[calc(10px*var(--fs))] text-ink-3 tabular">{text.length}/500</span>
       </div>
     </form>
+  );
+}
+
+/**
+ * 한 대상(뉴스 기사 등)의 댓글 묶음 — 글쓰기 + 글(최신순) + 답글(오래된순) + 답글 쓰기.
+ * 자유 게시판과 같은 모더레이션·삭제 규칙. onChanged: 글을 쓰거나 지운 뒤 (예: 뉴스 카드의 댓글 수 갱신)
+ */
+export function CommentThread({
+  targetType,
+  targetId,
+  placeholder,
+  onChanged,
+}: {
+  targetType: CommentTarget;
+  targetId: string;
+  placeholder: string;
+  onChanged?: () => void;
+}) {
+  const { data: comments, isLoading } = useComments(targetType, targetId);
+  const { data: user } = useUser();
+  const [replyTo, setReplyTo] = React.useState<string | null>(null);
+  const listKey = commentsKey(targetType, targetId);
+  const parents = (comments ?? []).filter((c) => !c.parentId).reverse();
+  const repliesOf = (parentId: string) => (comments ?? []).filter((c) => c.parentId === parentId);
+
+  return (
+    <div className="space-y-2">
+      <CommentForm targetType={targetType} targetId={targetId} placeholder={placeholder} onDone={onChanged} />
+      <ul className="space-y-2">
+        {isLoading && !comments && <li className="py-3 text-center text-[calc(11px*var(--fs))] text-ink-3">불러오는 중…</li>}
+        {!isLoading && parents.length === 0 && (
+          <li className="rounded-xl border border-dashed border-line px-3 py-4 text-center text-[calc(11px*var(--fs))] text-ink-3">
+            아직 댓글이 없습니다. 첫 의견을 남겨보세요.
+          </li>
+        )}
+        <AnimatePresence initial={false}>
+          {parents.map((p) => (
+            <React.Fragment key={p.id}>
+              <CommentItem
+                c={p}
+                listKey={listKey}
+                onChanged={onChanged}
+                onReply={(id) => setReplyTo((v) => (v === id ? null : id))}
+                currentUserId={user?.id}
+              />
+              {repliesOf(p.id).map((r) => (
+                <CommentItem key={r.id} c={r} isReply listKey={listKey} onChanged={onChanged} onReply={() => {}} currentUserId={user?.id} />
+              ))}
+              <AnimatePresence>
+                {replyTo === p.id && (
+                  <motion.li
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="ml-6 overflow-hidden"
+                  >
+                    <div className="pt-1">
+                      <CommentForm
+                        targetType={targetType}
+                        targetId={targetId}
+                        parentId={p.id}
+                        placeholder={`${p.author}에게 답글`}
+                        autoFocus
+                        onDone={() => {
+                          setReplyTo(null);
+                          onChanged?.();
+                        }}
+                      />
+                    </div>
+                  </motion.li>
+                )}
+              </AnimatePresence>
+            </React.Fragment>
+          ))}
+        </AnimatePresence>
+      </ul>
+    </div>
   );
 }
 

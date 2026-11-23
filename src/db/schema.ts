@@ -533,6 +533,28 @@ export const comments = pgTable(
   ],
 ).enableRLS();
 
+/**
+ * 뉴스 좋아요·싫어요 — 사용자 한 명이 기사 하나에 하나만 (다시 누르면 취소, 반대쪽을 누르면 바뀜).
+ * value: 1 = 좋아요, -1 = 싫어요. 로그인한 사용자만.
+ * 생성: npm run db:apply-news-reactions (scripts/sql/add-news-reactions.sql)
+ */
+export const newsReactions = pgTable(
+  "news_reactions",
+  {
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    newsId: text("news_id").notNull(), // news_articles.id (URL SHA-1)
+    value: smallint("value").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.userId, t.newsId] }),
+    index("news_reactions_news_idx").on(t.newsId),
+    check("news_reactions_value_check", sql`${t.value} in (1, -1)`),
+  ],
+).enableRLS();
+
 /** 외부 API 원본 응답 (필드 이름 확인·재처리용, 키는 저장하지 않음) */
 export const rawResponses = pgTable(
   "raw_responses",
