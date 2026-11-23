@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ChevronDown, LayoutDashboard, LogIn, LogOut, Shield, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useUser } from "@/lib/api";
+import { accountLabel } from "@/lib/auth-definitions";
 import { logout } from "@/app/actions/auth";
 
 /**
@@ -68,7 +69,7 @@ export function UserMenu() {
         <div className="glass-strong absolute right-0 top-[calc(100%+8px)] z-50 w-48 overflow-hidden rounded-xl p-1">
           <div className="border-b border-line px-3 py-2">
             <p className="truncate text-xs font-semibold text-ink">{user.name}</p>
-            <p className="truncate text-[11px] text-ink-3">{user.email}</p>
+            <p className="truncate text-[11px] text-ink-3">{accountLabel(user)}</p>
           </div>
 
           <MenuItem href="/my" icon={<LayoutDashboard className="size-3.5" />} onClick={() => setOpen(false)}>

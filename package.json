@@ -13,6 +13,7 @@
     "db:seed": "tsx scripts/seed.ts",
     "db:apply-user-items": "tsx scripts/apply-user-items-sql.ts",
     "db:apply-comments": "tsx scripts/apply-comments-sql.ts",
+    "db:apply-social-login": "tsx scripts/apply-social-login-sql.ts",
     "check:keys": "tsx scripts/check-keys.ts",
     "collect:news": "tsx scripts/collectors/news.ts",
     "collect:nec": "tsx scripts/collectors/nec.ts",

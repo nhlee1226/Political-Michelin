@@ -31,3 +31,7 @@ export interface SessionPayload {
   role: string;
   expiresAt: number;
 }
+
+/** 계정 표시용: 이메일, 없으면 "카카오 로그인"처럼 가입 방식 (서버·클라이언트 공용) */
+export const accountLabel = (u: { email: string | null; provider: "email" | "kakao" | "naver" }) =>
+  u.email ?? (u.provider === "kakao" ? "카카오 로그인" : u.provider === "naver" ? "네이버 로그인" : "");

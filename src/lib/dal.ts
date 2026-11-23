@@ -3,7 +3,14 @@ import { cache } from "react";
 import { redirect } from "next/navigation";
 import { getSession, findUserById } from "./auth";
 
-export type CurrentUser = { id: string; email: string; name: string; role: string };
+/** email: 소셜 가입자는 null. provider: email | kakao | naver */
+export type CurrentUser = {
+  id: string;
+  email: string | null;
+  name: string;
+  role: string;
+  provider: "email" | "kakao" | "naver";
+};
 
 /**
  * 세션 검증. 유효하지 않으면 /login 으로 리다이렉트.

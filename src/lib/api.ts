@@ -306,10 +306,14 @@ export const useCollectStatus = () =>
 /* ── 인증 ─────────────────────────────────────────────── */
 export interface ApiUser {
   id: string;
-  email: string;
+  /** 카카오·네이버로 가입한 계정은 null */
+  email: string | null;
   name: string;
   role: "user" | "admin";
+  /** 가입 방식 */
+  provider: "email" | "kakao" | "naver";
 }
+
 
 /**
  * 현재 로그인한 사용자. 비로그인이면 null.

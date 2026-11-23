@@ -1,10 +1,11 @@
 "use client";
 
-import { useActionState } from "react";
+import { Suspense, useActionState } from "react";
 import Link from "next/link";
 import { login } from "@/app/actions/auth";
 import type { AuthFormState } from "@/lib/auth-definitions";
 import { AuthShell, AuthField, AuthSubmit } from "@/components/auth/auth-shell";
+import { OrDivider, SocialLogin } from "@/components/auth/social-login";
 
 export default function LoginPage() {
   const [state, formAction, pending] = useActionState<AuthFormState, FormData>(login, undefined);
@@ -23,6 +24,11 @@ export default function LoginPage() {
         </>
       }
     >
+      {/* useSearchParams 를 쓰므로 Suspense 로 감쌈 */}
+      <Suspense fallback={null}>
+        <SocialLogin mode="login" />
+      </Suspense>
+      <OrDivider />
       <form action={formAction} className="space-y-4">
         <AuthField
           label="이메일"

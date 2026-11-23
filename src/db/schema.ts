@@ -415,19 +415,43 @@ export const supportPolls = pgTable(
 
 /* ═══════════════════════════ 인증 · 사용자 ═══════════════════════════ */
 
-/** 사용자 계정. 비밀번호는 bcrypt 해시로 저장. role: user | admin */
+/**
+ * 사용자 계정. role: user | admin
+ * 이메일 가입: email·password_hash(bcrypt) 가 있음.
+ * 소셜 가입(카카오·네이버): 둘 다 null 이고 user_identities 에 제공자 계정이 연결됨.
+ * (소셜 이메일을 여기 넣지 않는 이유: 같은 이메일의 기존 계정과 자동으로 합치지 않기 위해 — 계정 가로채기 방지)
+ */
 export const users = pgTable(
   "users",
   {
     id: text("id").primaryKey(), // uuid (앱에서 생성)
-    email: text("email").notNull().unique(),
-    passwordHash: text("password_hash").notNull(),
+    email: text("email").unique(),
+    passwordHash: text("password_hash"),
     name: text("name").notNull(),
     role: text("role", { enum: ["user", "admin"] }).notNull().default("user"),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (t) => [index("users_email_idx").on(t.email)],
+).enableRLS();
+
+/**
+ * 소셜 로그인 연결 — (provider, provider_user_id) 하나가 users 한 명에 대응.
+ * provider_user_id: 카카오 회원번호·네이버 고유 ID (문자열). email: 제공자가 준 이메일(참고용, 동의 안 하면 null)
+ * 생성: npm run db:apply-social-login (scripts/sql/add-user-identities.sql)
+ */
+export const userIdentities = pgTable(
+  "user_identities",
+  {
+    provider: text("provider", { enum: ["kakao", "naver"] }).notNull(),
+    providerUserId: text("provider_user_id").notNull(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    email: text("email"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.provider, t.providerUserId] }), index("user_identities_user_idx").on(t.userId)],
 ).enableRLS();
 
 /**

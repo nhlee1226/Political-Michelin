@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { ArrowLeft, Bookmark, ExternalLink, MapPin, Newspaper, Star } from "lucide-react";
 import { verifySession, getCurrentUser } from "@/lib/dal";
+import { accountLabel } from "@/lib/auth-definitions";
 import { getUserItems } from "@/lib/user-data";
 import { getNewsByIds, getMembersByIds } from "@/db/queries";
 import { REGIONS } from "@/lib/mock-data";
@@ -37,7 +38,7 @@ export default async function MyPage() {
             </Link>
             <div>
               <h1 className="text-xl font-bold tracking-tight">내 활동</h1>
-              <p className="text-xs text-ink-3">{user?.email}</p>
+              <p className="text-xs text-ink-3">{user ? accountLabel(user) : null}</p>
             </div>
           </div>
           <Badge tone="lime">{user?.role === "admin" ? "관리자" : "회원"}</Badge>
