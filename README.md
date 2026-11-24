@@ -1,4 +1,5 @@
 # 정치 미슐랭 — 메인 대시보드 (Next.js App Router)
+배포 주소: https://political-michelin.vercel.app
 
 다크 글래스모피즘 + 네온 라임/시안 액센트 대시보드.
 
