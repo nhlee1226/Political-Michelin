@@ -2,7 +2,7 @@
 
 /**
  * RegionMembersCard — Map View 에서 선택한 시·도의 실제 국회의원 목록 (useRegion)
- * 이름을 누르면 정치인 상세 패널이 열린다. API 실패·0명일 때만 가상 의원을 카드 전체 "예시" 표시로 보여준다.
+ * 이름을 누르면 옆에 "정치인 상세 페이지로 이동" 버튼이 뜬다. API 실패·0명일 때만 가상 의원을 카드 전체 "예시" 표시로 보여준다.
  */
 import * as React from "react";
 import { ChevronRight, Users } from "lucide-react";
@@ -28,7 +28,7 @@ export function RegionMembersCard({
   className,
 }: {
   region: string;
-  onOpenPolitician: (monaCd: string) => void;
+  onOpenPolitician: (monaCd: string, name?: string) => void;
   className?: string;
 }) {
   const { data, isLoading } = useRegion(region);
@@ -80,7 +80,7 @@ export function RegionMembersCard({
         {rows.map((p) => (
           <li key={p.key}>
             <button
-              onClick={() => p.monaCd && onOpenPolitician(p.monaCd)}
+              onClick={() => p.monaCd && onOpenPolitician(p.monaCd, p.name)}
               disabled={!p.monaCd}
               className="flex w-full items-center gap-3 border-t border-line px-3 py-2.5 text-left text-xs transition hover:bg-white/[0.04] disabled:cursor-default"
             >

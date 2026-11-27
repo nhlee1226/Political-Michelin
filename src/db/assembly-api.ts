@@ -29,6 +29,8 @@ export interface ApiBillTrack extends BillStage {
   title: string;
   committee: string | null;
   proposer: string | null;
+  /** 대표발의 의원 MONA_CD (정치인 상세 페이지 링크) */
+  proposer_mona_cd: string | null;
   detail_url: string | null;
   /** 본회의 표결 수 (bill_votes 에 있을 때만) */
   votes: { yes: number; no: number; abstain: number } | null;
@@ -37,7 +39,7 @@ export interface ApiBillTrack extends BillStage {
 type BillRow = BillDates & Omit<ApiBillTrack, keyof BillStage>;
 
 const BILL_COLS = sql`
-  b.bill_id, b.bill_no, b.title, b.committee, b.detail_url, m.name as proposer,
+  b.bill_id, b.bill_no, b.title, b.committee, b.detail_url, m.name as proposer, b.proposer_mona_cd,
   b.propose_date::text as propose_date, b.committee_date::text as committee_date,
   b.cmt_present_date::text as cmt_present_date, b.cmt_proc_date::text as cmt_proc_date, b.cmt_proc_result,
   b.law_submit_date::text as law_submit_date, b.law_present_date::text as law_present_date,

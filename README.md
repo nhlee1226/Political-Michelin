@@ -62,6 +62,8 @@ npm run dev              # http://localhost:3000  (1분마다 DB 를 다시 읽�
 | `npm run auto` | **기관별 자동 수집 스케줄러** — 주기가 됐고 오늘 호출 한도가 남은 수집기만 실행 (아래 "기관별 자동 수집") |
 | `npm run auto -- --dry` | 실행하지 않고 계획만 보기 (작업별 다음 예정·기관별 오늘 호출 수) |
 | `npm run auto -- --job votes` / `--only kosis --force` | 작업 하나 / 기관 하나를 지금 실행 (주기 무시, 하루 한도는 지킴) |
+| `npm run import:records -- attendance <CSV>` | 의원 출석(본회의·위원회) CSV → `member_attendance`. `assets`(재산공개, 천원) · `funds`(정치자금, 원)도 같은 방식 — 형식은 아래 "정치인 상세 페이지" |
+| `npm run db:apply-politician-detail` | 정치인 상세용 열·표(의원 연락처·약력, `bill_cosponsors`, 출석·재산·정치자금) 만들기. 의원·법안 수집기와 `import:records` 가 시작할 때 자동 실행 |
 | `npm run analyze:news` / `analyze:news -- 50` | Claude 로 뉴스 편향 근거 추출 → `news_analysis`·`news_evidence`·`api_usage` (기본 최대 15건, 예산 안에서) |
 
 수집은 모두 덮어쓰기(upsert)라 여러 번 실행해도 중복이 쌓이지 않습니다. 외부 API 원본은 `raw_responses` 에 남으므로, 응답 필드 이름이 다르면 원본을 보고 각 수집기의 `FIELD` 만 고치면 됩니다. 자동 수집(GitHub Actions)은 두 개 — `.github/workflows/collect.yml`(30분마다 뉴스 + 편향 분석), `.github/workflows/auto-collect.yml`(매시간 기관별 자동 수집, 아래).
@@ -90,13 +92,42 @@ npm run dev              # http://localhost:3000  (1분마다 DB 를 다시 읽�
 | `GET /api/regions` | 시도 17개: 의석·투표율(선관위) + 이슈 활성도(최근 24시간 기사 수) |
 | `GET /api/regions/11` | 지역 상세: 선거구별 후보·득표수·득표율, 현역 의원, 지역 기사 |
 | `GET /api/politicians?region=11` | 현역 의원 (`source`: `assembly` 또는 `nec`) |
-| `GET /api/politicians/<id>` | 의원 상세 (MONA_CD 또는 `sgId:sgTypecode:huboid`) |
+| `GET /api/politicians/<id>` | 정치인 상세 페이지와 같은 데이터 (MONA_CD 또는 지방선거 당선인 `sgId:sgTypecode:huboid`) |
 | `GET /api/news?region=11&limit=20` | 수집 기사 (+ AI 분석 결과가 있으면 함께) |
 | `GET /api/trends?kind=party&days=7` | 정당/인물 언급량 날짜별 추이 |
 | `GET /api/parties` | 정당 이름·색 |
 | `GET /api/bills?view=active` | 법안 추적: 단계(발의 → 소관위 → 법사위 → 본회의)·지금 상태·본회의 표결 수. `view=done` 처리 끝, `q=` 제목 검색, `ids=` 추적 법안 |
 | `GET /api/schedule` | 국회 일정: 어제부터 앞으로의 본회의·위원회 회의·행사 |
 | `GET /api/collect-status` | 기관별 자동 수집 현황: 성향·하루 한도·오늘 호출 수, 작업별 주기·마지막 성공·다음 예정, 최근 실행 20줄 |
+
+## 정치인 상세 페이지 (`/politicians/<id>`)
+사이트 어디서든 정치인 이름(또는 의원 줄·카드)을 누르면 그 옆에 **"정치인 상세 페이지로 이동"** 버튼이 뜹니다 (`src/components/politician/politician-link.tsx`, 루트 레이아웃에 한 번). 새 화면에서 이름을 보여줄 때는 `<PoliticianName id name />` 을 쓰거나 `usePoliticianLink().open(id, { name })` 을 부르면 됩니다.
+
+| 영역 | 내용 | 출처 |
+|---|---|---|
+| 헤더 | 사진·한자/영문 이름·정당·지역구·선수·당선 대수·위원회(직책)·즐겨찾기·팔로워 수·링크 복사 | 열린국회정보 인적사항, `user_follows` |
+| 인적사항·연락처 | 생년월일·학력·직업·경력·약력 원문 / 전화·이메일·홈페이지·의원회관·보좌진 | 인적사항 API, 선관위 후보 정보 |
+| 선거 결과 | 득표율·득표수·2위와 차이·선거구 투표율 | 선관위 |
+| 의정활동 지표 | 대표발의·반영률·표결 참여율·공동발의의 전체 순위, 같은 정당·위원회·전체 평균과 비교 | `bills`·`bill_votes`·`bill_cosponsors` |
+| 법안 탭 | 분야(소관 위원회) 분포, 대표발의 법안별 처리 단계(발의→소관위→법사위→본회의), 최근 공동발의 | 열린국회정보 의안 |
+| 표결 탭 | 찬성·반대·기권·불참, **당 다수와 다르게 던진 표**, 최근 표결 | `bill_votes` |
+| 뉴스 탭 | 최근 30일 언급량, 언급 기사 평균 논조(AI), 기사 목록 | 네이버 뉴스 + 편향 분석 |
+| 한줄평 탭 | 회원 댓글 (`comments`, target_type = politician) | 회원 |
+| 재산·자금·출석 탭 | 본회의·위원회 출석률, 재산공개(연도별 증감), 정치자금 수입·지출 | CSV 입력 (아래) |
+| 다가오는 일정 | 소속 위원회 회의·본회의 (14일) | `assembly_schedule` |
+
+지방선거 당선인(`/politicians/<sgId:sgTypecode:huboid>`)은 인적사항·선거 결과·공약 원문·뉴스·한줄평을 보여 줍니다.
+나중에 추가된 표·열이 아직 없는 DB 에서도 페이지는 열리고, 해당 칸만 "수집 전"으로 표시됩니다.
+
+**출석·재산·정치자금 입력** — 공식 Open API 가 없어(국회 공보·관보, 선관위 정치자금 공개 화면) 원문을 CSV 로 옮겨 넣습니다. 첫 줄은 머리글, 의원은 `mona_cd` 또는 `name`(동명이인이면 mona_cd 필요)으로 찾습니다.
+```
+attendance: mona_cd,name,kind(본회의|위원회),period,attended,total,source_url
+assets    : mona_cd,name,year,total,real_estate,deposits,securities,debts,source_url   (단위 천원)
+funds     : mona_cd,name,year,income,expense,donations,source_url                     (단위 원)
+```
+```bash
+npm run import:records -- assets ./assets-2026.csv
+```
 
 ## 폴더 구조
 ```

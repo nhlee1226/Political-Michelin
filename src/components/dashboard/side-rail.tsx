@@ -15,6 +15,7 @@
  * 지역·정치인·공약을 누르면 onSelectRegion 으로 지도 탭의 해당 지역으로 이동한다.
  */
 import * as React from "react";
+import { PoliticianName } from "@/components/politician/politician-link";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   Bell,
@@ -237,7 +238,7 @@ function RegionsPanel({
   );
 }
 
-/** 즐겨찾는 정치인 — 실제 국회의원(/api/politicians). 즐겨찾기는 MONA_CD 로 이 브라우저에 저장. 누르면 상세 패널 */
+/** 즐겨찾는 정치인 — 실제 국회의원(/api/politicians). 즐겨찾기는 MONA_CD 로 이 브라우저에 저장. 누르면 옆에 상세 페이지 이동 버튼 */
 function PoliticiansPanel({
   favorites,
   toggle,
@@ -245,7 +246,7 @@ function PoliticiansPanel({
 }: {
   favorites: Set<string>;
   toggle: (id: string, name?: string) => void;
-  onOpenPolitician: (monaCd: string) => void;
+  onOpenPolitician: (monaCd: string, name?: string) => void;
 }) {
   const [q, setQ] = React.useState("");
   const { data, error } = usePoliticians();
@@ -262,7 +263,7 @@ function PoliticiansPanel({
     return (
       <li key={p.mona_cd}>
         <Row className="flex items-center gap-2.5 p-2.5">
-          <button onClick={() => onOpenPolitician(p.mona_cd)} className="flex min-w-0 flex-1 items-center gap-2.5 text-left">
+          <button onClick={() => onOpenPolitician(p.mona_cd, p.name)} className="flex min-w-0 flex-1 items-center gap-2.5 text-left">
             <span
               className="grid size-8 shrink-0 place-items-center rounded-full border-2 text-[calc(12px*var(--fs))] font-semibold"
               style={{ borderColor: party.color, background: `${party.color}22` }}
@@ -458,7 +459,19 @@ function BillCard({
               <p className="text-[calc(14px*var(--fs))] font-semibold leading-snug">{b.title}</p>
             )}
             <p className="mt-0.5 truncate text-[calc(12px*var(--fs))] text-ink-3">
-              {[b.proposer && `${b.proposer} 의원 대표발의`, b.committee].filter(Boolean).join(" · ") || "—"}
+              {b.proposer || b.committee ? (
+                <>
+                  {b.proposer && (
+                    <>
+                      <PoliticianName id={b.proposer_mona_cd} name={b.proposer} /> 의원 대표발의
+                    </>
+                  )}
+                  {b.proposer && b.committee && " · "}
+                  {b.committee}
+                </>
+              ) : (
+                "—"
+              )}
             </p>
           </div>
           <button
@@ -674,7 +687,9 @@ function PledgesPanel({ selectedRegion, onSelectRegion }: { selectedRegion: stri
                     <FileText className="size-4" />
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p className="text-[calc(14px*var(--fs))] font-semibold leading-snug">{w.name}</p>
+                    <p className="text-[calc(14px*var(--fs))] font-semibold leading-snug">
+                      <PoliticianName id={w.id} name={w.name} />
+                    </p>
                     <p className="mt-0.5 text-[calc(12px*var(--fs))] text-ink-3">
                       {w.office} · {w.sgg_name} · 공약 {w.pledges.length}개
                     </p>
@@ -910,8 +925,8 @@ export function SideRail({
 }: {
   selectedRegion: string;
   onSelectRegion: (code: string) => void;
-  /** 즐겨찾는 정치인을 누르면 상세 패널 */
-  onOpenPolitician: (monaCd: string) => void;
+  /** 즐겨찾는 정치인을 누르면 옆에 상세 페이지 이동 버튼 */
+  onOpenPolitician: (monaCd: string, name?: string) => void;
 }) {
   const [open, setOpen] = React.useState<PanelKey | null>(null);
   // lg 미만에서 떠 있는 버튼으로 레일을 펼쳤는지 (lg 이상에서는 쓰지 않음 — 레일이 늘 보임)

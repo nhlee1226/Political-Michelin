@@ -153,7 +153,7 @@ export async function apiRegions() {
 
 /* ───────── 지방선거 당선인 · 공약 · 시도 지표 ───────── */
 
-const LOCAL_OFFICE: Record<string, string> = { "3": "시·도지사", "4": "구·시·군의 장", "11": "교육감" };
+export const LOCAL_OFFICE: Record<string, string> = { "3": "시·도지사", "4": "구·시·군의 장", "11": "교육감" };
 
 /**
  * 시·도지사·교육감을 함께 뽑는 통합 시도. regions(17개)에는 없어서 그 당선인은 region_code 가 비어 있고,
@@ -284,7 +284,7 @@ export async function apiRegionDetail(code: string) {
  * 뉴스 목록. analyzed = true 면 편향 분석이 끝난 기사만.
  * evidence: 편향 근거 (방향 있는 근거 → 강한 근거 순). 분석 전이면 null
  */
-const NEWS_COLUMNS = sql`
+export const NEWS_COLUMNS = sql`
     a.id, a.url, a.source, a.title as headline, a.summary, to_json(a.published_at)#>>'{}' as published_at, a.region_code,
     (x.news_id is not null) as analyzed,
     x.bias::int as bias, x.lean::int as lean, x.confidence, x.bias_signals, x.objective_headline, x.objective_summary,
