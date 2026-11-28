@@ -829,7 +829,7 @@ export function RegionBurst({
 }: {
   design: DesignController;
   rootRef: React.RefObject<HTMLDivElement | null>;
-  onOpenPolitician?: (monaCd: string) => void;
+  onOpenPolitician?: (monaCd: string, name?: string) => void;
 }) {
   const { run, t, speed, start, close } = design;
   const code = run?.code ?? null;
@@ -910,11 +910,11 @@ export function RegionBurst({
     if (run && layout) start(run.id, layout.total);
   }, [run, layout, start]);
 
-  // Esc · 빈 곳 클릭으로 닫기 (정치인 상세 패널이 열려 있으면 그쪽이 먼저 닫힘)
+  // Esc · 빈 곳 클릭으로 닫기 (정치인 이동 버튼이 떠 있으면 그쪽이 먼저 닫힘)
   React.useEffect(() => {
     if (!run) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key !== "Escape" || document.querySelector('[aria-label="정치인 상세"]')) return;
+      if (e.key !== "Escape" || document.querySelector("[data-politician-pop]")) return;
       close();
     };
     const onDown = (e: PointerEvent) => {
@@ -954,7 +954,7 @@ export function RegionBurst({
             tag={`MP · ${m.term == null ? "—" : m.term === 1 ? "초선" : `${m.term}선`}`}
             tagColor={termTagColor(m.term)}
             link
-            onClick={() => onOpenPolitician?.(m.monaCd)}
+            onClick={() => onOpenPolitician?.(m.monaCd, m.name)}
             ariaLabel={`${m.name} 상세 보기`}
           >
             <CardContent t={t} S={starts[i]} m={m} />
@@ -997,7 +997,7 @@ export function RegionBurst({
             <button
               key={m.monaCd}
               type="button"
-              onClick={() => onOpenPolitician?.(m.monaCd)}
+              onClick={() => onOpenPolitician?.(m.monaCd, m.name)}
               className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-[calc(11px*var(--fs))] transition hover:bg-white/[0.05]"
             >
               <span className="size-1.5 shrink-0 rounded-full" style={{ background: m.color }} />

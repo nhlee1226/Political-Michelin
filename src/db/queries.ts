@@ -235,6 +235,19 @@ export async function getMentionTrends(opts: { kind?: "party" | "member" | "cand
 
 /* ───────── 의원 · 선거 결과 ───────── */
 
+/**
+ * 목록에 쓰는 members 기본 열. select({ m: members }) 처럼 표 전체를 고르면 나중에 추가한 열(인적사항 등,
+ * scripts/sql/add-politician-detail.sql)이 아직 없는 DB 에서 오류가 나므로 필요한 열만 고름
+ */
+const MEMBER_BASE = {
+  monaCd: members.monaCd,
+  name: members.name,
+  partyId: members.partyId,
+  regionCode: members.regionCode,
+  district: members.district,
+  term: members.term,
+};
+
 /** 현역 의원 목록: 열린국회정보 members 가 있으면 그것, 없으면 최근 총선 지역구 당선인(선관위) */
 export async function getElectedMembers(region?: string | null): Promise<{ list: ElectedMember[]; source: "assembly" | "nec" | null }> {
   if (!db) return { list: [], source: null };
@@ -248,7 +261,7 @@ export async function getElectedMembers(region?: string | null): Promise<{ list:
       .groupBy(bills.proposerMonaCd)
       .as("bc");
     const rows = await db
-      .select({ m: members, bills: billCount.n })
+      .select({ m: MEMBER_BASE, bills: billCount.n })
       .from(members)
       .leftJoin(billCount, eq(billCount.monaCd, members.monaCd))
       .where(region ? eq(members.regionCode, region) : undefined);
@@ -360,28 +373,6 @@ export async function getDistrictResults(region: string): Promise<{ election: st
   return { election: el.name, districts };
 }
 
-/** 의원 1명 상세 (+ 최근 대표 발의 법안 — 열린국회정보 연동 후) */
-export async function getMember(id: string) {
-  if (!db) return null;
-  if (id.includes(":")) {
-    const [sgId, sgTypecode, huboid] = id.split(":");
-    const [c] = await db
-      .select()
-      .from(electionCandidates)
-      .where(and(eq(electionCandidates.sgId, sgId), eq(electionCandidates.sgTypecode, sgTypecode), eq(electionCandidates.huboid, huboid)));
-    return c ? { source: "nec" as const, candidate: c } : null;
-  }
-  const [m] = await db.select().from(members).where(eq(members.monaCd, id));
-  if (!m) return null;
-  const recentBills = await db
-    .select()
-    .from(bills)
-    .where(eq(bills.proposerMonaCd, id))
-    .orderBy(sql`${bills.proposeDate} desc nulls last`)
-    .limit(10);
-  return { source: "assembly" as const, member: m, recentBills };
-}
-
 /** 즐겨찾는 정치인 — MONA_CD 목록으로 의원 조회. /my 페이지용 */
 export async function getMembersByIds(monaCds: string[]): Promise<ElectedMember[]> {
   if (!db || monaCds.length === 0) return [];
@@ -392,7 +383,7 @@ export async function getMembersByIds(monaCds: string[]): Promise<ElectedMember[
     .groupBy(bills.proposerMonaCd)
     .as("bc");
   const rows = await db
-    .select({ m: members, bills: billCount.n })
+    .select({ m: MEMBER_BASE, bills: billCount.n })
     .from(members)
     .leftJoin(billCount, eq(billCount.monaCd, members.monaCd))
     .where(inArray(members.monaCd, monaCds));

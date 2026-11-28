@@ -26,7 +26,7 @@ import { ActivityCard, IssueTimelineCard, PartyTrendCard, PledgeCard } from "./k
 import { BiasReportCard, PoliticianTable } from "./extra-cards";
 import { RegionMembersCard } from "./region-members-card";
 import { RegionLocalCard } from "./region-local-card";
-import { PoliticianDetailSheet } from "./politician-detail-sheet";
+import { usePoliticianLink } from "@/components/politician/politician-link";
 import { BuildStoryCard, CollectStatusCard, StarRuleCard } from "./about-cards";
 
 const TODAY = new Intl.DateTimeFormat("ko-KR", { year: "numeric", month: "long", day: "numeric", weekday: "long" }).format(
@@ -156,7 +156,9 @@ export default function PoliticalMichelinDashboard() {
   const aiMode = false;
   const [region, setRegion] = React.useState("11");
   const [polQuery, setPolQuery] = React.useState("");
-  const [detailId, setDetailId] = React.useState<string | null>(null);
+  // 이름·의원 줄을 누르면 그 옆에 "정치인 상세 페이지로 이동" 버튼 (상세는 /politicians/<MONA_CD> 페이지)
+  const { open: openPolitician } = usePoliticianLink();
+  const setDetailId = React.useCallback((monaCd: string, name?: string) => openPolitician(monaCd, { name }), [openPolitician]);
 
   const { data: stats } = useStats();
   const { data: comments } = useComments("post", "board");
@@ -323,7 +325,6 @@ export default function PoliticalMichelinDashboard() {
         </main>
       </div>
 
-      <PoliticianDetailSheet monaCd={detailId} onClose={() => setDetailId(null)} />
       <Toaster />
     </div>
   );

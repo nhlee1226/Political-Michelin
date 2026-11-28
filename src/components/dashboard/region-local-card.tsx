@@ -9,6 +9,7 @@
  * 가상 데이터로 대신하지 않는다. 데이터가 없으면 없다고 표시.
  */
 import * as React from "react";
+import { PoliticianName } from "@/components/politician/politician-link";
 import { ChevronDown, Info, Landmark } from "lucide-react";
 import { REGION_BY_CODE } from "@/lib/mock-data";
 import { useLocalWinner, usePartyLookup, useRegion, type ApiIndicator, type ApiLocalWinner } from "@/lib/api";
@@ -120,7 +121,9 @@ function HeadBlock({ office, winner }: { office: string; winner: ApiLocalWinner 
             {winner.name.slice(-2)}
           </div>
           <div className="min-w-0">
-            <p className="truncate text-[calc(15px*var(--fs))] font-semibold">{winner.name}</p>
+            <p className="truncate text-[calc(15px*var(--fs))] font-semibold">
+              <PoliticianName id={winner.id} name={winner.name} />
+            </p>
             <div className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[calc(11px*var(--fs))] text-ink-3">
               <PartyTag color={shown.color} name={shown.name} className="text-[calc(11px*var(--fs))]" />
               <span>·</span>
@@ -148,7 +151,7 @@ function MayorRow({ w }: { w: ApiLocalWinner }) {
       >
         <div className="min-w-0 flex-1">
           <p className="font-semibold text-ink">
-            {w.name} <span className="font-normal text-ink-3">{w.sgg_name}</span>
+            <PoliticianName id={w.id} name={w.name} /> <span className="font-normal text-ink-3">{w.sgg_name}</span>
           </p>
           <p className="truncate text-[calc(10px*var(--fs))] text-ink-3 tabular">{voteText(w)}</p>
         </div>

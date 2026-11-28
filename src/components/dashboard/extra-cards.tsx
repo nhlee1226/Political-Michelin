@@ -11,7 +11,6 @@ import { Bar, BarChart, Cell, ResponsiveContainer, Tooltip, XAxis } from "rechar
 import { ArrowDownUp, ScanSearch, Search, Users } from "lucide-react";
 import { PARTIES, REGIONS, type Politician } from "@/lib/mock-data";
 import { usePartyLookup, usePoliticians, useStats } from "@/lib/api";
-import { districtLabel } from "./politician-detail-sheet";
 import { cn } from "@/lib/utils";
 import { Badge, Card, CardHeader, MichelinStars, PartyTag, Segmented } from "@/components/ui/primitives";
 
@@ -132,7 +131,7 @@ const MOCK_RULE = "미슐랭 스타 = 공약 이행·출석·입법 실적의 �
 /** 표 한 줄. 공식 데이터가 없는 지표는 null */
 interface TableRow {
   key: string;
-  monaCd: string | null; // mock 은 null → 상세 패널 없음
+  monaCd: string | null; // mock 은 null → 상세 페이지 없음
   name: string;
   district: string | null;
   committee: string | null;
@@ -171,7 +170,7 @@ export function PoliticianTable({
   /** 위쪽 검색창에서 넘어온 검색어 */
   query?: string;
   onSelectRegion?: (code: string) => void;
-  onOpenPolitician?: (monaCd: string) => void;
+  onOpenPolitician?: (monaCd: string, name?: string) => void;
 }) {
   const [sort, setSort] = React.useState<SortKey>("stars");
   const [q, setQ] = React.useState(query);
@@ -195,7 +194,7 @@ export function PoliticianTable({
           key: p.mona_cd,
           monaCd: p.mona_cd,
           name: p.name,
-          district: districtLabel(p),
+          district: p.elect_type === "비례대표" ? "비례대표" : (p.district ?? "—"),
           committee: p.committee ?? null,
           term: p.term,
           partyName: party(p.party_id).name,
@@ -282,7 +281,7 @@ export function PoliticianTable({
               <tr
                 key={p.key}
                 // 실제 의원은 상세 패널, mock 은 예전처럼 지도의 해당 지역으로
-                onClick={() => (p.monaCd ? onOpenPolitician?.(p.monaCd) : p.regionCode && onSelectRegion?.(p.regionCode))}
+                onClick={() => (p.monaCd ? onOpenPolitician?.(p.monaCd, p.name) : p.regionCode && onSelectRegion?.(p.regionCode))}
                 className="cursor-pointer border-t border-line transition hover:bg-white/[0.04] [&>td]:px-3 [&>td]:py-2.5"
               >
                 <td className="text-ink-3 tabular">{i + 1}</td>

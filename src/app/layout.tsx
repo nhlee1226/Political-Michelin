@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import { PoliticianLinkProvider } from "@/components/politician/politician-link";
 
 export const metadata: Metadata = {
   title: "정치 미슐랭 | Political Michelin",
@@ -23,7 +24,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
         />
       </head>
-      <body>{children}</body>
+      <body>
+        {/* 정치인 이름을 누르면 옆에 "정치인 상세 페이지로 이동" 버튼 (사이트 전체) */}
+        <PoliticianLinkProvider>{children}</PoliticianLinkProvider>
+      </body>
     </html>
   );
 }

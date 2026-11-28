@@ -1,6 +1,8 @@
 /**
  * [연동 예정] 열린국회정보 국회의원 인적사항 → parties(source='assembly'), members
  * 실행: npm run collect:members      (.env.local 의 ASSEMBLY_API_KEY)
+ * 같은 응답의 연락처·약력(전화·이메일·홈페이지·의원회관 호실·보좌진·약력 등)도 저장합니다 → 정치인 상세 페이지.
+ * 그 열이 없으면 시작할 때 scripts/sql/add-politician-detail.sql 로 만듭니다 (db:push 필요 없음).
  *
  * 아직 실제 키로 검증하지 않은 초안입니다. 첫 실행 뒤 raw_responses 의 assembly:members 원본에서
  * 필드 이름을 확인하고, 다르면 FIELD 만 고치면 됩니다. 검증 후 .github/workflows/collect.yml 에 추가하세요.
@@ -9,7 +11,9 @@ import { sql } from "drizzle-orm";
 import { members, parties } from "../../src/db/schema";
 import { apiFetch } from "./api-fetch";
 import { db, env, regionLookup, run, saveRaw, toRegionCode } from "./common";
+import { memberProfile } from "./member-detail-parse";
 import { assignColors } from "./nec-parse";
+import { applySqlFile } from "./sql-file";
 
 const SERVICE = "nwvrqwxyaytdsfvhu"; // 국회의원 인적사항
 const BASE = "https://open.assembly.go.kr/portal/openapi";
@@ -51,6 +55,7 @@ function termNumber(text: string | null): number | null {
 }
 
 run(async () => {
+  await applySqlFile(db, "add-politician-detail.sql"); // 연락처·약력 열이 없으면 만듦
   const rows = await fetchMembers();
   await saveRaw("assembly:members", { pSize: 1000 }, rows); // 아래에서 오류가 나도 원본은 남도록 먼저 저장
   const lookup = await regionLookup();
@@ -94,6 +99,7 @@ run(async () => {
           electType: elect === "지역구" || elect === "비례대표" ? elect : null,
           term: termNumber(r[FIELD.term]),
           committee: r[FIELD.committee],
+          ...memberProfile(r),
         };
       });
     await tx
@@ -109,9 +115,28 @@ run(async () => {
           electType: sql`excluded.elect_type`,
           term: sql`excluded.term`,
           committee: sql`excluded.committee`,
+          hanjaName: sql`excluded.hanja_name`,
+          engName: sql`excluded.eng_name`,
+          birthDate: sql`excluded.birth_date`,
+          gender: sql`excluded.gender`,
+          jobTitle: sql`excluded.job_title`,
+          committees: sql`excluded.committees`,
+          units: sql`excluded.units`,
+          tel: sql`excluded.tel`,
+          email: sql`excluded.email`,
+          homepage: sql`excluded.homepage`,
+          office: sql`excluded.office`,
+          staff: sql`excluded.staff`,
+          secretary: sql`excluded.secretary`,
+          secretary2: sql`excluded.secretary2`,
+          career: sql`excluded.career`,
           updatedAt: sql`now()`,
         },
       });
   });
-  console.log(`의원 ${rows.length}명, 정당 ${ordered.length}개 저장 완료`);
+  const contacts = rows.filter((r) => memberProfile(r).tel || memberProfile(r).email).length;
+  console.log(`의원 ${rows.length}명, 정당 ${ordered.length}개 저장 완료 (연락처 있는 의원 ${contacts}명)`);
+  if (rows.length > 0 && contacts === 0) {
+    console.log("[확인] 연락처가 하나도 없어요. raw_responses 의 assembly:members 원본에서 TEL_NO·E_MAIL 필드 이름을 확인하세요 (member-detail-parse.ts 의 PROFILE_FIELD).");
+  }
 });

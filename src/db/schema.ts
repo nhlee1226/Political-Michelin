@@ -22,6 +22,7 @@
  */
 import { sql } from "drizzle-orm";
 import {
+  bigint,
   boolean,
   char,
   check,
@@ -221,6 +222,22 @@ export const members = pgTable(
     committee: text("committee"),
     unit: smallint("unit").notNull().default(22), // 대수
     photoUrl: text("photo_url"),
+    // 인적사항 API 의 연락처·약력 (열 추가: scripts/sql/add-politician-detail.sql, 의원 수집기가 시작할 때 자동 실행)
+    hanjaName: text("hanja_name"), // HJ_NM
+    engName: text("eng_name"), // ENG_NM
+    birthDate: text("birth_date"), // BTH_DATE
+    gender: text("gender"), // SEX_GBN_NM
+    jobTitle: text("job_title"), // JOB_RES_NM (위원장·간사 등 직책)
+    committees: text("committees"), // CMITS 소속 위원회 전체 (쉼표 구분)
+    units: text("units"), // UNITS 당선 대수 (제20대, 제22대)
+    tel: text("tel"), // TEL_NO
+    email: text("email"), // E_MAIL
+    homepage: text("homepage"), // HOMEPAGE
+    office: text("office"), // ASSEM_ADDR 의원회관 호실
+    staff: text("staff"), // STAFF 보좌관
+    secretary: text("secretary"), // SECRETARY 선임비서관
+    secretary2: text("secretary2"), // SECRETARY2 비서관
+    career: text("career"), // MEM_TITLE 약력 (원문 그대로)
     updatedAt: updatedAt(),
   },
   (t) => [
@@ -277,6 +294,78 @@ export const billVotes = pgTable(
     index("bill_votes_member_idx").on(t.monaCd),
     check("bill_votes_result_check", sql`${t.result} in ('찬성', '반대', '기권', '불참')`),
   ],
+).enableRLS();
+
+/** 공동발의 (법안 × 의원) — '의원 발의법률안' 응답의 공동발의자 이름(PUBL_PROPOSER)을 의원과 이어 붙임. 대표발의자는 bills.proposerMonaCd */
+export const billCosponsors = pgTable(
+  "bill_cosponsors",
+  {
+    billId: text("bill_id")
+      .notNull()
+      .references(() => bills.billId, { onDelete: "cascade" }),
+    monaCd: text("mona_cd")
+      .notNull()
+      .references(() => members.monaCd, { onDelete: "cascade" }),
+  },
+  (t) => [primaryKey({ name: "bill_cosponsors_pk", columns: [t.billId, t.monaCd] }), index("bill_cosponsors_member_idx").on(t.monaCd)],
+).enableRLS();
+
+/**
+ * 출석 — 본회의·위원회, 회기(period) 단위. 공식 API 가 없어 국회 공보·회의록 출결 자료를 CSV 로 입력 (npm run import:records -- attendance <파일>)
+ */
+export const memberAttendance = pgTable(
+  "member_attendance",
+  {
+    monaCd: text("mona_cd")
+      .notNull()
+      .references(() => members.monaCd, { onDelete: "cascade" }),
+    kind: text("kind").notNull(), // 본회의 | 위원회
+    period: text("period").notNull(), // 예: 제418회 정기회
+    attended: integer("attended").notNull(),
+    total: integer("total").notNull(),
+    sourceUrl: text("source_url"),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    primaryKey({ name: "member_attendance_pk", columns: [t.monaCd, t.kind, t.period] }),
+    check("member_attendance_kind_check", sql`${t.kind} in ('본회의', '위원회')`),
+  ],
+).enableRLS();
+
+/** 재산공개 (국회공직자윤리위원회 관보, 매년 3월 정기공개). 단위 천원. CSV 입력 (import:records -- assets) */
+export const memberAssets = pgTable(
+  "member_assets",
+  {
+    monaCd: text("mona_cd")
+      .notNull()
+      .references(() => members.monaCd, { onDelete: "cascade" }),
+    year: smallint("year").notNull(),
+    total: bigint("total", { mode: "number" }).notNull(),
+    realEstate: bigint("real_estate", { mode: "number" }),
+    deposits: bigint("deposits", { mode: "number" }),
+    securities: bigint("securities", { mode: "number" }),
+    debts: bigint("debts", { mode: "number" }),
+    sourceUrl: text("source_url"),
+    updatedAt: updatedAt(),
+  },
+  (t) => [primaryKey({ name: "member_assets_pk", columns: [t.monaCd, t.year] })],
+).enableRLS();
+
+/** 정치자금 (선관위 정치자금 회계보고 공개). 단위 원. CSV 입력 (import:records -- funds) */
+export const memberFunds = pgTable(
+  "member_funds",
+  {
+    monaCd: text("mona_cd")
+      .notNull()
+      .references(() => members.monaCd, { onDelete: "cascade" }),
+    year: smallint("year").notNull(),
+    income: bigint("income", { mode: "number" }).notNull(),
+    expense: bigint("expense", { mode: "number" }).notNull(),
+    donations: bigint("donations", { mode: "number" }), // 후원금 수입
+    sourceUrl: text("source_url"),
+    updatedAt: updatedAt(),
+  },
+  (t) => [primaryKey({ name: "member_funds_pk", columns: [t.monaCd, t.year] })],
 ).enableRLS();
 
 /**

@@ -62,26 +62,6 @@ export interface ApiPoliticianList {
   scoreRule: string | null;
 }
 
-export interface ApiBill {
-  bill_id: string;
-  bill_no: string | null;
-  title: string;
-  propose_dt: string | null;
-  committee: string | null;
-  proc_result: string | null;
-  detail_url: string | null;
-}
-
-export interface ApiPoliticianDetail extends ApiPolitician {
-  bills_passed: number;
-  bills_reflected: number;
-  reflect_rate: number | null;
-  stars: 1 | 2 | 3;
-  score_rule: string;
-  updated_at: string;
-  recent_bills: ApiBill[];
-}
-
 /** /api/stats — 데이터가 아직 없는 값은 null */
 export interface ApiStats {
   members: number;
@@ -271,8 +251,6 @@ export const usePoliticians = () => useSWR<ApiPoliticianList>("/politicians", po
 
 export const useParties = () => useSWR<ApiParty[]>("/parties", fetcher, live);
 
-export const usePolitician = (monaCd: string | null) =>
-  useSWR<ApiPoliticianDetail>(monaCd ? `/politicians/${monaCd}` : null, fetcher);
 
 /** 지방선거 당선인의 공약 원문. id = ApiLocalWinner.id, null 이면 요청하지 않음 (펼칠 때만 받음) */
 export const useLocalWinner = (id: string | null) =>
@@ -347,6 +325,8 @@ export interface ApiBillTrack extends BillStage {
   committee: string | null;
   /** 대표발의 의원 이름 */
   proposer: string | null;
+  /** 대표발의 의원 MONA_CD (정치인 상세 페이지 링크) */
+  proposer_mona_cd?: string | null;
   detail_url: string | null;
   /** 본회의 찬성·반대·기권 수 (표결을 수집한 법안만) */
   votes: { yes: number; no: number; abstain: number } | null;

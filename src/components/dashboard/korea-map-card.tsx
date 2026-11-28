@@ -133,7 +133,7 @@ function SupportPanel({ region }: { region: Region }) {
 /** 프로필 카드 한 명. 공식 데이터가 없는 지표는 null → "—" */
 interface ProfileView {
   key: string;
-  monaCd: string | null; // mock 은 null → 상세 패널 없음
+  monaCd: string | null; // mock 은 null → 상세 페이지 없음
   name: string;
   partyName: string;
   partyColor: string;
@@ -147,7 +147,7 @@ interface ProfileView {
 
 const pct = (v: number | null) => (v == null ? "—" : `${v}%`);
 
-function PoliticianPanel({ region, onOpen }: { region: Region; onOpen?: (monaCd: string) => void }) {
+function PoliticianPanel({ region, onOpen }: { region: Region; onOpen?: (monaCd: string, name?: string) => void }) {
   const [idx, setIdx] = React.useState(0);
   React.useEffect(() => setIdx(0), [region.code]);
   const { data, isLoading } = useRegion(region.code);
@@ -252,18 +252,18 @@ function PoliticianPanel({ region, onOpen }: { region: Region; onOpen?: (monaCd:
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: -12 }}
           transition={{ duration: 0.2 }}
-          // 실제 의원이면 눌러서 상세 패널 열기
+          // 실제 의원이면 눌러서 "정치인 상세 페이지로 이동" 버튼 띄우기
           {...(pol.monaCd && onOpen
             ? {
                 role: "button",
                 tabIndex: 0,
                 "aria-label": `${pol.name} 상세 보기`,
                 className: "cursor-pointer",
-                onClick: () => onOpen(pol.monaCd!),
+                onClick: () => onOpen(pol.monaCd!, pol.name),
                 onKeyDown: (e: React.KeyboardEvent) => {
                   if (e.key === "Enter" || e.key === " ") {
                     e.preventDefault();
-                    onOpen(pol.monaCd!);
+                    onOpen(pol.monaCd!, pol.name);
                   }
                 },
               }
@@ -683,7 +683,7 @@ export function KoreaMapCard({
 }: {
   selected: string;
   onSelect: (code: string) => void;
-  onOpenPolitician?: (monaCd: string) => void;
+  onOpenPolitician?: (monaCd: string, name?: string) => void;
   expanded?: boolean;
 }) {
   const [hovered, setHovered] = React.useState<string | null>(null);

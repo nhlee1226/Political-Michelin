@@ -6,6 +6,7 @@ import { getUserItems } from "@/lib/user-data";
 import { getNewsByIds, getMembersByIds } from "@/db/queries";
 import { REGIONS } from "@/lib/mock-data";
 import { Badge, Card, CardHeader } from "@/components/ui/primitives";
+import { PoliticianName } from "@/components/politician/politician-link";
 
 export const dynamic = "force-dynamic";
 
@@ -94,7 +95,7 @@ export default async function MyPage() {
                         </span>
                         <div className="min-w-0 flex-1">
                           <p className="flex items-center gap-1.5 text-[calc(13px*var(--fs))] font-semibold">
-                            {p.name}
+                            <PoliticianName id={p.id} name={p.name} />
                             {/* 별점 데이터는 /api/politicians 에 있어 여기선 생략 */}
                           </p>
                           <p className="truncate text-[calc(11px*var(--fs))] text-ink-3">

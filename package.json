@@ -14,6 +14,8 @@
     "db:apply-user-items": "tsx scripts/apply-user-items-sql.ts",
     "db:apply-comments": "tsx scripts/apply-comments-sql.ts",
     "db:apply-news-reactions": "tsx scripts/apply-news-reactions-sql.ts",
+    "db:apply-politician-detail": "tsx scripts/apply-politician-detail-sql.ts",
+    "import:records": "tsx scripts/import-member-records.ts",
     "check:keys": "tsx scripts/check-keys.ts",
     "collect:news": "tsx scripts/collectors/news.ts",
     "collect:nec": "tsx scripts/collectors/nec.ts",
