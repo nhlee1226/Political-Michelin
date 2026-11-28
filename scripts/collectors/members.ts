@@ -11,7 +11,7 @@ import { sql } from "drizzle-orm";
 import { members, parties } from "../../src/db/schema";
 import { apiFetch } from "./api-fetch";
 import { db, env, regionLookup, run, saveRaw, toRegionCode } from "./common";
-import { memberProfile } from "./member-detail-parse";
+import { memberPhotoUrl, memberProfile } from "./member-detail-parse";
 import { assignColors } from "./nec-parse";
 import { applySqlFile } from "./sql-file";
 
@@ -99,6 +99,7 @@ run(async () => {
           electType: elect === "지역구" || elect === "비례대표" ? elect : null,
           term: termNumber(r[FIELD.term]),
           committee: r[FIELD.committee],
+          photoUrl: memberPhotoUrl(r[FIELD.monaCd]), // 국회 공식 사진 (이 API 에는 사진 칸이 없어 코드로 만듦)
           ...memberProfile(r),
         };
       });
@@ -115,6 +116,7 @@ run(async () => {
           electType: sql`excluded.elect_type`,
           term: sql`excluded.term`,
           committee: sql`excluded.committee`,
+          photoUrl: sql`excluded.photo_url`,
           hanjaName: sql`excluded.hanja_name`,
           engName: sql`excluded.eng_name`,
           birthDate: sql`excluded.birth_date`,

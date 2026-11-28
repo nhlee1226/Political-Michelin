@@ -3,7 +3,15 @@
  */
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { cosponsorNames, memberProfile, num, parseCsv, recordRows } from "./member-detail-parse";
+import { cosponsorNames, memberPhotoUrl, memberProfile, num, parseCsv, recordRows } from "./member-detail-parse";
+
+test("의원 사진: 의원 코드로 국회 공식 사진 주소", () => {
+  assert.equal(memberPhotoUrl("T2T8225E"), "https://www.assembly.go.kr/static/portal/img/openassm/T2T8225E.jpg");
+  assert.equal(memberPhotoUrl(" T2T8225E "), "https://www.assembly.go.kr/static/portal/img/openassm/T2T8225E.jpg");
+  assert.equal(memberPhotoUrl(""), null);
+  assert.equal(memberPhotoUrl(null), null);
+  assert.equal(memberPhotoUrl("../x"), null);
+});
 
 test("공동발의자: 쉼표·의원·괄호·가운뎃점 표기", () => {
   assert.deepEqual(cosponsorNames("홍길동,김철수,이영희"), ["홍길동", "김철수", "이영희"]);

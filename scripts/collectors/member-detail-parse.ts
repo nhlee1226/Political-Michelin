@@ -42,6 +42,15 @@ export function memberProfile(r: Row): MemberProfile {
 }
 
 /**
+ * 국회 공식 의원 사진 주소. 인적사항 API 에는 사진 칸이 없지만, 전체 의원 API(ALLNAMEMBER)의 NAAS_PIC 이
+ * 항상 이 형식(의원 코드 = MONA_CD)이라 코드만으로 만든다. 2026-11 확인: 현직 의원 사진이 200 image/jpeg 로 열림.
+ */
+export function memberPhotoUrl(monaCd: string | null | undefined): string | null {
+  const cd = (monaCd ?? "").trim();
+  return /^[A-Z0-9]+$/i.test(cd) ? `https://www.assembly.go.kr/static/portal/img/openassm/${cd}.jpg` : null;
+}
+
+/**
  * 공동발의자 표기 → 이름 목록.
  * '홍길동,김철수', '홍길동의원 김철수의원', '홍길동(민주)·김철수' 모두 처리. 한글 2~5자만 이름으로 봄.
  */
