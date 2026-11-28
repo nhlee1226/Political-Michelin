@@ -51,7 +51,7 @@ import {
 } from "@/lib/api";
 import { BILL_STEPS } from "@/lib/bill-stage";
 import { timeAgo } from "./news-panel";
-import { FONT_SIZES, useFontSize } from "@/lib/font-size";
+import { FONT_SIZES, fontSizePercent, useFontSize } from "@/lib/font-size";
 import { useTheme } from "@/lib/theme";
 import { useSyncedSet } from "@/lib/user-items";
 import { cn } from "@/lib/utils";
@@ -768,7 +768,7 @@ function SettingsPanel() {
             <p className="mt-0.5 text-[calc(12px*var(--fs))] text-ink-3">사이트 안의 글자만 키우거나 줄여요 (이 브라우저에 저장).</p>
           </div>
           <span className="shrink-0 text-[calc(12px*var(--fs))] font-semibold text-lime tabular">
-            {Math.round((FONT_SIZES.find((f) => f.value === fontSize)?.scale ?? 1) * 100)}%
+            {fontSizePercent(fontSize)}%
           </span>
         </div>
         <div role="radiogroup" aria-label="글자 크기" className="mt-3 grid grid-cols-4 gap-1.5">

@@ -13,8 +13,9 @@
   --color-card-2: #222630;      /* 카드 내부 요소 */
   --color-line: rgb(255 255 255 / 0.08);
   --color-ink: #f4f6f8;         /* 본문 1차 */
-  --color-ink-2: #a3a9b6;       /* 본문 2차 */
-  --color-ink-3: #6b7280;       /* 보조/캡션 */
+  /* 어르신도 읽기 쉽게 보조 글자도 배경 대비 4.5:1 이상 (WCAG AA) */
+  --color-ink-2: #c3c8d1;       /* 본문 2차 */
+  --color-ink-3: #a1a8b4;       /* 보조/캡션 */
   --color-flip: #0b0d10;        /* 플립 카운터 타일 */
 
   --color-lime: #c9e46b;        /* Soft Lime (Primary Accent) */
@@ -50,9 +51,10 @@
 /* ── 글자 크기 설정 (빠른 메뉴 → 설정 → 글자 크기, src/lib/font-size.ts) ──
    브라우저 확대와 달리 글자만 배율을 곱하고 간격·상자 크기는 그대로 둔다.
    글자 크기 클래스는 text-xs 같은 이름 있는 크기(위 @theme)와 text-[calc(11px*var(--fs))] 같은 직접 크기 두 가지. */
-:root { --fs: 1; }
+/* 기본은 '크게'(1.12). 속성이 없으면 크게, 다른 크기를 고르면 data-font-size 가 붙음 */
+:root { --fs: 1.12; }
 html[data-font-size="sm"] { --fs: 0.92; }
-html[data-font-size="lg"] { --fs: 1.12; }
+html[data-font-size="md"] { --fs: 1; }
 html[data-font-size="xl"] { --fs: 1.25; }
 /* 차트 눈금 글자 (Recharts 가 font-size 속성으로 넣음 → CSS 로 같은 크기에 배율만 곱함) */
 .recharts-text[font-size="10"] { font-size: calc(10px * var(--fs, 1)); }
@@ -95,8 +97,8 @@ html[data-theme="light"] {
   --color-card-2: #f3f5f8;
   --color-line: rgb(15 23 42 / 0.09);
   --color-ink: #151a23;
-  --color-ink-2: #4a5260;
-  --color-ink-3: #7a8392;
+  --color-ink-2: #363d49;
+  --color-ink-3: #545c69;
   --color-flip: #ffffff;
   --color-white: #1e2633;
   --color-black: #64748b;

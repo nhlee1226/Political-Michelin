@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 
 /** 저장된 테마(src/lib/theme.ts 의 "pm-theme" 키)를 첫 페인트 전에 적용 */
 // 테마·글자 크기를 첫 페인트 전에 적용 (src/lib/theme.ts, src/lib/font-size.ts 와 같은 localStorage 키)
-const THEME_INIT_SCRIPT = `try{var d=document.documentElement;if(localStorage.getItem("pm-theme")==="light")d.dataset.theme="light";var f=localStorage.getItem("pm-font-size");if(f==="sm"||f==="lg"||f==="xl")d.dataset.fontSize=f}catch(e){}`;
+const THEME_INIT_SCRIPT = `try{var d=document.documentElement;if(localStorage.getItem("pm-theme")==="light")d.dataset.theme="light";var f=localStorage.getItem("pm-font-size");if(f==="sm"||f==="md"||f==="xl")d.dataset.fontSize=f}catch(e){}`;
 
 export const viewport: Viewport = { themeColor: "#0d0f12" };
 
