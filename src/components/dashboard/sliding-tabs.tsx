@@ -29,7 +29,8 @@ export function SlidingTabs<T extends string>({
   className,
 }: {
   items: TabItem<T>[];
-  value: T;
+  /** null = 선택된 탭 없음 (예: 백과사전 페이지) */
+  value: T | null;
   onChange: (v: T) => void;
   className?: string;
 }) {
@@ -40,8 +41,12 @@ export function SlidingTabs<T extends string>({
 
   const measure = React.useCallback(() => {
     const box = boxRef.current;
-    const el = tabRefs.current[value];
-    if (!box || !el) return;
+    const el = value == null ? null : tabRefs.current[value];
+    if (!box || !el) {
+      prev.current = null;
+      setPill(null);
+      return;
+    }
     const W = box.scrollWidth;
     const H = box.offsetHeight;
     const l = el.offsetLeft;

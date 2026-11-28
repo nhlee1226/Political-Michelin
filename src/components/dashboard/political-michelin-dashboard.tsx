@@ -150,12 +150,13 @@ function LastCollected({ at }: { at: string | null | undefined }) {
   );
 }
 
-export default function PoliticalMichelinDashboard() {
-  const [tab, setTab] = React.useState<TabKey>("map");
+/** initialTab·initialQuery: 주소의 ?tab=·?q= (백과사전 페이지의 탭·검색에서 넘어올 때) */
+export default function PoliticalMichelinDashboard({ initialTab = "map", initialQuery = "" }: { initialTab?: TabKey; initialQuery?: string }) {
+  const [tab, setTab] = React.useState<TabKey>(initialTab);
   // AI 객관화 모드: 객관화 요약을 만드는 분석이 아직 없어 스위치를 뺌 (뉴스 카드는 기본 표시)
   const aiMode = false;
   const [region, setRegion] = React.useState("11");
-  const [polQuery, setPolQuery] = React.useState("");
+  const [polQuery, setPolQuery] = React.useState(initialQuery);
   // 이름·의원 줄을 누르면 그 옆에 "정치인 상세 페이지로 이동" 버튼 (상세는 /politicians/<MONA_CD> 페이지)
   const { open: openPolitician } = usePoliticianLink();
   const setDetailId = React.useCallback((monaCd: string, name?: string) => openPolitician(monaCd, { name }), [openPolitician]);
